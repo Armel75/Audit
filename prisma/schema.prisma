@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ================= MULTI-TENANT =================
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String   // ex: "SOREPCO"
+  code        String   @unique
+  isActive    Boolean  @default(true)
+  
+  users       User[]
+  plans       AuditPlan[]
+  missions    AuditMission[]
+  departments Department[]
+  auditTypes  AuditType[]
+  riskLevels  RiskLevel[]
+  priorities  PriorityLevel[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ================= IDENTITÉ & ACCÈS =================
+model User {
+  id            String    @id @default(uuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  
+  matricule     String    // Unicité gérée par index composite (tenantId, matricule)
+  email         String    @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?   // Préparation pour SMS
+  
+  status        String    @default("PENDING") // PENDING, ACTIVE, LOCKED, INACTIVE
+  failedLogins  Int       @default(0)
+  lockedUntil   DateTime?
+  
+  roleId        String
+  role          Role      @relation(fields: [roleId], references: [id])
+  
+  missionsLed   AuditMission[] @relation("MissionLeader")
+  authoredFindings Finding[] @relation("FindingAuthor")
+  validatedFindings Finding[] @relation("FindingValidator")
+  recoComments  RecommendationComment[]
+  findingComments FindingComment[]
+  auditLogs     AuditLog[]
+  
+  refreshTokens RefreshToken[]
+  resetTokens   PasswordResetToken[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([tenantId, matricule])
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       // ex: "Auditeur", "DG"
+  users       User[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  code        String           @unique // ex: "audit_manage_missions"
+  description String?
+  isLegacy    Boolean          @default(false) // Permet de filtrer les anciennes
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([roleId, permissionId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ================= PARAMÉTRAGE =================
+model Department { // Service
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  name        String
+  code        String
+  
+  recos       Recommendation[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([tenantId, code])
+}
+
+model AuditType {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  name        String
+  
+  missions    AuditMission[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RiskLevel {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  name        String   // ex: "Faible", "Moyen", "Élevé", "Critique"
+  color       String?  // ex: "#FF0000"
+  level       Int      // Pour le tri (1, 2, 3, 4)
+  
+  findings    Finding[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PriorityLevel {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  name        String   // ex: "Basse", "Moyenne", "Haute"
+  level       Int
+  
+  recos       Recommendation[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ================= MÉTIER AUDIT =================
+model AuditPlan {
+  id          String         @id @default(uuid())
+  tenantId    String
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  year        Int
+  status      String         @default("DRAFT") // DRAFT, PENDING_APPROVAL, VALIDATED, REJECTED
+  
+  missions    AuditMission[]
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([tenantId, year])
+}
+
+model AuditMission {
+  id          String         @id @default(uuid())
+  tenantId    String
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  title       String
+  description String
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String         @default("PLANNED") // PLANNED, IN_PROGRESS, IN_REVIEW, VALIDATED, CLOSED
+  
+  planId      String
+  plan        AuditPlan      @relation(fields: [planId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  auditTypeId String?
+  auditType   AuditType?     @relation(fields: [auditTypeId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  leaderId    String
+  leader      User           @relation("MissionLeader", fields: [leaderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  findings    Finding[]
+  documents   Document[]
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model Finding { // Constat
+  id          String         @id @default(uuid())
+  title       String
+  description String
+  
+  riskLevelId String?
+  riskLevel   RiskLevel?     @relation(fields: [riskLevelId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  riskLevelLegacy String?    // Keep for backward compatibility with existing data
+  
+  process     String?
+  cause       String?
+  impact      String?
+  
+  status      String         @default("DRAFT") // DRAFT, CONFIRMED, ADDRESSED, REJECTED
+  
+  authorId    String?
+  author      User?          @relation("FindingAuthor", fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  validatorId String?
+  validator   User?          @relation("FindingValidator", fields: [validatorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  missionId   String
+  mission     AuditMission   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  recos       Recommendation[]
+  documents   Document[]
+  comments    FindingComment[]
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model FindingComment {
+  id          String   @id @default(uuid())
+  content     String
+  
+  findingId   String
+  finding     Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Recommendation {
+  id            String         @id @default(uuid())
+  title         String
+  actionPlan    String
+  targetDate    DateTime
+  status        String         @default("OPEN") // OPEN, IN_PROGRESS, IMPLEMENTED, CLOSED
+  
+  priorityId    String?
+  priority      PriorityLevel? @relation(fields: [priorityId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  departmentId  String?
+  department    Department?    @relation(fields: [departmentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  assigneeName  String?        
+  
+  findingId     String
+  finding       Finding        @relation(fields: [findingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  documents     Document[]
+  comments      RecommendationComment[]
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model RecommendationComment {
+  id               String         @id @default(uuid())
+  content          String
+  
+  recommendationId String
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  
+  authorId         String
+  author           User           @relation(fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+// ================= GESTION DOCUMENTAIRE =================
+model Document {
+  id               String   @id @default(uuid())
+  originalName     String
+  mimeType         String
+  sizeBytes        Int
+  storagePath      String   // Chemin absolu sur le disque local
+  fileHash         String   // SHA-256
+  isGenerated      Boolean  @default(false) // True si c'est un rapport PDF généré
+  
+  missionId        String?
+  mission          AuditMission?   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  findingId        String?
+  finding          Finding?        @relation(fields: [findingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  recommendationId String?
+  recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  uploadedById     String
+  createdAt        DateTime @default(now())
+  deletedAt        DateTime? // Soft delete
+}
+
+// ================= TRAÇABILITÉ =================
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String   // ex: "LOGIN_FAILED", "UPDATE_FINDING"
+  entityName  String?  // ex: "Finding"
+  entityId    String?
+  oldValues   String?
+  newValues   String?
+  
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  ipAddress   String?
+  
+  createdAt   DateTime @default(now())
+
+  @@index([entityName, entityId])
+  @@index([createdAt])
+}

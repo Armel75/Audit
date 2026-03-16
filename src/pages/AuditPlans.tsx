@@ -1,0 +1,224 @@
+import { useState, useEffect } from 'react';
+import { Calendar, Plus, ChevronRight, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+
+interface AuditPlan {
+  id: string;
+  year: number;
+  title: string | null;
+  description: string | null;
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'VALIDATED' | 'REJECTED';
+  _count: { missions: number };
+  createdAt: string;
+}
+
+const statusConfig = {
+  DRAFT: { label: 'Brouillon', color: 'bg-slate-100 text-slate-800 border-slate-200', icon: FileText },
+  PENDING_APPROVAL: { label: 'En attente DG', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: Clock },
+  VALIDATED: { label: 'Validé', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: CheckCircle },
+  REJECTED: { label: 'Rejeté', color: 'bg-rose-100 text-rose-800 border-rose-200', icon: XCircle },
+};
+
+export default function AuditPlans() {
+  const [plans, setPlans] = useState<AuditPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newYear, setNewYear] = useState(new Date().getFullYear() + 1);
+  const [newTitle, setNewTitle] = useState('');
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  const fetchPlans = async () => {
+    try {
+      // In a real app, this fetch would include the JWT token in headers
+      const response = await fetch('/api/audit-plans');
+      if (response.ok) {
+        const data = await response.json();
+        setPlans(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch plans', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreatePlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/audit-plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: newYear, title: newTitle }),
+      });
+      
+      if (response.ok) {
+        setIsModalOpen(false);
+        setNewTitle('');
+        fetchPlans(); // Refresh list
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Erreur lors de la création');
+      }
+    } catch (error) {
+      console.error('Failed to create plan', error);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="sm:flex sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Plans d'Audit Annuels</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Gérez la planification stratégique des audits par année.
+          </p>
+        </div>
+        <div className="mt-4 sm:mt-0">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+          >
+            <Plus className="-ml-1 mr-2 h-5 w-5" />
+            Nouveau Plan
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="animate-pulse flex space-x-4">
+          <div className="flex-1 space-y-4 py-1">
+            <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+            <div className="space-y-2">
+              <div className="h-4 bg-slate-200 rounded"></div>
+              <div className="h-4 bg-slate-200 rounded w-5/6"></div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {plans.length === 0 && (
+            <div className="col-span-full p-12 text-center border-2 border-dashed border-slate-300 rounded-xl">
+              <Calendar className="mx-auto h-12 w-12 text-slate-400" />
+              <h3 className="mt-2 text-sm font-medium text-slate-900">Aucun plan d'audit</h3>
+              <p className="mt-1 text-sm text-slate-500">Commencez par créer un plan pour la prochaine année.</p>
+            </div>
+          )}
+          
+          {plans.map((plan) => {
+            const status = statusConfig[plan.status];
+            const StatusIcon = status.icon;
+            
+            return (
+              <div key={plan.id} className="bg-white overflow-hidden shadow-sm rounded-xl border border-slate-200 hover:shadow-md transition-shadow flex flex-col">
+                <div className="p-6 flex-1">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-slate-400" />
+                      <h3 className="text-xl font-bold text-slate-900">{plan.year}</h3>
+                    </div>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${status.color}`}>
+                      <StatusIcon className="w-3.5 h-3.5" />
+                      {status.label}
+                    </span>
+                  </div>
+                  
+                  <p className="text-sm font-medium text-slate-900 mb-1">
+                    {plan.title || `Plan d'audit annuel ${plan.year}`}
+                  </p>
+                  <p className="text-sm text-slate-500 line-clamp-2 mb-4">
+                    {plan.description || "Aucune description stratégique fournie."}
+                  </p>
+                  
+                  <div className="flex items-center text-sm text-slate-500">
+                    <BriefcaseIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
+                    {plan._count.missions} mission(s) rattachée(s)
+                  </div>
+                </div>
+                <div className="bg-slate-50 px-6 py-3 border-t border-slate-100">
+                  <div className="text-sm">
+                    <a href="#" className="font-medium text-emerald-600 hover:text-emerald-500 flex items-center justify-between">
+                      Ouvrir le plan
+                      <ChevronRight className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Simple Modal for Creation */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-10 overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div className="fixed inset-0 bg-slate-500 bg-opacity-75 transition-opacity" onClick={() => setIsModalOpen(false)} />
+            <div className="relative transform overflow-hidden rounded-xl bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+              <div>
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+                  <Calendar className="h-6 w-6 text-emerald-600" />
+                </div>
+                <div className="mt-3 text-center sm:mt-5">
+                  <h3 className="text-lg font-medium leading-6 text-slate-900">Créer un Plan d'Audit</h3>
+                  <div className="mt-2 text-sm text-slate-500">
+                    Définissez l'année et le titre du nouveau plan. Vous pourrez y ajouter des missions ultérieurement.
+                  </div>
+                </div>
+              </div>
+              <form onSubmit={handleCreatePlan} className="mt-5 sm:mt-6 space-y-4">
+                <div>
+                  <label htmlFor="year" className="block text-sm font-medium text-slate-700">Année cible</label>
+                  <input
+                    type="number"
+                    id="year"
+                    value={newYear}
+                    onChange={(e) => setNewYear(parseInt(e.target.value))}
+                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="title" className="block text-sm font-medium text-slate-700">Titre (Optionnel)</label>
+                  <input
+                    type="text"
+                    id="title"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="Ex: Plan Stratégique 2026"
+                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  />
+                </div>
+                <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+                  <button
+                    type="submit"
+                    className="inline-flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:col-start-2 sm:text-sm"
+                  >
+                    Créer le plan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-base font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Helper icon component
+function BriefcaseIcon(props: any) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+    </svg>
+  );
+}
