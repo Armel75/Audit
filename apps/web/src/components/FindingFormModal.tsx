@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { apiFetch } from '../lib/api';
 
 interface RiskLevel {
   id: string;
@@ -28,10 +29,7 @@ export default function FindingFormModal({ isOpen, onClose, missionId, onSuccess
   useEffect(() => {
     if (isOpen) {
       // Fetch risk levels
-      const token = localStorage.getItem('accessToken');
-      fetch('/api/settings/risk-levels', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      apiFetch('/api/settings/risk-levels')
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -50,12 +48,10 @@ export default function FindingFormModal({ isOpen, onClose, missionId, onSuccess
     setError(null);
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch('/api/findings', {
+      const res = await apiFetch('/api/findings', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           title,

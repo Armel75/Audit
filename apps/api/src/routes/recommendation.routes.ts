@@ -76,4 +76,36 @@ router.post('/:id/comments', async (req, res) => {
   }
 });
 
+// PUT /api/recommendations/:id
+router.put('/:id', requirePermission('can_manage_tasks'), async (req, res) => {
+  try {
+    const { title, actionPlan, targetDate, priorityId, departmentId, assigneeName } = req.body;
+    
+    const reco = await RecommendationService.update(req.params.id, {
+      title,
+      actionPlan,
+      targetDate: targetDate ? new Date(targetDate) : undefined,
+      priorityId,
+      departmentId,
+      assigneeName
+    });
+    
+    res.json(reco);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update recommendation' });
+  }
+});
+
+// DELETE /api/recommendations/:id
+router.delete('/:id', requirePermission('can_manage_tasks'), async (req, res) => {
+  try {
+    await RecommendationService.delete(req.params.id);
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to delete recommendation' });
+  }
+});
+
 export default router;

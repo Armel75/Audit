@@ -59,4 +59,33 @@ export class AuditPlanService {
       data: { status }
     });
   }
+
+  /**
+   * Updates an audit plan (e.g., year).
+   */
+  static async updatePlan(tenantId: string, planId: string, year: number) {
+    const existingPlan = await prisma.auditPlan.findUnique({
+      where: {
+        tenantId_year: { tenantId, year }
+      }
+    });
+
+    if (existingPlan && existingPlan.id !== planId) {
+      throw new Error(`Un plan d'audit existe déjà pour l'année ${year}.`);
+    }
+
+    return prisma.auditPlan.update({
+      where: { id: planId, tenantId },
+      data: { year }
+    });
+  }
+
+  /**
+   * Deletes an audit plan.
+   */
+  static async deletePlan(tenantId: string, planId: string) {
+    return prisma.auditPlan.delete({
+      where: { id: planId, tenantId }
+    });
+  }
 }

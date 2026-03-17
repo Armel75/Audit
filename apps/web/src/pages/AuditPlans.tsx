@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Plus, ChevronRight, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Calendar, Plus, ChevronRight, FileText, CheckCircle, XCircle, Clock, Edit2, Trash2 } from 'lucide-react';
+import { apiFetch } from '../lib/api';
 
 interface AuditPlan {
   id: string;
@@ -22,6 +23,7 @@ export default function AuditPlans() {
   const [plans, setPlans] = useState<AuditPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<AuditPlan | null>(null);
   const [newYear, setNewYear] = useState(new Date().getFullYear() + 1);
   const [newTitle, setNewTitle] = useState('');
 
@@ -31,8 +33,7 @@ export default function AuditPlans() {
 
   const fetchPlans = async () => {
     try {
-      // In a real app, this fetch would include the JWT token in headers
-      const response = await fetch('/api/audit-plans');
+      const response = await apiFetch('/api/audit-plans');
       if (response.ok) {
         const data = await response.json();
         setPlans(data);
@@ -44,25 +45,60 @@ export default function AuditPlans() {
     }
   };
 
-  const handleCreatePlan = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingPlan(null);
+    setNewYear(new Date().getFullYear() + 1);
+    setNewTitle('');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (plan: AuditPlan) => {
+    setEditingPlan(plan);
+    setNewYear(plan.year);
+    setNewTitle(plan.title || '');
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce plan ?')) return;
+    try {
+      const response = await apiFetch(`/api/audit-plans/${id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        fetchPlans();
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Erreur lors de la suppression');
+      }
+    } catch (error) {
+      console.error('Failed to delete plan', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/audit-plans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const url = editingPlan ? `/api/audit-plans/${editingPlan.id}` : '/api/audit-plans';
+      const method = editingPlan ? 'PUT' : 'POST';
+      
+      const response = await apiFetch(url, {
+        method,
+        headers: { 
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ year: newYear, title: newTitle }),
       });
       
       if (response.ok) {
         setIsModalOpen(false);
-        setNewTitle('');
-        fetchPlans(); // Refresh list
+        fetchPlans();
       } else {
         const err = await response.json();
-        alert(err.error || 'Erreur lors de la création');
+        alert(err.error || 'Erreur lors de la sauvegarde');
       }
     } catch (error) {
-      console.error('Failed to create plan', error);
+      console.error('Failed to save plan', error);
     }
   };
 
@@ -77,7 +113,7 @@ export default function AuditPlans() {
         </div>
         <div className="mt-4 sm:mt-0">
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenCreate}
             className="inline-flex items-center justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
           >
             <Plus className="-ml-1 mr-2 h-5 w-5" />
@@ -118,10 +154,18 @@ export default function AuditPlans() {
                       <Calendar className="h-5 w-5 text-slate-400" />
                       <h3 className="text-xl font-bold text-slate-900">{plan.year}</h3>
                     </div>
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${status.color}`}>
-                      <StatusIcon className="w-3.5 h-3.5" />
-                      {status.label}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${status.color}`}>
+                        <StatusIcon className="w-3.5 h-3.5" />
+                        {status.label}
+                      </span>
+                      <button onClick={() => handleOpenEdit(plan)} className="text-slate-400 hover:text-blue-600">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(plan.id)} className="text-slate-400 hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   
                   <p className="text-sm font-medium text-slate-900 mb-1">
@@ -150,7 +194,7 @@ export default function AuditPlans() {
         </div>
       )}
 
-      {/* Simple Modal for Creation */}
+      {/* Simple Modal for Creation/Edit */}
       {isModalOpen && (
         <div className="fixed inset-0 z-10 overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
@@ -161,13 +205,12 @@ export default function AuditPlans() {
                   <Calendar className="h-6 w-6 text-emerald-600" />
                 </div>
                 <div className="mt-3 text-center sm:mt-5">
-                  <h3 className="text-lg font-medium leading-6 text-slate-900">Créer un Plan d'Audit</h3>
-                  <div className="mt-2 text-sm text-slate-500">
-                    Définissez l'année et le titre du nouveau plan. Vous pourrez y ajouter des missions ultérieurement.
-                  </div>
+                  <h3 className="text-lg font-medium leading-6 text-slate-900">
+                    {editingPlan ? "Modifier le Plan d'Audit" : "Créer un Plan d'Audit"}
+                  </h3>
                 </div>
               </div>
-              <form onSubmit={handleCreatePlan} className="mt-5 sm:mt-6 space-y-4">
+              <form onSubmit={handleSubmit} className="mt-5 sm:mt-6 space-y-4">
                 <div>
                   <label htmlFor="year" className="block text-sm font-medium text-slate-700">Année cible</label>
                   <input
@@ -195,7 +238,7 @@ export default function AuditPlans() {
                     type="submit"
                     className="inline-flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:col-start-2 sm:text-sm"
                   >
-                    Créer le plan
+                    {editingPlan ? "Enregistrer" : "Créer le plan"}
                   </button>
                   <button
                     type="button"

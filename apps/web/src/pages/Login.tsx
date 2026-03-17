@@ -13,9 +13,10 @@ export default function Login() {
   const [success, setSuccess] = useState<string | null>(null);
 
   // Form states
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [matricule, setMatricule] = useState('');
+  const [email, setEmail] = useState(''); // Used for register/forgot
+  const [matricule, setMatricule] = useState(''); // Used for register
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
 
@@ -30,11 +31,11 @@ export default function Login() {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ identifier, password })
         });
         const data = await res.json();
         
-        if (!res.ok) throw new Error(data.error || 'Erreur de connexion');
+        if (!res.ok) throw new Error(data.error || 'Identifiant ou mot de passe invalide');
         
         login(data.accessToken, data.user);
         navigate('/dashboard');
@@ -130,16 +131,29 @@ export default function Login() {
               </>
             )}
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-                Adresse email professionnelle
-              </label>
-              <div className="mt-1">
-                <input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                  className="block w-full appearance-none rounded-md border border-slate-300 px-3 py-2 placeholder-slate-400 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
-                />
+            {mode === 'login' ? (
+              <div>
+                <label htmlFor="identifier" className="block text-sm font-medium text-slate-700">
+                  Email ou Matricule
+                </label>
+                <div className="mt-1">
+                  <input id="identifier" type="text" required value={identifier} onChange={e => setIdentifier(e.target.value)}
+                    className="block w-full appearance-none rounded-md border border-slate-300 px-3 py-2 placeholder-slate-400 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+                  Adresse email professionnelle
+                </label>
+                <div className="mt-1">
+                  <input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                    className="block w-full appearance-none rounded-md border border-slate-300 px-3 py-2 placeholder-slate-400 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+            )}
 
             {mode !== 'forgot' && (
               <div>

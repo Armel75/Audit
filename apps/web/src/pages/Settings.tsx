@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
+import { apiFetch } from '../lib/api';
 
 // Types
 interface Department { id: string; name: string; code: string; }
@@ -24,18 +25,13 @@ export default function Settings() {
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [formData, setFormData] = useState<any>({});
 
-  const fetchToken = () => localStorage.getItem('accessToken');
-
   const fetchData = async () => {
     try {
-      const token = fetchToken();
-      const headers = { 'Authorization': `Bearer ${token}` };
-      
       const [deptRes, auditRes, riskRes, priorityRes] = await Promise.all([
-        fetch('/api/settings/departments', { headers }),
-        fetch('/api/settings/audit-types', { headers }),
-        fetch('/api/settings/risk-levels', { headers }),
-        fetch('/api/settings/priority-levels', { headers })
+        apiFetch('/api/settings/departments'),
+        apiFetch('/api/settings/audit-types'),
+        apiFetch('/api/settings/risk-levels'),
+        apiFetch('/api/settings/priority-levels')
       ]);
 
       if (!deptRes.ok) throw new Error('Failed to fetch settings data');
@@ -62,10 +58,8 @@ export default function Settings() {
   const handleDelete = async (id: string, endpoint: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) return;
     try {
-      const token = fetchToken();
-      const res = await fetch(`/api/settings/${endpoint}/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+      const res = await apiFetch(`/api/settings/${endpoint}/${id}`, {
+        method: 'DELETE'
       });
       if (!res.ok) throw new Error('Erreur lors de la suppression');
       fetchData();
@@ -77,7 +71,6 @@ export default function Settings() {
   const handleSubmit = async (e: React.FormEvent, endpoint: string) => {
     e.preventDefault();
     try {
-      const token = fetchToken();
       const method = isEditing ? 'PUT' : 'POST';
       const url = isEditing ? `/api/settings/${endpoint}/${currentId}` : `/api/settings/${endpoint}`;
       
@@ -85,11 +78,10 @@ export default function Settings() {
       const payload = { ...formData };
       if (payload.level) payload.level = parseInt(payload.level, 10);
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
       });

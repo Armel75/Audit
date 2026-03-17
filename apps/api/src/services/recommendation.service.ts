@@ -63,4 +63,28 @@ export class RecommendationService {
       }
     });
   }
+
+  static async update(id: string, data: {
+    title?: string;
+    actionPlan?: string;
+    targetDate?: Date;
+    priorityId?: string;
+    departmentId?: string;
+    assigneeName?: string;
+  }) {
+    return prisma.recommendation.update({
+      where: { id },
+      data,
+      include: {
+        priority: true,
+        department: true
+      }
+    });
+  }
+
+  static async delete(id: string) {
+    return prisma.recommendation.delete({
+      where: { id }
+    });
+  }
 }

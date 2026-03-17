@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { apiFetch } from '../lib/api';
 
 interface RecommendationFormModalProps {
   isOpen: boolean;
@@ -24,14 +25,12 @@ export default function RecommendationFormModal({ isOpen, onClose, findingId, on
 
   useEffect(() => {
     if (isOpen) {
-      const token = localStorage.getItem('accessToken');
-      
-      fetch('/api/settings/priority-levels', { headers: { 'Authorization': `Bearer ${token}` } })
+      apiFetch('/api/settings/priority-levels')
         .then(res => res.json())
         .then(data => { if (Array.isArray(data)) setPriorities(data); })
         .catch(err => console.error('Failed to fetch priorities', err));
 
-      fetch('/api/settings/departments', { headers: { 'Authorization': `Bearer ${token}` } })
+      apiFetch('/api/settings/departments')
         .then(res => res.json())
         .then(data => { if (Array.isArray(data)) setDepartments(data); })
         .catch(err => console.error('Failed to fetch departments', err));
@@ -46,12 +45,10 @@ export default function RecommendationFormModal({ isOpen, onClose, findingId, on
     setError(null);
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch('/api/recommendations', {
+      const res = await apiFetch('/api/recommendations', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           title,

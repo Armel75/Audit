@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload } from 'lucide-react';
 import FindingFormModal from '../components/FindingFormModal';
+import { apiFetch } from '../lib/api';
 
 interface Finding {
   id: string;
@@ -45,10 +46,7 @@ export default function MissionDetails() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchMission = () => {
-    const token = localStorage.getItem('accessToken');
-    fetch(`/api/missions/${id}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    apiFetch(`/api/missions/${id}`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement de la mission');
         return res.json();
@@ -77,12 +75,8 @@ export default function MissionDetails() {
     formData.append('missionId', id!);
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch('/api/documents/upload', {
+      const res = await apiFetch('/api/documents/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
         body: formData
       });
 

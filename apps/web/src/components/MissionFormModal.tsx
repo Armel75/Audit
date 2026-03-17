@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { apiFetch } from '../lib/api';
 
 interface MissionFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  mission?: any; // If provided, we are in edit mode
 }
 
-export default function MissionFormModal({ isOpen, onClose, onSuccess }: MissionFormModalProps) {
+export default function MissionFormModal({ isOpen, onClose, onSuccess, mission }: MissionFormModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [planId, setPlanId] = useState('');
   const [leaderId, setLeaderId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   const [plans, setPlans] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -21,26 +25,39 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess }: Mission
 
   useEffect(() => {
     if (isOpen) {
-      const token = localStorage.getItem('accessToken');
-      
+      if (mission) {
+        setTitle(mission.title || '');
+        setDescription(mission.description || '');
+        setPlanId(mission.planId || '');
+        setLeaderId(mission.leaderId || (mission.leader ? mission.leader.id : ''));
+        setStartDate(mission.startDate ? new Date(mission.startDate).toISOString().split('T')[0] : '');
+        setEndDate(mission.endDate ? new Date(mission.endDate).toISOString().split('T')[0] : '');
+      } else {
+        setTitle('');
+        setDescription('');
+        setPlanId('');
+        setLeaderId('');
+        setStartDate('');
+        setEndDate('');
+      }
+
       // Fetch plans
-      fetch('/api/plans', { headers: { 'Authorization': `Bearer ${token}` } })
+      apiFetch('/api/audit-plans')
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) setPlans(data);
         })
         .catch(err => console.error('Failed to fetch plans', err));
 
-      // Fetch users (for leader selection) - assuming an endpoint exists, or we mock it for now
-      // Since we don't have a users endpoint yet, we'll just fetch settings/users if it exists, or mock
-      fetch('/api/settings/users', { headers: { 'Authorization': `Bearer ${token}` } })
+      // Fetch users (for leader selection)
+      apiFetch('/api/users')
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) setUsers(data);
         })
         .catch(err => console.error('Failed to fetch users', err));
     }
-  }, [isOpen]);
+  }, [isOpen, mission]);
 
   if (!isOpen) return null;
 
@@ -50,30 +67,31 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess }: Mission
     setError(null);
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch('/api/missions', {
-        method: 'POST',
+      const url = mission ? `/api/missions/${mission.id}` : '/api/missions';
+      const method = mission ? 'PUT' : 'POST';
+
+      const payload: any = {
+        title,
+        description,
+        planId,
+        leaderId,
+      };
+
+      if (startDate) payload.startDate = new Date(startDate).toISOString();
+      if (endDate) payload.endDate = new Date(endDate).toISOString();
+
+      const res = await apiFetch(url, {
+        method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          title,
-          description,
-          planId,
-          leaderId
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Erreur lors de la création de la mission');
+        throw new Error(data.error || 'Erreur lors de la sauvegarde de la mission');
       }
-
-      setTitle('');
-      setDescription('');
-      setPlanId('');
-      setLeaderId('');
       
       onSuccess();
       onClose();
@@ -96,7 +114,9 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess }: Mission
         <div className="inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:align-middle">
           <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-medium leading-6 text-slate-900">Nouvelle Mission</h3>
+              <h3 className="text-lg font-medium leading-6 text-slate-900">
+                {mission ? 'Modifier la Mission' : 'Nouvelle Mission'}
+              </h3>
               <button onClick={onClose} className="text-slate-400 hover:text-slate-500">
                 <X className="h-6 w-6" />
               </button>
@@ -117,7 +137,7 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess }: Mission
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                 />
               </div>
 
@@ -129,7 +149,7 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess }: Mission
                   rows={4}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                 />
               </div>
 
@@ -141,11 +161,11 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess }: Mission
                     required
                     value={planId}
                     onChange={(e) => setPlanId(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                   >
                     <option value="">Sélectionner un plan</option>
                     {plans.map(plan => (
-                      <option key={plan.id} value={plan.id}>Plan {plan.year}</option>
+                      <option key={plan.id} value={plan.id}>Plan {plan.year} {plan.title ? `- ${plan.title}` : ''}</option>
                     ))}
                   </select>
                 </div>
@@ -157,7 +177,7 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess }: Mission
                     required
                     value={leaderId}
                     onChange={(e) => setLeaderId(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                   >
                     <option value="">Sélectionner un chef</option>
                     {users.map(user => (
@@ -167,18 +187,41 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess }: Mission
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium text-slate-700">Date de début</label>
+                  <input
+                    type="date"
+                    id="startDate"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="endDate" className="block text-sm font-medium text-slate-700">Date de fin</label>
+                  <input
+                    type="date"
+                    id="endDate"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
               <div className="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                  className="inline-flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
                 >
-                  {submitting ? 'Création...' : 'Créer la mission'}
+                  {submitting ? 'Sauvegarde...' : (mission ? 'Enregistrer' : 'Créer la mission')}
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-base font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-base font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Annuler
                 </button>

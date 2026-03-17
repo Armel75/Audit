@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, MessageSquare, Paperclip, User, Calendar, ShieldAlert, CheckCircle, XCircle, Upload, Plus, Target, Briefcase } from 'lucide-react';
 import RecommendationFormModal from '../components/RecommendationFormModal';
+import { apiFetch } from '../lib/api';
 
 interface Recommendation {
   id: string;
@@ -69,10 +70,7 @@ export default function FindingDetails() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchFinding = () => {
-    const token = localStorage.getItem('accessToken');
-    fetch(`/api/findings/${id}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    apiFetch(`/api/findings/${id}`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement du constat');
         return res.json();
@@ -96,12 +94,10 @@ export default function FindingDetails() {
     if (!newComment.trim()) return;
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch(`/api/findings/${id}/comments`, {
+      const res = await apiFetch(`/api/findings/${id}/comments`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ content: newComment })
       });
@@ -119,12 +115,10 @@ export default function FindingDetails() {
     if (!confirm(`Voulez-vous vraiment passer ce constat au statut ${newStatus} ?`)) return;
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch(`/api/findings/${id}/status`, {
+      const res = await apiFetch(`/api/findings/${id}/status`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status: newStatus })
       });
@@ -146,12 +140,8 @@ export default function FindingDetails() {
     formData.append('findingId', id!);
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch('/api/documents/upload', {
+      const res = await apiFetch('/api/documents/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
         body: formData
       });
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Download, Printer, ShieldAlert, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { apiFetch } from '../lib/api';
 
 interface Reco {
   id: string;
@@ -60,10 +61,7 @@ export default function MissionReport() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    fetch(`/api/missions/${id}/report`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    apiFetch(`/api/missions/${id}/report`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement du rapport');
         return res.json();

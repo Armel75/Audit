@@ -53,4 +53,38 @@ router.patch('/:id/status', requirePermission('can_create_campaign'), async (req
   }
 });
 
+// PUT /api/audit-plans/:id
+router.put('/:id', requirePermission('can_create_campaign'), async (req, res) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const { year } = req.body;
+    const planId = req.params.id;
+
+    if (!year) {
+      return res.status(400).json({ error: "L'année est obligatoire." });
+    }
+
+    const updatedPlan = await AuditPlanService.updatePlan(tenantId, planId, parseInt(year));
+    res.json(updatedPlan);
+  } catch (error: any) {
+    if (error.message.includes('existe déjà')) {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DELETE /api/audit-plans/:id
+router.delete('/:id', requirePermission('can_create_campaign'), async (req, res) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const planId = req.params.id;
+
+    await AuditPlanService.deletePlan(tenantId, planId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 export default router;

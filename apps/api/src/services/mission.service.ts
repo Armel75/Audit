@@ -130,4 +130,35 @@ export class MissionService {
       data: { status: newStatus }
     });
   }
+
+  /**
+   * Update mission details
+   */
+  static async updateMission(id: string, tenantId: string, data: {
+    title?: string;
+    description?: string;
+    leaderId?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }) {
+    const mission = await prisma.auditMission.findFirst({ where: { id, tenantId } });
+    if (!mission) throw new Error('Mission not found');
+
+    return prisma.auditMission.update({
+      where: { id },
+      data
+    });
+  }
+
+  /**
+   * Delete a mission
+   */
+  static async deleteMission(id: string, tenantId: string) {
+    const mission = await prisma.auditMission.findFirst({ where: { id, tenantId } });
+    if (!mission) throw new Error('Mission not found');
+
+    return prisma.auditMission.delete({
+      where: { id }
+    });
+  }
 }

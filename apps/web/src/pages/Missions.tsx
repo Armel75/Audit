@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, AlertCircle, Briefcase, Calendar, Users } from 'lucide-react';
+import { Plus, Search, Filter, AlertCircle, Briefcase, Calendar, Users, Edit2, Trash2 } from 'lucide-react';
 import MissionFormModal from '../components/MissionFormModal';
+import { apiFetch } from '../lib/api';
 
 interface Mission {
   id: string;
@@ -10,7 +11,8 @@ interface Mission {
   startDate: string | null;
   endDate: string | null;
   status: 'PLANNED' | 'IN_PROGRESS' | 'IN_REVIEW' | 'VALIDATED' | 'CLOSED';
-  leader: { firstName: string; lastName: string; email: string };
+  leader: { id: string; firstName: string; lastName: string; email: string };
+  planId: string;
   _count: { findings: number; documents: number };
 }
 
@@ -27,16 +29,12 @@ export default function Missions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMission, setEditingMission] = useState<Mission | null>(null);
 
   const fetchMissions = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch('/api/missions', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await apiFetch('/api/missions');
       if (!response.ok) {
         throw new Error('Erreur lors du chargement des missions');
       }
@@ -54,6 +52,35 @@ export default function Missions() {
     fetchMissions();
   }, []);
 
+  const handleOpenCreate = () => {
+    setEditingMission(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (e: React.MouseEvent, mission: Mission) => {
+    e.preventDefault(); // Prevent link navigation
+    setEditingMission(mission);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault(); // Prevent link navigation
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette mission ?')) return;
+    try {
+      const response = await apiFetch(`/api/missions/${id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        fetchMissions();
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Erreur lors de la suppression');
+      }
+    } catch (error) {
+      console.error('Failed to delete mission', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="sm:flex sm:items-center sm:justify-between">
@@ -66,7 +93,7 @@ export default function Missions() {
         <div className="mt-4 sm:mt-0">
           <button
             type="button"
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenCreate}
             className="inline-flex items-center justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:w-auto"
           >
             <Plus className="-ml-1 mr-2 h-5 w-5" />
@@ -126,12 +153,28 @@ export default function Missions() {
               <Link
                 key={mission.id}
                 to={`/missions/${mission.id}`}
-                className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow"
+                className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow relative group"
               >
                 <div className="flex justify-between items-start mb-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${conf.color}`}>
                     {conf.label}
                   </span>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={(e) => handleOpenEdit(e, mission)} 
+                      className="text-slate-400 hover:text-blue-600 p-1"
+                      title="Modifier"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={(e) => handleDelete(e, mission.id)} 
+                      className="text-slate-400 hover:text-red-600 p-1"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 
                 <h3 className="text-lg font-semibold text-slate-900 mb-2 line-clamp-2">
@@ -170,7 +213,8 @@ export default function Missions() {
         onSuccess={() => {
           setIsModalOpen(false);
           fetchMissions();
-        }} 
+        }}
+        mission={editingMission}
       />
     </div>
   );

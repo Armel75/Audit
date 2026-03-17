@@ -66,4 +66,26 @@ router.patch('/:id/status', requirePermission('can_manage_tasks'), async (req, r
   }
 });
 
+// PUT /api/missions/:id (Requires 'can_manage_tasks' permission)
+router.put('/:id', requirePermission('can_manage_tasks'), async (req, res) => {
+  try {
+    const tenantId = (req as any).user.tenantId;
+    const updatedMission = await MissionService.updateMission(req.params.id, tenantId, req.body);
+    res.json(updatedMission);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DELETE /api/missions/:id (Requires 'can_manage_tasks' permission)
+router.delete('/:id', requirePermission('can_manage_tasks'), async (req, res) => {
+  try {
+    const tenantId = (req as any).user.tenantId;
+    await MissionService.deleteMission(req.params.id, tenantId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 export default router;

@@ -4,10 +4,10 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import prisma from '@audit/database';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { AuthService } from '../services/auth.service';
 
 const router = Router();
 
-// À confirmer : Politique de durée de session et de rotation
 const ACCESS_TOKEN_EXPIRES_IN = '15m'; // Short-lived JWT
 const REFRESH_TOKEN_EXPIRES_DAYS = 7; // Long-lived refresh token
 const RESET_TOKEN_EXPIRES_HOURS = 1; // Limited-lifetime reset token
@@ -27,53 +27,38 @@ const generateAccessToken = (user: any) => {
   );
 };
 
-const generateRefreshToken = () => {
-  return crypto.randomBytes(40).toString('hex');
-};
-
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
     
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Identifiant et mot de passe requis' });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        role: {
-          include: { permissions: { include: { permission: true } } }
-        }
-      }
-    });
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'];
 
-    if (!user || user.status !== 'ACTIVE') {
-      return res.status(401).json({ error: 'Invalid credentials or inactive account' });
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    const user = await AuthService.login(identifier, password, ipAddress, userAgent);
 
     // Generate tokens
     const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken();
+    const { plainToken, tokenHash } = AuthService.generateRefreshToken();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRES_DAYS);
 
     // Save refresh token securely in DB
     await prisma.refreshToken.create({
       data: {
-        token: refreshToken,
+        tokenHash,
         userId: user.id,
-        expiresAt
+        expiresAt,
+        ipAddress,
+        userAgent
       }
     });
 
     // Set HTTP-only cookie for refresh token
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie('refreshToken', plainToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -86,14 +71,15 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
+        matricule: user.matricule,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role.name
+        role: user.role?.name || 'User'
       }
     });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    // We only send the generic error message
+    res.status(401).json({ error: error.message || 'Identifiant ou mot de passe invalide' });
   }
 });
 
@@ -105,8 +91,10 @@ router.post('/refresh', async (req, res) => {
       return res.status(401).json({ error: 'Refresh token required' });
     }
 
+    const tokenHash = AuthService.hashRefreshToken(refreshToken);
+
     const storedToken = await prisma.refreshToken.findUnique({
-      where: { token: refreshToken },
+      where: { tokenHash },
       include: {
         user: {
           include: {
@@ -119,17 +107,49 @@ router.post('/refresh', async (req, res) => {
     });
 
     if (!storedToken) {
+      // Possible token reuse detected, clear cookie
+      res.clearCookie('refreshToken');
       return res.status(403).json({ error: 'Invalid refresh token' });
     }
 
+    // Delete the used token (Rotation)
+    await prisma.refreshToken.delete({ where: { id: storedToken.id } });
+
     if (storedToken.expiresAt < new Date()) {
-      await prisma.refreshToken.delete({ where: { id: storedToken.id } });
+      res.clearCookie('refreshToken');
       return res.status(403).json({ error: 'Refresh token expired' });
     }
 
-    // Optional: Rotate refresh token (À confirmer)
-    // For now, just issue a new access token
+    if (storedToken.user.status !== 'ACTIVE') {
+      res.clearCookie('refreshToken');
+      return res.status(403).json({ error: 'Account inactive' });
+    }
+
+    // Issue new tokens
     const accessToken = generateAccessToken(storedToken.user);
+    const newRefreshTokenData = AuthService.generateRefreshToken();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRES_DAYS);
+
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+
+    await prisma.refreshToken.create({
+      data: {
+        tokenHash: newRefreshTokenData.tokenHash,
+        userId: storedToken.user.id,
+        expiresAt,
+        ipAddress,
+        userAgent
+      }
+    });
+
+    res.cookie('refreshToken', newRefreshTokenData.plainToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      expires: expiresAt
+    });
 
     res.json({ accessToken });
   } catch (error) {
@@ -143,9 +163,18 @@ router.post('/logout', async (req, res) => {
     const { refreshToken } = req.cookies;
     
     if (refreshToken) {
-      await prisma.refreshToken.deleteMany({
-        where: { token: refreshToken }
-      });
+      const tokenHash = AuthService.hashRefreshToken(refreshToken);
+      const storedToken = await prisma.refreshToken.findUnique({ where: { tokenHash } });
+      
+      if (storedToken) {
+        await prisma.refreshToken.delete({
+          where: { id: storedToken.id }
+        });
+        
+        const ipAddress = req.ip || req.socket.remoteAddress;
+        const userAgent = req.headers['user-agent'];
+        await AuthService.logAudit('LOGOUT', storedToken.userId, ipAddress, userAgent);
+      }
     }
 
     res.clearCookie('refreshToken');
@@ -240,9 +269,22 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Tous les champs sont requis' });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email },
+          { matricule }
+        ]
+      }
+    });
+    
     if (existingUser) {
-      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+      if (existingUser.email === email) {
+        return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+      }
+      if (existingUser.matricule === matricule) {
+        return res.status(400).json({ error: 'Ce matricule est déjà utilisé' });
+      }
     }
 
     const tenant = await prisma.tenant.findFirst({ where: { code: 'SOREPCO' } });
@@ -250,7 +292,7 @@ router.post('/register', async (req, res) => {
       return res.status(500).json({ error: 'Tenant SOREPCO introuvable' });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12); // Use cost 12 for better security
     const role = await prisma.role.findFirst({ where: { name: 'Auditeur' } });
 
     const user = await prisma.user.create({
