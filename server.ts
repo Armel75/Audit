@@ -15,6 +15,9 @@ import settingsRoutes from './src/server/routes/settings.routes';
 import usersRoutes from './src/server/routes/users.routes';
 import auditPlanRoutes from './src/server/routes/audit-plan.routes';
 
+// Bootstrap
+import { bootstrapAdmin } from './src/server/bootstrap/adminBootstrap';
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -59,6 +62,13 @@ async function startServer() {
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
+  }
+
+  try {
+    await bootstrapAdmin();
+  } catch (error) {
+    console.error('[BOOTSTRAP] Failed to bootstrap admin:', error);
+    // Optionally decide if server should crash or continue
   }
 
   app.listen(PORT, '0.0.0.0', () => {
