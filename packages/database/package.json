@@ -1,0 +1,22 @@
+{
+  "name": "@audit/database",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/client.js",
+  "types": "dist/client.d.ts",
+  "scripts": {
+    "build": "tsup client.ts --format esm --dts --clean",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.4.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.4.0",
+    "typescript": "~5.8.2"
+  },
+  "prisma": {
+    "schema": "schema.prisma"
+  }
+}

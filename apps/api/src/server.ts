@@ -3,24 +3,27 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import cookieParser from 'cookie-parser';
-import { createServer as createViteServer } from 'vite';
+import dotenv from 'dotenv';
+
+// Load env from root
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
 
 // Routes
-import authRoutes from './src/server/routes/auth.routes';
-import documentRoutes from './src/server/routes/document.routes';
-import missionRoutes from './src/server/routes/mission.routes';
-import recommendationRoutes from './src/server/routes/recommendation.routes';
-import findingRoutes from './src/server/routes/finding.routes';
-import settingsRoutes from './src/server/routes/settings.routes';
-import usersRoutes from './src/server/routes/users.routes';
-import auditPlanRoutes from './src/server/routes/audit-plan.routes';
+import authRoutes from './routes/auth.routes';
+import documentRoutes from './routes/document.routes';
+import missionRoutes from './routes/mission.routes';
+import recommendationRoutes from './routes/recommendation.routes';
+import findingRoutes from './routes/finding.routes';
+import settingsRoutes from './routes/settings.routes';
+import usersRoutes from './routes/users.routes';
+import auditPlanRoutes from './routes/audit-plan.routes';
 
 // Bootstrap
-import { bootstrapAdmin } from './src/server/bootstrap/adminBootstrap';
+import { bootstrapAdmin } from './bootstrap/adminBootstrap';
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.NODE_ENV === 'production' ? 3000 : parseInt(process.env.API_PORT || '3001', 10);
 
   app.use(cors({
     origin: true,
@@ -30,7 +33,7 @@ async function startServer() {
   app.use(cookieParser());
 
   // Ensure local storage directory exists (Simulating /var/sorepco/sisar/storage)
-  const storagePath = path.join(process.cwd(), '.storage');
+  const storagePath = path.join(process.cwd(), '../../.storage');
   if (!fs.existsSync(storagePath)) {
     fs.mkdirSync(storagePath, { recursive: true });
   }
@@ -49,15 +52,8 @@ async function startServer() {
     res.json({ status: 'ok', service: 'SISAR API', tenant: 'SOREPCO' });
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
+  if (process.env.NODE_ENV === 'production') {
+    const distPath = path.join(process.cwd(), '../../apps/web/dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));

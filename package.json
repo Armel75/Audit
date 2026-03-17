@@ -1,50 +1,32 @@
 {
-  "name": "react-example",
+  "name": "audit-monorepo",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "vite build",
-    "start": "node dist/server.cjs",
-    "preview": "vite preview",
-    "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run dev --workspace=@audit/api",
+    "dev:web": "npm run dev --workspace=@audit/web",
+    "build": "npm run build --workspaces",
+    "start": "npm run start --workspace=@audit/api",
+    "prisma:generate": "npm run generate --workspace=@audit/database",
+    "prisma:migrate": "npm run migrate --workspace=@audit/database",
+    "clean": "rm -rf apps/*/dist"
   },
   "dependencies": {
-    "@google/genai": "^1.29.0",
-    "@prisma/client": "^6.4.0",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
-    "bcryptjs": "^3.0.3",
-    "clsx": "^2.1.1",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.6",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
-    "jsonwebtoken": "^9.0.3",
-    "lucide-react": "^0.546.0",
-    "motion": "^12.23.24",
-    "multer": "^2.1.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-router-dom": "^7.13.1",
-    "tailwind-merge": "^3.5.0",
-    "vite": "^6.2.0"
+    "@google/genai": "^1.29.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/cookie-parser": "^1.4.10",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^4.17.21",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/multer": "^2.1.0",
     "@types/node": "^22.14.0",
-    "autoprefixer": "^10.4.21",
-    "prisma": "^6.4.0",
-    "tailwindcss": "^4.1.14",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "concurrently": "^8.2.2",
+    "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "typescript": "~5.8.2"
   }
 }
