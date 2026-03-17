@@ -9,9 +9,9 @@ datasource db {
 
 // ================= MULTI-TENANT =================
 model Tenant {
-  id          String   @id @default(uuid())
-  name        String   // ex: "SOREPCO"
-  code        String   @unique
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(4000)
+  code        String   @unique @db.VarChar(255)
   isActive    Boolean  @default(true)
   
   users       User[]
@@ -28,23 +28,23 @@ model Tenant {
 
 // ================= IDENTITÉ & ACCÈS =================
 model User {
-  id            String    @id @default(uuid())
-  tenantId      String
+  id            Int       @id @default(autoincrement())
+  tenantId      Int
   tenant        Tenant    @relation(fields: [tenantId], references: [id])
   
-  matricule     String    @unique
-  email         String    @unique
-  passwordHash  String
-  firstName     String
-  lastName      String
-  phone         String?   // Préparation pour SMS
+  matricule     String    @unique @db.VarChar(255)
+  email         String    @unique @db.VarChar(255)
+  passwordHash  String    @db.VarChar(4000)
+  firstName     String    @db.VarChar(4000)
+  lastName      String    @db.VarChar(4000)
+  phone         String?   @db.VarChar(4000)
   
-  status        String    @default("PENDING") // PENDING, ACTIVE, LOCKED, INACTIVE
+  status        String    @default("PENDING") @db.VarChar(255)
   failedLogins  Int       @default(0)
   lockedUntil   DateTime?
   lastLoginAt   DateTime?
   
-  roleId        String
+  roleId        Int
   role          Role      @relation(fields: [roleId], references: [id])
   
   missionsLed   AuditMission[] @relation("MissionLeader")
@@ -62,43 +62,43 @@ model User {
 }
 
 model Role {
-  id          String       @id @default(uuid())
-  name        String       // ex: "Auditeur", "DG"
+  id          Int          @id @default(autoincrement())
+  name        String       @db.VarChar(4000)
   users       User[]
   permissions RolePermission[]
 }
 
 model Permission {
-  id          String           @id @default(uuid())
-  code        String           @unique // ex: "audit_manage_missions"
-  description String?
-  isLegacy    Boolean          @default(false) // Permet de filtrer les anciennes
+  id          Int              @id @default(autoincrement())
+  code        String           @unique @db.VarChar(255)
+  description String?          @db.VarChar(4000)
+  isLegacy    Boolean          @default(false)
   roles       RolePermission[]
 }
 
 model RolePermission {
-  roleId       String
-  permissionId String
+  roleId       Int
+  permissionId Int
   role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
   @@id([roleId, permissionId])
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  tokenHash String   @unique
-  userId    String
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique @db.VarChar(255)
+  userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
-  ipAddress String?
-  userAgent String?
+  ipAddress String?  @db.VarChar(4000)
+  userAgent String?  @db.VarChar(4000)
   createdAt DateTime @default(now())
 }
 
 model PasswordResetToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  userId    String
+  id        Int      @id @default(autoincrement())
+  token     String   @unique @db.VarChar(255)
+  userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   used      Boolean  @default(false)
@@ -107,11 +107,11 @@ model PasswordResetToken {
 
 // ================= PARAMÉTRAGE =================
 model Department { // Service
-  id          String   @id @default(uuid())
-  tenantId    String
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  name        String
-  code        String
+  name        String   @db.VarChar(4000)
+  code        String   @db.VarChar(255)
   
   recos       Recommendation[]
   
@@ -121,10 +121,10 @@ model Department { // Service
 }
 
 model AuditType {
-  id          String   @id @default(uuid())
-  tenantId    String
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  name        String
+  name        String   @db.VarChar(4000)
   
   missions    AuditMission[]
   
@@ -133,11 +133,11 @@ model AuditType {
 }
 
 model RiskLevel {
-  id          String   @id @default(uuid())
-  tenantId    String
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  name        String   // ex: "Faible", "Moyen", "Élevé", "Critique"
-  color       String?  // ex: "#FF0000"
+  name        String   @db.VarChar(4000)
+  color       String?  @db.VarChar(4000)
   level       Int      // Pour le tri (1, 2, 3, 4)
   
   findings    Finding[]
@@ -147,10 +147,10 @@ model RiskLevel {
 }
 
 model PriorityLevel {
-  id          String   @id @default(uuid())
-  tenantId    String
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  name        String   // ex: "Basse", "Moyenne", "Haute"
+  name        String   @db.VarChar(4000)
   level       Int
   
   recos       Recommendation[]
@@ -161,12 +161,12 @@ model PriorityLevel {
 
 // ================= MÉTIER AUDIT =================
 model AuditPlan {
-  id          String         @id @default(uuid())
-  tenantId    String
+  id          Int            @id @default(autoincrement())
+  tenantId    Int
   tenant      Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
   year        Int
-  status      String         @default("DRAFT") // DRAFT, PENDING_APPROVAL, VALIDATED, REJECTED
+  status      String         @default("DRAFT") @db.VarChar(255)
   
   missions    AuditMission[]
   
@@ -177,23 +177,23 @@ model AuditPlan {
 }
 
 model AuditMission {
-  id          String         @id @default(uuid())
-  tenantId    String
+  id          Int            @id @default(autoincrement())
+  tenantId    Int
   tenant      Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
-  title       String
-  description String
+  title       String         @db.VarChar(4000)
+  description String         @db.VarChar(4000)
   startDate   DateTime?
   endDate     DateTime?
-  status      String         @default("PLANNED") // PLANNED, IN_PROGRESS, IN_REVIEW, VALIDATED, CLOSED
+  status      String         @default("PLANNED") @db.VarChar(255)
   
-  planId      String
+  planId      Int
   plan        AuditPlan      @relation(fields: [planId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
-  auditTypeId String?
+  auditTypeId Int?
   auditType   AuditType?     @relation(fields: [auditTypeId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
-  leaderId    String
+  leaderId    Int
   leader      User           @relation("MissionLeader", fields: [leaderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
   findings    Finding[]
@@ -204,26 +204,26 @@ model AuditMission {
 }
 
 model Finding { // Constat
-  id          String         @id @default(uuid())
-  title       String
-  description String
+  id          Int            @id @default(autoincrement())
+  title       String         @db.VarChar(4000)
+  description String         @db.VarChar(4000)
   
-  riskLevelId String?
+  riskLevelId Int?
   riskLevel   RiskLevel?     @relation(fields: [riskLevelId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  riskLevelLegacy String?    // Keep for backward compatibility with existing data
+  riskLevelLegacy String?    @db.VarChar(4000)
   
-  process     String?
-  cause       String?
-  impact      String?
+  process     String?        @db.VarChar(4000)
+  cause       String?        @db.VarChar(4000)
+  impact      String?        @db.VarChar(4000)
   
-  status      String         @default("DRAFT") // DRAFT, CONFIRMED, ADDRESSED, REJECTED
+  status      String         @default("DRAFT") @db.VarChar(255)
   
-  authorId    String?
+  authorId    Int?
   author      User?          @relation("FindingAuthor", fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  validatorId String?
+  validatorId Int?
   validator   User?          @relation("FindingValidator", fields: [validatorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
-  missionId   String
+  missionId   Int
   mission     AuditMission   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
   recos       Recommendation[]
@@ -235,13 +235,13 @@ model Finding { // Constat
 }
 
 model FindingComment {
-  id          String   @id @default(uuid())
-  content     String
+  id          Int      @id @default(autoincrement())
+  content     String   @db.VarChar(4000)
   
-  findingId   String
+  findingId   Int
   finding     Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
   
-  authorId    String
+  authorId    Int
   author      User     @relation(fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
   createdAt   DateTime @default(now())
@@ -249,21 +249,21 @@ model FindingComment {
 }
 
 model Recommendation {
-  id            String         @id @default(uuid())
-  title         String
-  actionPlan    String
+  id            Int            @id @default(autoincrement())
+  title         String         @db.VarChar(4000)
+  actionPlan    String         @db.VarChar(4000)
   targetDate    DateTime
-  status        String         @default("OPEN") // OPEN, IN_PROGRESS, IMPLEMENTED, CLOSED
+  status        String         @default("OPEN") @db.VarChar(255)
   
-  priorityId    String?
+  priorityId    Int?
   priority      PriorityLevel? @relation(fields: [priorityId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
-  departmentId  String?
+  departmentId  Int?
   department    Department?    @relation(fields: [departmentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
-  assigneeName  String?        
+  assigneeName  String?        @db.VarChar(4000)
   
-  findingId     String
+  findingId     Int
   finding       Finding        @relation(fields: [findingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
   documents     Document[]
@@ -274,13 +274,13 @@ model Recommendation {
 }
 
 model RecommendationComment {
-  id               String         @id @default(uuid())
-  content          String
+  id               Int            @id @default(autoincrement())
+  content          String         @db.VarChar(4000)
   
-  recommendationId String
+  recommendationId Int
   recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
   
-  authorId         String
+  authorId         Int
   author           User           @relation(fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
   createdAt        DateTime       @default(now())
@@ -289,39 +289,39 @@ model RecommendationComment {
 
 // ================= GESTION DOCUMENTAIRE =================
 model Document {
-  id               String   @id @default(uuid())
-  originalName     String
-  mimeType         String
+  id               Int      @id @default(autoincrement())
+  originalName     String   @db.VarChar(4000)
+  mimeType         String   @db.VarChar(4000)
   sizeBytes        Int
-  storagePath      String   // Chemin absolu sur le disque local
-  fileHash         String   // SHA-256
-  isGenerated      Boolean  @default(false) // True si c'est un rapport PDF généré
+  storagePath      String   @db.VarChar(4000)
+  fileHash         String   @db.VarChar(4000)
+  isGenerated      Boolean  @default(false)
   
-  missionId        String?
+  missionId        Int?
   mission          AuditMission?   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  findingId        String?
+  findingId        Int?
   finding          Finding?        @relation(fields: [findingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  recommendationId String?
+  recommendationId Int?
   recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   
-  uploadedById     String
+  uploadedById     Int
   createdAt        DateTime @default(now())
-  deletedAt        DateTime? // Soft delete
+  deletedAt        DateTime?
 }
 
 // ================= TRAÇABILITÉ =================
 model AuditLog {
-  id          String   @id @default(uuid())
-  action      String   // ex: "LOGIN_FAILED", "UPDATE_FINDING"
-  entityName  String?  // ex: "Finding"
-  entityId    String?
-  oldValues   String?
-  newValues   String?
+  id          Int      @id @default(autoincrement())
+  action      String   @db.VarChar(4000)
+  entityName  String?  @db.VarChar(255)
+  entityId    String?  @db.VarChar(255)
+  oldValues   String?  @db.VarChar(4000)
+  newValues   String?  @db.VarChar(4000)
   
-  userId      String?
+  userId      Int?
   user        User?    @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  ipAddress   String?
-  userAgent   String?
+  ipAddress   String?  @db.VarChar(4000)
+  userAgent   String?  @db.VarChar(4000)
   
   createdAt   DateTime @default(now())
 
