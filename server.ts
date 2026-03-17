@@ -12,6 +12,8 @@ import missionRoutes from './src/server/routes/mission.routes';
 import recommendationRoutes from './src/server/routes/recommendation.routes';
 import findingRoutes from './src/server/routes/finding.routes';
 import settingsRoutes from './src/server/routes/settings.routes';
+import usersRoutes from './src/server/routes/users.routes';
+import auditPlanRoutes from './src/server/routes/audit-plan.routes';
 
 async function startServer() {
   const app = express();
@@ -37,6 +39,8 @@ async function startServer() {
   app.use('/api/recommendations', recommendationRoutes);
   app.use('/api/findings', findingRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/users', usersRoutes);
+  app.use('/api/plans', auditPlanRoutes);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', service: 'SISAR API', tenant: 'SOREPCO' });

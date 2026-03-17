@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, MessageSquare, Paperclip, User, Calendar, ShieldAlert, CheckCircle, XCircle, Upload } from 'lucide-react';
+import { AlertCircle, ArrowLeft, MessageSquare, Paperclip, User, Calendar, ShieldAlert, CheckCircle, XCircle, Upload, Plus, Target, Briefcase } from 'lucide-react';
+import RecommendationFormModal from '../components/RecommendationFormModal';
+
+interface Recommendation {
+  id: string;
+  title: string;
+  actionPlan: string;
+  status: string;
+  targetDate: string | null;
+  priority: { name: string; color: string } | null;
+  department: { name: string } | null;
+  assigneeName: string | null;
+}
 
 interface Finding {
   id: string;
@@ -26,6 +38,7 @@ interface Finding {
     sizeBytes: number;
     createdAt: string;
   }>;
+  recos: Recommendation[];
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +50,14 @@ const statusConfig = {
   REJECTED: { label: 'Rejeté', color: 'bg-red-100 text-red-800' },
 };
 
+const recoStatusConfig: Record<string, { label: string; color: string }> = {
+  PENDING: { label: 'En attente', color: 'bg-slate-100 text-slate-800' },
+  IN_PROGRESS: { label: 'En cours', color: 'bg-blue-100 text-blue-800' },
+  IMPLEMENTED: { label: 'Mise en œuvre', color: 'bg-emerald-100 text-emerald-800' },
+  VERIFIED: { label: 'Vérifiée', color: 'bg-purple-100 text-purple-800' },
+  CLOSED: { label: 'Clôturée', color: 'bg-slate-800 text-white' },
+};
+
 export default function FindingDetails() {
   const { id } = useParams<{ id: string }>();
   const [finding, setFinding] = useState<Finding | null>(null);
@@ -44,6 +65,7 @@ export default function FindingDetails() {
   const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [isRecoModalOpen, setIsRecoModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchFinding = () => {
@@ -260,6 +282,79 @@ export default function FindingDetails() {
             </div>
           </div>
 
+          {/* Recommendations Section */}
+          <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-200 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-lg font-medium leading-6 text-slate-900 flex items-center">
+                  <Target className="w-5 h-5 mr-2 text-indigo-500" />
+                  Recommandations ({finding.recos?.length || 0})
+                </h3>
+              </div>
+              <div className="mt-4 sm:mt-0">
+                <button
+                  type="button"
+                  onClick={() => setIsRecoModalOpen(true)}
+                  className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                >
+                  <Plus className="-ml-1 mr-2 h-4 w-4" />
+                  Nouvelle Recommandation
+                </button>
+              </div>
+            </div>
+
+            <ul className="divide-y divide-slate-200">
+              {!finding.recos || finding.recos.length === 0 ? (
+                <li className="px-6 py-8 text-center text-sm text-slate-500">
+                  Aucune recommandation pour ce constat.
+                </li>
+              ) : (
+                finding.recos.map((reco) => {
+                  const statusConf = recoStatusConfig[reco.status] || recoStatusConfig.PENDING;
+                  return (
+                    <li key={reco.id} className="hover:bg-slate-50 transition-colors">
+                      <div className="px-6 py-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-medium text-slate-900">{reco.title}</h4>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConf.color}`}>
+                            {statusConf.label}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600 mb-3 line-clamp-2">{reco.actionPlan}</p>
+                        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                          {reco.priority && (
+                            <span className="flex items-center">
+                              <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: reco.priority.color || '#cbd5e1' }}></span>
+                              {reco.priority.name}
+                            </span>
+                          )}
+                          {reco.department && (
+                            <span className="flex items-center">
+                              <Briefcase className="w-3 h-3 mr-1" />
+                              {reco.department.name}
+                            </span>
+                          )}
+                          {reco.assigneeName && (
+                            <span className="flex items-center">
+                              <User className="w-3 h-3 mr-1" />
+                              {reco.assigneeName}
+                            </span>
+                          )}
+                          {reco.targetDate && (
+                            <span className="flex items-center">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              Échéance: {new Date(reco.targetDate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>
+
           {/* Comments Section */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <h3 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
@@ -381,6 +476,17 @@ export default function FindingDetails() {
           </div>
         </div>
       </div>
+
+      {id && (
+        <RecommendationFormModal 
+          isOpen={isRecoModalOpen} 
+          onClose={() => setIsRecoModalOpen(false)} 
+          findingId={id} 
+          onSuccess={() => {
+            fetchFinding();
+          }} 
+        />
+      )}
     </div>
   );
 }

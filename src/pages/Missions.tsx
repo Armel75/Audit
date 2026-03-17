@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, AlertCircle } from 'lucide-react';
+import { Plus, Search, Filter, AlertCircle, Briefcase, Calendar, Users } from 'lucide-react';
+import MissionFormModal from '../components/MissionFormModal';
 
 interface Mission {
   id: string;
@@ -25,30 +26,39 @@ export default function Missions() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const fetchMissions = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('/api/missions', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement des missions');
+      }
+      const data = await response.json();
+      setMissions(data);
+    } catch (err: any) {
+      setError(err.message);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    fetch('/api/missions', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Erreur lors du chargement des missions');
-        return res.json();
-      })
-      .then(data => {
-        setMissions(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
+    fetchMissions();
   }, []);
 
   return (
     <div className="space-y-6">
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
+          <h1 className="text-2xl font-bold text-slate-900">Missions d'audit</h1>
           <p className="mt-2 text-sm text-slate-700">
             Liste des missions d'audit du plan annuel en cours.
           </p>
@@ -56,6 +66,7 @@ export default function Missions() {
         <div className="mt-4 sm:mt-0">
           <button
             type="button"
+            onClick={() => setIsModalOpen(true)}
             className="inline-flex items-center justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:w-auto"
           >
             <Plus className="-ml-1 mr-2 h-5 w-5" />
@@ -97,63 +108,70 @@ export default function Missions() {
         </div>
       )}
 
-      <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr>
-              <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-slate-900 sm:pl-6">Titre</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Chef de mission</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Constats</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Statut</th>
-              <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200 bg-white">
-            {loading ? (
-              <tr>
-                <td colSpan={5} className="py-8 text-center text-sm text-slate-500">
-                  Chargement des missions...
-                </td>
-              </tr>
-            ) : missions.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="py-8 text-center text-sm text-slate-500">
-                  Aucune mission trouvée.
-                </td>
-              </tr>
-            ) : (
-              missions.map((mission) => {
-                const conf = statusConfig[mission.status] || statusConfig.PLANNED;
-                return (
-                  <tr key={mission.id} className="hover:bg-slate-50">
-                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-900 sm:pl-6">
-                      {mission.title}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-500">
-                      {mission.leader.firstName} {mission.leader.lastName}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-500">
-                      {mission._count.findings} constat(s)
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm">
-                      <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${conf.color}`}>
-                        {conf.label}
-                      </span>
-                    </td>
-                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                      <Link to={`/missions/${mission.id}`} className="text-emerald-600 hover:text-emerald-900">
-                        Ouvrir
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-slate-500">Chargement des missions...</div>
+        </div>
+      ) : missions.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
+          <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-slate-900 mb-1">Aucune mission</h3>
+          <p className="text-slate-500">Commencez par créer une nouvelle mission d'audit.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {missions.map((mission) => {
+            const conf = statusConfig[mission.status] || statusConfig.PLANNED;
+            return (
+              <Link
+                key={mission.id}
+                to={`/missions/${mission.id}`}
+                className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${conf.color}`}>
+                    {conf.label}
+                  </span>
+                </div>
+                
+                <h3 className="text-lg font-semibold text-slate-900 mb-2 line-clamp-2">
+                  {mission.title}
+                </h3>
+                
+                <div className="space-y-3 mt-4">
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <Calendar className="w-4 h-4" />
+                    <span>
+                      {mission.startDate ? new Date(mission.startDate).toLocaleDateString() : 'Non définie'} 
+                      {' - '} 
+                      {mission.endDate ? new Date(mission.endDate).toLocaleDateString() : 'Non définie'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <Users className="w-4 h-4" />
+                    <span>Chef: {mission.leader.firstName} {mission.leader.lastName}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>{mission._count.findings} constat(s)</span>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      <MissionFormModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSuccess={() => {
+          setIsModalOpen(false);
+          fetchMissions();
+        }} 
+      />
     </div>
   );
 }

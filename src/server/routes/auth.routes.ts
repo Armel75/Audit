@@ -232,9 +232,45 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-router.post('/register', (req, res) => {
-  // Inscription libre contrôlée
-  res.json({ message: 'Registration endpoint ready. Account will be PENDING.' });
+router.post('/register', async (req, res) => {
+  try {
+    const { matricule, email, password, firstName, lastName } = req.body;
+    
+    if (!matricule || !email || !password || !firstName || !lastName) {
+      return res.status(400).json({ error: 'Tous les champs sont requis' });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+    }
+
+    const tenant = await prisma.tenant.findFirst({ where: { code: 'SOREPCO' } });
+    if (!tenant) {
+      return res.status(500).json({ error: 'Tenant SOREPCO introuvable' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const role = await prisma.role.findFirst({ where: { name: 'Auditeur' } });
+
+    const user = await prisma.user.create({
+      data: {
+        tenantId: tenant.id,
+        matricule,
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+        status: 'PENDING',
+        roleId: role?.id || null,
+      }
+    });
+
+    res.status(201).json({ message: 'Inscription réussie. Votre compte est en attente de validation.' });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
 });
 
 export default router;
