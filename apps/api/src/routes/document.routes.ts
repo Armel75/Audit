@@ -61,16 +61,16 @@ router.post('/upload', (req, res, next) => {
     // Save metadata to Prisma
     const document = await prisma.document.create({
       data: {
-        id: metadata.id,
+        tenantId,
         originalName: metadata.originalName,
         mimeType: metadata.mimeType,
         sizeBytes: metadata.sizeBytes,
         storagePath: metadata.storagePath,
         fileHash: metadata.fileHash,
         uploadedById: userId,
-        missionId: missionId || null,
-        findingId: findingId || null,
-        recommendationId: recommendationId || null,
+        missionId: missionId ? parseInt(missionId) : null,
+        findingId: findingId ? parseInt(findingId) : null,
+        recommendationId: recommendationId ? parseInt(recommendationId) : null,
       }
     });
     
@@ -84,7 +84,7 @@ router.post('/upload', (req, res, next) => {
 router.get('/download/:id', async (req, res) => {
   try {
     const document = await prisma.document.findUnique({
-      where: { id: req.params.id }
+      where: { id: parseInt(req.params.id) }
     });
 
     if (!document) {

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, MessageSquare, Paperclip, User, Calendar, ShieldAlert, CheckCircle, XCircle, Upload, Plus, Target, Briefcase } from 'lucide-react';
+import { AlertCircle, ArrowLeft, MessageSquare, Paperclip, User, Calendar, ShieldAlert, CheckCircle, XCircle, Upload, Plus, Target, Briefcase, FileText, Clock } from 'lucide-react';
 import RecommendationFormModal from '../components/RecommendationFormModal';
 import { apiFetch } from '../lib/api';
 
 interface Recommendation {
-  id: string;
+  id: number;
   title: string;
   actionPlan: string;
   status: string;
@@ -16,7 +16,7 @@ interface Recommendation {
 }
 
 interface Finding {
-  id: string;
+  id: number;
   title: string;
   description: string;
   process: string | null;
@@ -24,20 +24,42 @@ interface Finding {
   impact: string | null;
   status: 'DRAFT' | 'CONFIRMED' | 'ADDRESSED' | 'REJECTED';
   riskLevel: { name: string; color: string } | null;
-  mission: { id: string; title: string; status: string };
+  mission: { id: number; title: string; status: string };
   author: { firstName: string; lastName: string } | null;
   validator: { firstName: string; lastName: string } | null;
   comments: Array<{
-    id: string;
+    id: number;
     content: string;
     createdAt: string;
     author: { firstName: string; lastName: string };
   }>;
+  statusHistory: Array<{
+    id: number;
+    previousStatus: string | null;
+    newStatus: string;
+    reason: string | null;
+    changedAt: string;
+    changedBy: { firstName: string; lastName: string } | null;
+  }>;
   documents: Array<{
-    id: string;
+    id: number;
     originalName: string;
     sizeBytes: number;
     createdAt: string;
+  }>;
+  evidences: Array<{
+    id: number;
+    title: string;
+    description: string | null;
+    evidenceType: string;
+    source: string | null;
+  }>;
+  approvals: Array<{
+    id: number;
+    status: string;
+    comments: string | null;
+    createdAt: string;
+    approver: { firstName: string; lastName: string };
   }>;
   recos: Recommendation[];
   createdAt: string;
@@ -272,6 +294,78 @@ export default function FindingDetails() {
             </div>
           </div>
 
+          {/* Evidences */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-slate-900 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-slate-400" />
+                Preuves ({finding.evidences?.length || 0})
+              </h3>
+              <button className="text-sm text-indigo-600 hover:text-indigo-900 font-medium">
+                + Ajouter une preuve
+              </button>
+            </div>
+            {finding.evidences && finding.evidences.length > 0 ? (
+              <ul className="divide-y divide-slate-100">
+                {finding.evidences.map(evidence => (
+                  <li key={evidence.id} className="py-3 flex items-start">
+                    <div className="flex-shrink-0">
+                      <FileText className="w-5 h-5 text-slate-400" />
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <p className="text-sm font-medium text-slate-900">{evidence.title}</p>
+                      <p className="text-xs text-slate-500">{evidence.evidenceType} - {evidence.source}</p>
+                      {evidence.description && <p className="text-sm text-slate-600 mt-1">{evidence.description}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-500 italic">Aucune preuve associée.</p>
+            )}
+          </div>
+
+          {/* Approvals */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-slate-900 flex items-center">
+                <CheckCircle className="w-5 h-5 mr-2 text-slate-400" />
+                Approbations ({finding.approvals?.length || 0})
+              </h3>
+              <button className="text-sm text-indigo-600 hover:text-indigo-900 font-medium">
+                + Demander une approbation
+              </button>
+            </div>
+            {finding.approvals && finding.approvals.length > 0 ? (
+              <ul className="divide-y divide-slate-100">
+                {finding.approvals.map(approval => (
+                  <li key={approval.id} className="py-3 flex items-start">
+                    <div className="flex-shrink-0">
+                      {approval.status === 'APPROVED' ? (
+                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                      ) : approval.status === 'REJECTED' ? (
+                        <XCircle className="w-5 h-5 text-red-500" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 text-amber-500" />
+                      )}
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <p className="text-sm font-medium text-slate-900">
+                        {approval.approver.firstName} {approval.approver.lastName}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {new Date(approval.createdAt).toLocaleDateString()} - {approval.status}
+                      </p>
+                      {approval.comments && <p className="text-sm text-slate-600 mt-1">{approval.comments}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-500 italic">Aucune approbation.</p>
+            )}
+          </div>
+
           {/* Recommendations Section */}
           <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-200 sm:flex sm:items-center sm:justify-between">
@@ -305,7 +399,9 @@ export default function FindingDetails() {
                     <li key={reco.id} className="hover:bg-slate-50 transition-colors">
                       <div className="px-6 py-4">
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-medium text-slate-900">{reco.title}</h4>
+                          <Link to={`/recommendations/${reco.id}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-900">
+                            {reco.title}
+                          </Link>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConf.color}`}>
                             {statusConf.label}
                           </span>
@@ -393,6 +489,43 @@ export default function FindingDetails() {
               </div>
             </form>
           </div>
+
+          {/* Status History */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
+              <Clock className="w-5 h-5 mr-2 text-indigo-500" />
+              Historique des statuts
+            </h3>
+            
+            <div className="space-y-4">
+              {finding.statusHistory && finding.statusHistory.length > 0 ? (
+                <ul className="divide-y divide-slate-100">
+                  {finding.statusHistory.map(history => (
+                    <li key={history.id} className="py-3">
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-slate-900">
+                          {history.previousStatus ? `${history.previousStatus} → ` : ''}{history.newStatus}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {new Date(history.changedAt).toLocaleString()}
+                        </span>
+                      </div>
+                      {history.changedBy && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          Par {history.changedBy.firstName} {history.changedBy.lastName}
+                        </p>
+                      )}
+                      {history.reason && (
+                        <p className="text-sm text-slate-600 mt-2 italic">"{history.reason}"</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500 italic">Aucun historique disponible.</p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Sidebar */}
@@ -471,7 +604,7 @@ export default function FindingDetails() {
         <RecommendationFormModal 
           isOpen={isRecoModalOpen} 
           onClose={() => setIsRecoModalOpen(false)} 
-          findingId={id} 
+          findingId={Number(id)} 
           onSuccess={() => {
             fetchFinding();
           }} 

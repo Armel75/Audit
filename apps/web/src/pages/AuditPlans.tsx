@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Plus, ChevronRight, FileText, CheckCircle, XCircle, Clock, Edit2, Trash2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { Link } from 'react-router-dom';
 
 interface AuditPlan {
-  id: string;
+  id: number;
   year: number;
   title: string | null;
   description: string | null;
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'VALIDATED' | 'REJECTED';
-  _count: { missions: number };
+  versionNumber: number;
+  _count: { missions: number; versions: number };
   createdAt: string;
 }
 
@@ -24,8 +26,12 @@ export default function AuditPlans() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<AuditPlan | null>(null);
-  const [newYear, setNewYear] = useState(new Date().getFullYear() + 1);
-  const [newTitle, setNewTitle] = useState('');
+  
+  const [formData, setFormData] = useState({
+    year: new Date().getFullYear() + 1,
+    title: '',
+    description: ''
+  });
 
   useEffect(() => {
     fetchPlans();
@@ -33,7 +39,7 @@ export default function AuditPlans() {
 
   const fetchPlans = async () => {
     try {
-      const response = await apiFetch('/api/audit-plans');
+      const response = await apiFetch('/api/plans');
       if (response.ok) {
         const data = await response.json();
         setPlans(data);
@@ -47,22 +53,28 @@ export default function AuditPlans() {
 
   const handleOpenCreate = () => {
     setEditingPlan(null);
-    setNewYear(new Date().getFullYear() + 1);
-    setNewTitle('');
+    setFormData({
+      year: new Date().getFullYear() + 1,
+      title: '',
+      description: ''
+    });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (plan: AuditPlan) => {
     setEditingPlan(plan);
-    setNewYear(plan.year);
-    setNewTitle(plan.title || '');
+    setFormData({
+      year: plan.year,
+      title: plan.title || '',
+      description: plan.description || ''
+    });
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce plan ?')) return;
     try {
-      const response = await apiFetch(`/api/audit-plans/${id}`, {
+      const response = await apiFetch(`/api/plans/${id}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -79,7 +91,7 @@ export default function AuditPlans() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const url = editingPlan ? `/api/audit-plans/${editingPlan.id}` : '/api/audit-plans';
+      const url = editingPlan ? `/api/plans/${editingPlan.id}` : '/api/plans';
       const method = editingPlan ? 'PUT' : 'POST';
       
       const response = await apiFetch(url, {
@@ -87,7 +99,7 @@ export default function AuditPlans() {
         headers: { 
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ year: newYear, title: newTitle }),
+        body: JSON.stringify(formData),
       });
       
       if (response.ok) {
@@ -143,7 +155,7 @@ export default function AuditPlans() {
           )}
           
           {plans.map((plan) => {
-            const status = statusConfig[plan.status];
+            const status = statusConfig[plan.status] || statusConfig.DRAFT;
             const StatusIcon = status.icon;
             
             return (
@@ -153,6 +165,7 @@ export default function AuditPlans() {
                     <div className="flex items-center gap-2">
                       <Calendar className="h-5 w-5 text-slate-400" />
                       <h3 className="text-xl font-bold text-slate-900">{plan.year}</h3>
+                      <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md">v{plan.versionNumber}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${status.color}`}>
@@ -172,20 +185,26 @@ export default function AuditPlans() {
                     {plan.title || `Plan d'audit annuel ${plan.year}`}
                   </p>
                   <p className="text-sm text-slate-500 line-clamp-2 mb-4">
-                    {plan.description || "Aucune description stratégique fournie."}
+                    {plan.description || "Aucune description fournie."}
                   </p>
                   
-                  <div className="flex items-center text-sm text-slate-500">
-                    <BriefcaseIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
-                    {plan._count.missions} mission(s) rattachée(s)
+                  <div className="flex items-center gap-4 text-sm text-slate-500">
+                    <div className="flex items-center">
+                      <BriefcaseIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
+                      {plan._count?.missions || 0} mission(s)
+                    </div>
+                    <div className="flex items-center">
+                      <FileText className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
+                      {plan._count?.versions || 0} version(s)
+                    </div>
                   </div>
                 </div>
                 <div className="bg-slate-50 px-6 py-3 border-t border-slate-100">
                   <div className="text-sm">
-                    <a href="#" className="font-medium text-emerald-600 hover:text-emerald-500 flex items-center justify-between">
+                    <Link to={`/plans/${plan.id}`} className="font-medium text-emerald-600 hover:text-emerald-500 flex items-center justify-between">
                       Ouvrir le plan
                       <ChevronRight className="h-4 w-4" />
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -212,24 +231,34 @@ export default function AuditPlans() {
               </div>
               <form onSubmit={handleSubmit} className="mt-5 sm:mt-6 space-y-4">
                 <div>
-                  <label htmlFor="year" className="block text-sm font-medium text-slate-700">Année cible</label>
+                  <label htmlFor="year" className="block text-sm font-medium text-slate-700">Année cible *</label>
                   <input
                     type="number"
                     id="year"
-                    value={newYear}
-                    onChange={(e) => setNewYear(parseInt(e.target.value))}
+                    value={formData.year}
+                    onChange={(e) => setFormData({...formData, year: parseInt(e.target.value)})}
                     className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="title" className="block text-sm font-medium text-slate-700">Titre (Optionnel)</label>
+                  <label htmlFor="title" className="block text-sm font-medium text-slate-700">Titre</label>
                   <input
                     type="text"
                     id="title"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
+                    value={formData.title}
+                    onChange={(e) => setFormData({...formData, title: e.target.value})}
                     placeholder="Ex: Plan Stratégique 2026"
+                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="description" className="block text-sm font-medium text-slate-700">Description</label>
+                  <textarea
+                    id="description"
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
                     className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                   />
                 </div>

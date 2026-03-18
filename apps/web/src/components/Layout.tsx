@@ -8,7 +8,9 @@ import {
   Menu, 
   X,
   ShieldAlert,
-  User
+  User,
+  Database,
+  Calendar
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,8 +26,11 @@ export default function Layout() {
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
+    { path: '/plans', icon: Calendar, label: 'Plans d\'audit' },
     { path: '/missions', icon: Briefcase, label: 'Missions d\'audit' },
+    { path: '/referential', icon: Database, label: 'Référentiel' },
     { path: '/settings', icon: SettingsIcon, label: 'Paramètres' },
+    { path: '/admin', icon: ShieldAlert, label: 'Administration' },
   ];
 
   return (

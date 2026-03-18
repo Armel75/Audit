@@ -9,61 +9,129 @@ datasource db {
 
 // ================= MULTI-TENANT =================
 model Tenant {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(4000)
-  code        String   @unique @db.VarChar(255)
-  isActive    Boolean  @default(true)
-  
-  users       User[]
-  plans       AuditPlan[]
-  missions    AuditMission[]
-  departments Department[]
-  auditTypes  AuditType[]
-  riskLevels  RiskLevel[]
-  priorities  PriorityLevel[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                          Int                           @id @default(autoincrement())
+  name                        String                        @db.VarChar(4000)
+  code                        String                        @unique @db.VarChar(255)
+  isActive                    Boolean                       @default(true)
+
+  users                       User[]
+  glpiUsers                   GLPIUser[]
+  tickets                     Ticket[]
+
+  plans                       AuditPlan[]
+  planVersions                AuditPlanVersion[]
+  planStatusHistory           AuditPlanStatusHistory[]
+
+  missions                    AuditMission[]
+  missionMembers              AuditMissionMember[]
+  missionScopes               AuditMissionScope[]
+  missionStatusHistory        MissionStatusHistory[]
+
+  departments                 Department[]
+  auditTypes                  AuditType[]
+  riskLevels                  RiskLevel[]
+  priorities                  PriorityLevel[]
+
+  auditableEntities           AuditableEntity[]
+  businessProcesses           BusinessProcess[]
+  controls                    Control[]
+  risks                       Risk[]
+  riskControls                RiskControl[]
+
+  auditPrograms               AuditProgram[]
+  auditProcedures             AuditProcedure[]
+
+  findings                    Finding[]
+  findingStatusHistory        FindingStatusHistory[]
+
+  recommendations             Recommendation[]
+  recommendationStatusHistory RecommendationStatusHistory[]
+  recommendationFollowUps     RecommendationFollowUp[]
+  recommendationTickets       RecommendationTicket[]
+
+  documents                   Document[]
+  evidences                   Evidence[]
+  approvals                   Approval[]
+  notifications               Notification[]
+  userDepartments             UserDepartment[]
+  auditLogs                   AuditLog[]
+
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
 }
 
 // ================= IDENTITÉ & ACCÈS =================
 model User {
-  id            Int       @id @default(autoincrement())
-  tenantId      Int
-  tenant        Tenant    @relation(fields: [tenantId], references: [id])
-  
-  matricule     String    @unique @db.VarChar(255)
-  email         String    @unique @db.VarChar(255)
-  passwordHash  String    @db.VarChar(4000)
-  firstName     String    @db.VarChar(4000)
-  lastName      String    @db.VarChar(4000)
-  phone         String?   @db.VarChar(4000)
-  
-  status        String    @default("PENDING") @db.VarChar(255)
-  failedLogins  Int       @default(0)
-  lockedUntil   DateTime?
-  lastLoginAt   DateTime?
-  
-  roleId        Int
-  role          Role      @relation(fields: [roleId], references: [id])
-  
-  missionsLed   AuditMission[] @relation("MissionLeader")
-  authoredFindings Finding[] @relation("FindingAuthor")
-  validatedFindings Finding[] @relation("FindingValidator")
-  recoComments  RecommendationComment[]
-  findingComments FindingComment[]
-  auditLogs     AuditLog[]
-  
-  refreshTokens RefreshToken[]
-  resetTokens   PasswordResetToken[]
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                           Int                            @id @default(autoincrement())
+  tenantId                     Int
+  tenant                       Tenant                         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  matricule                    String                         @unique @db.VarChar(255)
+  email                        String                         @unique @db.VarChar(255)
+  passwordHash                 String                         @db.VarChar(4000)
+  firstName                    String                         @db.VarChar(4000)
+  lastName                     String                         @db.VarChar(4000)
+  phone                        String?                        @db.VarChar(255)
+
+  status                       String                         @default("PENDING") @db.VarChar(100)
+  failedLogins                 Int                            @default(0)
+  lockedUntil                  DateTime?
+  lastLoginAt                  DateTime?
+
+  roleId                       Int
+  role                         Role                           @relation(fields: [roleId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  departmentMemberships        UserDepartment[]
+  managedAuditableEntities     AuditableEntity[]              @relation("AuditableEntityManager")
+  missionsLed                  AuditMission[]                 @relation("MissionLeader")
+  missionMemberships           AuditMissionMember[]
+
+  auditProgramsPrepared        AuditProgram[]                 @relation("AuditProgramPreparedBy")
+  auditProgramsApproved        AuditProgram[]                 @relation("AuditProgramApprovedBy")
+  proceduresPerformed          AuditProcedure[]               @relation("ProcedurePerformedBy")
+
+  authoredFindings             Finding[]                      @relation("FindingAuthor")
+  validatedFindings            Finding[]                      @relation("FindingValidator")
+
+  assignedRecommendations      Recommendation[]               @relation("RecommendationAssigneeUser")
+  validatedRecommendations     Recommendation[]               @relation("RecommendationValidator")
+
+  recoComments                 RecommendationComment[]
+  findingComments              FindingComment[]
+
+  uploadedDocuments            Document[]                     @relation("DocumentUploadedBy")
+  collectedEvidences           Evidence[]                     @relation("EvidenceCollectedBy")
+
+  approvedPlans                AuditPlan[]                    @relation("AuditPlanApprovedBy")
+  createdPlanVersions          AuditPlanVersion[]             @relation("AuditPlanVersionCreatedBy")
+
+  planStatusChanges            AuditPlanStatusHistory[]       @relation("PlanStatusChangedBy")
+  missionStatusChanges         MissionStatusHistory[]         @relation("MissionStatusChangedBy")
+  findingStatusChanges         FindingStatusHistory[]         @relation("FindingStatusChangedBy")
+  recommendationStatusChanges  RecommendationStatusHistory[]  @relation("RecommendationStatusChangedBy")
+
+  followUpsAuthored            RecommendationFollowUp[]       @relation("FollowUpAuthor")
+
+  approvalsRequested           Approval[]                     @relation("ApprovalRequestedBy")
+  approvalsDecided             Approval[]                     @relation("ApprovalApprover")
+
+  notifications                Notification[]                 @relation("NotificationRecipient")
+  recommendationTicketLinks    RecommendationTicket[]         @relation("RecommendationTicketLinkedBy")
+  auditLogs                    AuditLog[]
+
+  refreshTokens                RefreshToken[]
+  resetTokens                  PasswordResetToken[]
+
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime                       @updatedAt
+
+  @@index([tenantId, status])
+  @@index([roleId])
 }
 
 model Role {
-  id          Int          @id @default(autoincrement())
-  name        String       @db.VarChar(4000)
+  id          Int              @id @default(autoincrement())
+  name        String           @db.VarChar(255)
   users       User[]
   permissions RolePermission[]
 }
@@ -81,250 +149,1014 @@ model RolePermission {
   permissionId Int
   role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
   @@id([roleId, permissionId])
 }
 
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
-  tokenHash String   @unique @db.VarChar(255)
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  ipAddress String?  @db.VarChar(4000)
-  userAgent String?  @db.VarChar(4000)
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  tokenHash  String   @unique @db.VarChar(255)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  ipAddress  String?  @db.VarChar(255)
+  userAgent  String?  @db.VarChar(4000)
+  createdAt  DateTime @default(now())
+
+  @@index([userId, expiresAt])
 }
 
 model PasswordResetToken {
-  id        Int      @id @default(autoincrement())
-  token     String   @unique @db.VarChar(255)
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  token      String   @unique @db.VarChar(255)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, expiresAt])
 }
 
 // ================= PARAMÉTRAGE =================
-model Department { // Service
-  id          Int      @id @default(autoincrement())
-  tenantId    Int
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  name        String   @db.VarChar(4000)
-  code        String   @db.VarChar(255)
-  
-  recos       Recommendation[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Department {
+  id                Int                @id @default(autoincrement())
+  tenantId          Int
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  name              String             @db.VarChar(4000)
+  code              String             @db.VarChar(255)
+
+  recos             Recommendation[]
+  userDepartments   UserDepartment[]
+  auditableEntities AuditableEntity[]  @relation("AuditableEntityOwnerDepartment")
+  businessProcesses BusinessProcess[]  @relation("BusinessProcessOwnerDepartment")
+  risks             Risk[]             @relation("RiskOwnerDepartment")
+  controls          Control[]          @relation("ControlOwnerDepartment")
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
   @@unique([tenantId, code])
+  @@index([tenantId, name])
 }
 
 model AuditType {
-  id          Int      @id @default(autoincrement())
+  id          Int            @id @default(autoincrement())
   tenantId    Int
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  name        String   @db.VarChar(4000)
-  
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  name        String         @db.VarChar(255)
+
   missions    AuditMission[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId, name])
 }
 
 model RiskLevel {
-  id          Int      @id @default(autoincrement())
-  tenantId    Int
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  name        String   @db.VarChar(4000)
-  color       String?  @db.VarChar(4000)
-  level       Int      // Pour le tri (1, 2, 3, 4)
-  
-  findings    Finding[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               Int       @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  name             String    @db.VarChar(255)
+  color            String?   @db.VarChar(100)
+  level            Int
+
+  findings         Finding[] @relation("FindingInitialRiskLevel")
+  residualFindings Finding[] @relation("FindingResidualRiskLevel")
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([tenantId, name])
+  @@unique([tenantId, level])
+  @@index([tenantId, level])
 }
 
 model PriorityLevel {
-  id          Int      @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   tenantId    Int
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  name        String   @db.VarChar(4000)
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  name        String           @db.VarChar(255)
   level       Int
-  
+
   recos       Recommendation[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([tenantId, name])
+  @@unique([tenantId, level])
+  @@index([tenantId, level])
+}
+
+// ================= INTÉGRATION GLPI =================
+model GLPIUser {
+  id                 Int               @id @default(autoincrement())
+  tenantId           Int
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  glpiId             Int
+  login              String?           @db.VarChar(255)
+  email              String?           @db.VarChar(255)
+  firstName          String?           @db.VarChar(4000)
+  lastName           String?           @db.VarChar(4000)
+  fullName           String?           @db.VarChar(4000)
+  phone              String?           @db.VarChar(255)
+  departmentName     String?           @db.VarChar(4000)
+  entityName         String?           @db.VarChar(4000)
+
+  status             String            @default("ACTIVE") @db.VarChar(100)
+  isDeletedInSource  Boolean           @default(false)
+  sourceUpdatedAt    DateTime?
+  lastSyncedAt       DateTime?
+  syncStatus         String            @default("SYNCED") @db.VarChar(100)
+  rawPayload         String?           @db.VarChar(4000)
+
+  assignedRecommendations Recommendation[] @relation("RecommendationAssigneeGLPIUser")
+  requestedTickets       Ticket[]          @relation("TicketRequesterGLPIUser")
+  assignedTickets        Ticket[]          @relation("TicketAssigneeGLPIUser")
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([tenantId, glpiId])
+  @@index([tenantId, email])
+  @@index([tenantId, login])
+  @@index([tenantId, status])
+}
+
+model Ticket {
+  id                 Int                    @id @default(autoincrement())
+  tenantId           Int
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  glpiId             Int
+  ticketNumber       String?                @db.VarChar(255)
+  title              String                 @db.VarChar(4000)
+  description        String?                @db.VarChar(4000)
+
+  ticketType         String?                @db.VarChar(100)
+  status             String                 @default("OPEN") @db.VarChar(100)
+  priority           String?                @db.VarChar(100)
+  urgency            String?                @db.VarChar(100)
+  impact             String?                @db.VarChar(100)
+
+  categoryName       String?                @db.VarChar(4000)
+  entityName         String?                @db.VarChar(4000)
+  locationName       String?                @db.VarChar(4000)
+
+  openedAt           DateTime?
+  dueAt              DateTime?
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+
+  requesterGlpiUserId Int?
+  requesterGlpiUser   GLPIUser?             @relation("TicketRequesterGLPIUser", fields: [requesterGlpiUserId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  assigneeGlpiUserId Int?
+  assigneeGlpiUser   GLPIUser?              @relation("TicketAssigneeGLPIUser", fields: [assigneeGlpiUserId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  sourceUpdatedAt    DateTime?
+  lastSyncedAt       DateTime?
+  syncStatus         String                 @default("SYNCED") @db.VarChar(100)
+  rawPayload         String?                @db.VarChar(4000)
+
+  recommendationLinks RecommendationTicket[]
+
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  @@unique([tenantId, glpiId])
+  @@index([tenantId, status])
+  @@index([tenantId, ticketNumber])
+  @@index([requesterGlpiUserId])
+  @@index([assigneeGlpiUserId])
+}
+
+// ================= RÉFÉRENTIEL ORGANISATIONNEL & RISQUES =================
+model UserDepartment {
+  tenantId      Int
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  userId        Int
+  user          User       @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  departmentId  Int
+  department    Department @relation(fields: [departmentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  isPrimary     Boolean    @default(false)
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@id([userId, departmentId])
+  @@index([tenantId, departmentId])
+}
+
+model AuditableEntity {
+  id                Int                @id @default(autoincrement())
+  tenantId          Int
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  parentId          Int?
+  parent            AuditableEntity?   @relation("AuditableEntityHierarchy", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  children          AuditableEntity[]  @relation("AuditableEntityHierarchy")
+
+  ownerDepartmentId Int?
+  ownerDepartment   Department?        @relation("AuditableEntityOwnerDepartment", fields: [ownerDepartmentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  managerUserId     Int?
+  managerUser       User?              @relation("AuditableEntityManager", fields: [managerUserId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  code              String             @db.VarChar(255)
+  name              String             @db.VarChar(4000)
+  entityType        String             @db.VarChar(100)
+  description       String?            @db.VarChar(4000)
+  criticality       String?            @db.VarChar(100)
+  isActive          Boolean            @default(true)
+
+  missionScopes     AuditMissionScope[]
+  businessProcesses BusinessProcess[]
+  risks             Risk[]
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, entityType])
+  @@index([parentId])
+}
+
+model BusinessProcess {
+  id                Int               @id @default(autoincrement())
+  tenantId          Int
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  auditableEntityId Int?
+  auditableEntity   AuditableEntity?  @relation(fields: [auditableEntityId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  ownerDepartmentId Int?
+  ownerDepartment   Department?       @relation("BusinessProcessOwnerDepartment", fields: [ownerDepartmentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  code              String            @db.VarChar(255)
+  name              String            @db.VarChar(4000)
+  description       String?           @db.VarChar(4000)
+  isActive          Boolean           @default(true)
+
+  controls          Control[]
+  risks             Risk[]
+  findings          Finding[]
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, name])
+  @@index([auditableEntityId])
+}
+
+model Control {
+  id                Int               @id @default(autoincrement())
+  tenantId          Int
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  businessProcessId Int?
+  businessProcess   BusinessProcess?  @relation(fields: [businessProcessId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  ownerDepartmentId Int?
+  ownerDepartment   Department?       @relation("ControlOwnerDepartment", fields: [ownerDepartmentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  code              String            @db.VarChar(255)
+  name              String            @db.VarChar(4000)
+  description       String?           @db.VarChar(4000)
+  controlType       String?           @db.VarChar(100)
+  frequency         String?           @db.VarChar(100)
+  isKey             Boolean           @default(false)
+  isAutomated       Boolean           @default(false)
+  isActive          Boolean           @default(true)
+
+  findings          Finding[]
+  riskLinks         RiskControl[]
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([businessProcessId])
+}
+
+model Risk {
+  id                 Int               @id @default(autoincrement())
+  tenantId           Int
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  businessProcessId  Int?
+  businessProcess    BusinessProcess?  @relation(fields: [businessProcessId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  auditableEntityId  Int?
+  auditableEntity    AuditableEntity?  @relation(fields: [auditableEntityId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  ownerDepartmentId  Int?
+  ownerDepartment    Department?       @relation("RiskOwnerDepartment", fields: [ownerDepartmentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  code               String            @db.VarChar(255)
+  name               String            @db.VarChar(4000)
+  description        String?           @db.VarChar(4000)
+  category           String?           @db.VarChar(100)
+  inherentImpact     Int?
+  inherentLikelihood Int?
+  isActive           Boolean           @default(true)
+
+  findings           Finding[]
+  controlLinks       RiskControl[]
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([businessProcessId])
+  @@index([auditableEntityId])
+}
+
+model RiskControl {
+  id                     Int       @id @default(autoincrement())
+  tenantId               Int
+  tenant                 Tenant    @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  riskId                 Int
+  risk                   Risk      @relation(fields: [riskId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  controlId              Int
+  control                Control   @relation(fields: [controlId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  designEffectiveness    String?   @db.VarChar(100)
+  operatingEffectiveness String?   @db.VarChar(100)
+
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@unique([riskId, controlId])
+  @@index([tenantId])
 }
 
 // ================= MÉTIER AUDIT =================
 model AuditPlan {
-  id          Int            @id @default(autoincrement())
-  tenantId    Int
-  tenant      Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  year        Int
-  status      String         @default("DRAFT") @db.VarChar(255)
-  
-  missions    AuditMission[]
-  
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id            Int                      @id @default(autoincrement())
+  tenantId      Int
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  year          Int
+  title         String?                  @db.VarChar(4000)
+  description   String?                  @db.VarChar(4000)
+  status        String                   @default("DRAFT") @db.VarChar(100)
+  versionNumber Int                      @default(1)
+
+  approvedAt    DateTime?
+  approvedById  Int?
+  approvedBy    User?                    @relation("AuditPlanApprovedBy", fields: [approvedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missions      AuditMission[]
+  versions      AuditPlanVersion[]
+  statusHistory AuditPlanStatusHistory[]
+  approvals     Approval[]
+  notifications Notification[]
+
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
 
   @@unique([tenantId, year])
+  @@index([tenantId, status])
+}
+
+model AuditPlanVersion {
+  id            Int       @id @default(autoincrement())
+  tenantId      Int
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  planId        Int
+  plan          AuditPlan @relation(fields: [planId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  versionNumber Int
+  label         String?   @db.VarChar(255)
+  changeSummary String?   @db.VarChar(4000)
+  snapshotNote  String?   @db.VarChar(4000)
+
+  createdById   Int?
+  createdBy     User?     @relation("AuditPlanVersionCreatedBy", fields: [createdById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  createdAt     DateTime  @default(now())
+
+  @@unique([planId, versionNumber])
+  @@index([tenantId, createdAt])
+}
+
+model AuditPlanStatusHistory {
+  id             Int       @id @default(autoincrement())
+  tenantId       Int
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  planId         Int
+  plan           AuditPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  previousStatus String?   @db.VarChar(100)
+  newStatus      String    @db.VarChar(100)
+  reason         String?   @db.VarChar(4000)
+
+  changedById    Int?
+  changedBy      User?     @relation("PlanStatusChangedBy", fields: [changedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  changedAt      DateTime  @default(now())
+
+  @@index([tenantId, planId, changedAt])
 }
 
 model AuditMission {
-  id          Int            @id @default(autoincrement())
-  tenantId    Int
-  tenant      Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  title       String         @db.VarChar(4000)
-  description String         @db.VarChar(4000)
-  startDate   DateTime?
-  endDate     DateTime?
-  status      String         @default("PLANNED") @db.VarChar(255)
-  
-  planId      Int
-  plan        AuditPlan      @relation(fields: [planId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  auditTypeId Int?
-  auditType   AuditType?     @relation(fields: [auditTypeId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  leaderId    Int
-  leader      User           @relation("MissionLeader", fields: [leaderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  findings    Finding[]
-  documents   Document[]
-  
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id               Int                   @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant                @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  title            String                @db.VarChar(4000)
+  description      String                @db.VarChar(4000)
+  objective        String?               @db.VarChar(4000)
+  scopeDescription String?               @db.VarChar(4000)
+  methodology      String?               @db.VarChar(4000)
+
+  startDate        DateTime?
+  endDate          DateTime?
+  status           String                @default("PLANNED") @db.VarChar(100)
+
+  planId           Int
+  plan             AuditPlan             @relation(fields: [planId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  auditTypeId      Int?
+  auditType        AuditType?            @relation(fields: [auditTypeId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  leaderId         Int
+  leader           User                  @relation("MissionLeader", fields: [leaderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  members          AuditMissionMember[]
+  scopes           AuditMissionScope[]
+  programs         AuditProgram[]
+  procedures       AuditProcedure[]
+  findings         Finding[]
+  documents        Document[]
+  evidences        Evidence[]
+  approvals        Approval[]
+  statusHistory    MissionStatusHistory[]
+  notifications    Notification[]
+
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([tenantId, status])
+  @@index([planId])
+  @@index([leaderId])
 }
 
-model Finding { // Constat
-  id          Int            @id @default(autoincrement())
-  title       String         @db.VarChar(4000)
-  description String         @db.VarChar(4000)
-  
-  riskLevelId Int?
-  riskLevel   RiskLevel?     @relation(fields: [riskLevelId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  riskLevelLegacy String?    @db.VarChar(4000)
-  
-  process     String?        @db.VarChar(4000)
-  cause       String?        @db.VarChar(4000)
-  impact      String?        @db.VarChar(4000)
-  
-  status      String         @default("DRAFT") @db.VarChar(255)
-  
-  authorId    Int?
-  author      User?          @relation("FindingAuthor", fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  validatorId Int?
-  validator   User?          @relation("FindingValidator", fields: [validatorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  missionId   Int
-  mission     AuditMission   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  recos       Recommendation[]
-  documents   Document[]
-  comments    FindingComment[]
-  
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+model AuditMissionMember {
+  id               Int          @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missionId        Int
+  mission          AuditMission @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  userId           Int
+  user             User         @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  roleInMission    String       @db.VarChar(100)
+  assignmentStatus String       @default("ACTIVE") @db.VarChar(100)
+  isLead           Boolean      @default(false)
+  assignedAt       DateTime     @default(now())
+  removedAt        DateTime?
+  notes            String?      @db.VarChar(4000)
+
+  @@index([tenantId, missionId])
+  @@index([userId, assignmentStatus])
+  @@unique([missionId, userId, roleInMission])
+}
+
+model AuditMissionScope {
+  id                Int             @id @default(autoincrement())
+  tenantId          Int
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missionId         Int
+  mission           AuditMission    @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  auditableEntityId Int
+  auditableEntity   AuditableEntity @relation(fields: [auditableEntityId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  scopeRole         String?         @db.VarChar(100)
+  notes             String?         @db.VarChar(4000)
+  createdAt         DateTime        @default(now())
+
+  @@unique([missionId, auditableEntityId])
+  @@index([tenantId, auditableEntityId])
+}
+
+model AuditProgram {
+  id               Int              @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missionId        Int
+  mission          AuditMission     @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  versionNumber    Int              @default(1)
+  title            String           @db.VarChar(4000)
+  objective        String?          @db.VarChar(4000)
+  scopeDescription String?          @db.VarChar(4000)
+  methodology      String?          @db.VarChar(4000)
+  auditCriteria    String?          @db.VarChar(4000)
+  samplingApproach String?          @db.VarChar(4000)
+
+  status           String           @default("DRAFT") @db.VarChar(100)
+
+  preparedById     Int?
+  preparedBy       User?            @relation("AuditProgramPreparedBy", fields: [preparedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  approvedById     Int?
+  approvedBy       User?            @relation("AuditProgramApprovedBy", fields: [approvedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  approvedAt       DateTime?
+
+  procedures       AuditProcedure[]
+  approvals        Approval[]
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@unique([missionId, versionNumber])
+  @@index([tenantId, status])
+}
+
+model AuditProcedure {
+  id               Int            @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  programId        Int
+  program          AuditProgram   @relation(fields: [programId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missionId        Int
+  mission          AuditMission   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  sequenceNo       Int            @default(1)
+  title            String         @db.VarChar(4000)
+  procedureType    String?        @db.VarChar(100)
+  description      String?        @db.VarChar(4000)
+  expectedEvidence String?        @db.VarChar(4000)
+  status           String         @default("PENDING") @db.VarChar(100)
+  dueDate          DateTime?
+
+  performedById    Int?
+  performedBy      User?          @relation("ProcedurePerformedBy", fields: [performedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  completedAt      DateTime?
+
+  evidences        Evidence[]
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([tenantId, missionId])
+  @@index([programId, sequenceNo])
+}
+
+model Finding {
+  id                  Int                       @id @default(autoincrement())
+  tenantId            Int?
+  tenant              Tenant?                   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  title               String                    @db.VarChar(4000)
+  description         String                    @db.VarChar(4000)
+  criteria            String?                   @db.VarChar(4000)
+
+  riskLevelId         Int?
+  riskLevel           RiskLevel?                @relation("FindingInitialRiskLevel", fields: [riskLevelId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  riskLevelLegacy     String?                   @db.VarChar(4000)
+
+  residualRiskLevelId Int?
+  residualRiskLevel   RiskLevel?                @relation("FindingResidualRiskLevel", fields: [residualRiskLevelId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  process             String?                   @db.VarChar(4000)
+  cause               String?                   @db.VarChar(4000)
+  impact              String?                   @db.VarChar(4000)
+  managementResponse  String?                   @db.VarChar(4000)
+  severityScore       Int?
+
+  riskId              Int?
+  risk                Risk?                     @relation(fields: [riskId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  businessProcessId   Int?
+  businessProcess     BusinessProcess?          @relation(fields: [businessProcessId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  controlId           Int?
+  control             Control?                  @relation(fields: [controlId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  status              String                    @default("DRAFT") @db.VarChar(100)
+
+  authorId            Int?
+  author              User?                     @relation("FindingAuthor", fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  validatorId         Int?
+  validator           User?                     @relation("FindingValidator", fields: [validatorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missionId           Int
+  mission             AuditMission              @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  recos               Recommendation[]
+  documents           Document[]
+  comments            FindingComment[]
+  evidences           Evidence[]
+  approvals           Approval[]
+  statusHistory       FindingStatusHistory[]
+  notifications       Notification[]
+
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  @@index([missionId])
+  @@index([tenantId, status])
+  @@index([riskId])
+  @@index([businessProcessId])
+  @@index([controlId])
 }
 
 model FindingComment {
   id          Int      @id @default(autoincrement())
   content     String   @db.VarChar(4000)
-  
+
   findingId   Int
   finding     Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
-  
+
   authorId    Int
   author      User     @relation(fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([findingId, createdAt])
+}
+
+model FindingStatusHistory {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  findingId      Int
+  finding        Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  previousStatus String?  @db.VarChar(100)
+  newStatus      String   @db.VarChar(100)
+  reason         String?  @db.VarChar(4000)
+
+  changedById    Int?
+  changedBy      User?    @relation("FindingStatusChangedBy", fields: [changedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  changedAt      DateTime @default(now())
+
+  @@index([tenantId, findingId, changedAt])
 }
 
 model Recommendation {
-  id            Int            @id @default(autoincrement())
-  title         String         @db.VarChar(4000)
-  actionPlan    String         @db.VarChar(4000)
-  targetDate    DateTime
-  status        String         @default("OPEN") @db.VarChar(255)
-  
-  priorityId    Int?
-  priority      PriorityLevel? @relation(fields: [priorityId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  departmentId  Int?
-  department    Department?    @relation(fields: [departmentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  assigneeName  String?        @db.VarChar(4000)
-  
-  findingId     Int
-  finding       Finding        @relation(fields: [findingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  documents     Document[]
-  comments      RecommendationComment[]
-  
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                 Int                         @id @default(autoincrement())
+  tenantId           Int?
+  tenant             Tenant?                     @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  title              String                      @db.VarChar(4000)
+  actionPlan         String                      @db.VarChar(4000)
+  targetDate         DateTime
+  revisedTargetDate  DateTime?
+
+  status             String                      @default("OPEN") @db.VarChar(100)
+  implementedPercent Int                         @default(0)
+  closedAt           DateTime?
+  validatedAt        DateTime?
+
+  priorityId         Int?
+  priority           PriorityLevel?              @relation(fields: [priorityId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  departmentId       Int?
+  department         Department?                 @relation(fields: [departmentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  assigneeName       String?                     @db.VarChar(4000)
+
+  assigneeUserId     Int?
+  assigneeUser       User?                       @relation("RecommendationAssigneeUser", fields: [assigneeUserId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  assigneeGlpiUserId Int?
+  assigneeGlpiUser   GLPIUser?                   @relation("RecommendationAssigneeGLPIUser", fields: [assigneeGlpiUserId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  validatedById      Int?
+  validatedBy        User?                       @relation("RecommendationValidator", fields: [validatedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  findingId          Int
+  finding            Finding                     @relation(fields: [findingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  documents          Document[]
+  comments           RecommendationComment[]
+  followUps          RecommendationFollowUp[]
+  evidences          Evidence[]
+  approvals          Approval[]
+  statusHistory      RecommendationStatusHistory[]
+  notifications      Notification[]
+  ticketLinks        RecommendationTicket[]
+
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+
+  @@index([findingId])
+  @@index([tenantId, status, targetDate])
+  @@index([assigneeUserId])
+  @@index([assigneeGlpiUserId])
 }
 
 model RecommendationComment {
   id               Int            @id @default(autoincrement())
   content          String         @db.VarChar(4000)
-  
+
   recommendationId Int
   recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
-  
+
   authorId         Int
   author           User           @relation(fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
+
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+
+  @@index([recommendationId, createdAt])
 }
 
-// ================= GESTION DOCUMENTAIRE =================
+model RecommendationStatusHistory {
+  id               Int            @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  recommendationId Int
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  previousStatus   String?        @db.VarChar(100)
+  newStatus        String         @db.VarChar(100)
+  reason           String?        @db.VarChar(4000)
+
+  changedById      Int?
+  changedBy        User?          @relation("RecommendationStatusChangedBy", fields: [changedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  changedAt        DateTime       @default(now())
+
+  @@index([tenantId, recommendationId, changedAt])
+}
+
+model RecommendationFollowUp {
+  id               Int            @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  recommendationId Int
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  statusSnapshot   String?        @db.VarChar(100)
+  progressPercent  Int            @default(0)
+  comment          String         @db.VarChar(4000)
+  evidenceSummary  String?        @db.VarChar(4000)
+  nextAction       String?        @db.VarChar(4000)
+  nextDueDate      DateTime?
+
+  authorId         Int?
+  author           User?          @relation("FollowUpAuthor", fields: [authorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  createdAt        DateTime       @default(now())
+
+  @@index([tenantId, recommendationId, createdAt])
+}
+
+model RecommendationTicket {
+  id               Int            @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  recommendationId Int
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  ticketId         Int
+  ticket           Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  linkType         String         @default("RELATED") @db.VarChar(100)
+  note             String?        @db.VarChar(4000)
+
+  linkedByUserId   Int?
+  linkedByUser     User?          @relation("RecommendationTicketLinkedBy", fields: [linkedByUserId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  createdAt        DateTime       @default(now())
+
+  @@unique([recommendationId, ticketId])
+  @@index([tenantId, ticketId])
+}
+
+model MissionStatusHistory {
+  id             Int          @id @default(autoincrement())
+  tenantId       Int
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missionId      Int
+  mission        AuditMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  previousStatus String?      @db.VarChar(100)
+  newStatus      String       @db.VarChar(100)
+  reason         String?      @db.VarChar(4000)
+
+  changedById    Int?
+  changedBy      User?        @relation("MissionStatusChangedBy", fields: [changedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  changedAt      DateTime     @default(now())
+
+  @@index([tenantId, missionId, changedAt])
+}
+
+// ================= GESTION DOCUMENTAIRE & PREUVES =================
 model Document {
-  id               Int      @id @default(autoincrement())
-  originalName     String   @db.VarChar(4000)
-  mimeType         String   @db.VarChar(4000)
+  id               Int              @id @default(autoincrement())
+  tenantId         Int?
+  tenant           Tenant?          @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  originalName     String           @db.VarChar(4000)
+  mimeType         String           @db.VarChar(255)
   sizeBytes        Int
-  storagePath      String   @db.VarChar(4000)
-  fileHash         String   @db.VarChar(4000)
-  isGenerated      Boolean  @default(false)
-  
+  storagePath      String           @db.VarChar(4000)
+  fileHash         String           @db.VarChar(255)
+  isGenerated      Boolean          @default(false)
+
+  missionId        Int?
+  mission          AuditMission?    @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  findingId        Int?
+  finding          Finding?         @relation(fields: [findingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  recommendationId Int?
+  recommendation   Recommendation?  @relation(fields: [recommendationId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  uploadedById     Int
+  uploadedBy       User             @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  evidences        Evidence[]
+
+  createdAt        DateTime         @default(now())
+  deletedAt        DateTime?
+
+  @@index([tenantId, createdAt])
+  @@index([missionId])
+  @@index([findingId])
+  @@index([recommendationId])
+}
+
+model Evidence {
+  id                 Int             @id @default(autoincrement())
+  tenantId           Int
+  tenant             Tenant          @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  title              String          @db.VarChar(4000)
+  description        String?         @db.VarChar(4000)
+  evidenceType       String          @db.VarChar(100)
+  source             String?         @db.VarChar(4000)
+  collectionDate     DateTime?
+  chainOfCustodyNote String?         @db.VarChar(4000)
+  isSensitive        Boolean         @default(false)
+
+  documentId         Int?
+  document           Document?       @relation(fields: [documentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missionId          Int?
+  mission            AuditMission?   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  findingId          Int?
+  finding            Finding?        @relation(fields: [findingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  recommendationId   Int?
+  recommendation     Recommendation? @relation(fields: [recommendationId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  procedureId        Int?
+  procedure          AuditProcedure? @relation(fields: [procedureId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  collectedById      Int?
+  collectedBy        User?           @relation("EvidenceCollectedBy", fields: [collectedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([tenantId, evidenceType])
+  @@index([findingId])
+  @@index([recommendationId])
+  @@index([procedureId])
+}
+
+// ================= GOUVERNANCE / APPROBATION / NOTIFICATIONS =================
+model Approval {
+  id               Int             @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant          @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  approvalType     String          @db.VarChar(100)
+  level            Int             @default(1)
+  decision         String          @default("PENDING") @db.VarChar(100)
+  comments         String?         @db.VarChar(4000)
+
+  requestedById    Int?
+  requestedBy      User?           @relation("ApprovalRequestedBy", fields: [requestedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  approverId       Int?
+  approver         User?           @relation("ApprovalApprover", fields: [approverId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  decidedAt        DateTime?
+
+  planId           Int?
+  plan             AuditPlan?      @relation(fields: [planId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
   missionId        Int?
   mission          AuditMission?   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
   findingId        Int?
   finding          Finding?        @relation(fields: [findingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
   recommendationId Int?
   recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  
-  uploadedById     Int
-  createdAt        DateTime @default(now())
-  deletedAt        DateTime?
+
+  auditProgramId   Int?
+  auditProgram     AuditProgram?   @relation(fields: [auditProgramId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([tenantId, decision])
+  @@index([approverId, decision])
+}
+
+model Notification {
+  id               Int             @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant          @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  recipientUserId  Int
+  recipientUser    User            @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  title            String          @db.VarChar(4000)
+  message          String          @db.VarChar(4000)
+  notificationType String          @db.VarChar(100)
+  channel          String          @default("IN_APP") @db.VarChar(100)
+  status           String          @default("PENDING") @db.VarChar(100)
+
+  readAt           DateTime?
+  sentAt           DateTime?
+
+  planId           Int?
+  plan             AuditPlan?      @relation(fields: [planId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missionId        Int?
+  mission          AuditMission?   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  findingId        Int?
+  finding          Finding?        @relation(fields: [findingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  recommendationId Int?
+  recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  createdAt        DateTime        @default(now())
+
+  @@index([tenantId, recipientUserId, status])
+  @@index([readAt])
 }
 
 // ================= TRAÇABILITÉ =================
 model AuditLog {
   id          Int      @id @default(autoincrement())
+  tenantId    Int?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
   action      String   @db.VarChar(4000)
   entityName  String?  @db.VarChar(255)
   entityId    String?  @db.VarChar(255)
   oldValues   String?  @db.VarChar(4000)
   newValues   String?  @db.VarChar(4000)
-  
+
   userId      Int?
   user        User?    @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  ipAddress   String?  @db.VarChar(4000)
+
+  ipAddress   String?  @db.VarChar(255)
   userAgent   String?  @db.VarChar(4000)
-  
+
   createdAt   DateTime @default(now())
 
-  @@index([entityName, entityId])
+  @@index([tenantId, entityName, entityId])
   @@index([createdAt])
 }

@@ -5,7 +5,7 @@ import { apiFetch } from '../lib/api';
 interface RecommendationFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  findingId: string;
+  findingId: number;
   onSuccess: () => void;
 }
 

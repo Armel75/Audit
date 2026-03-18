@@ -15,8 +15,16 @@ import missionRoutes from './routes/mission.routes';
 import recommendationRoutes from './routes/recommendation.routes';
 import findingRoutes from './routes/finding.routes';
 import settingsRoutes from './routes/settings.routes';
+import referentialRoutes from './routes/referential.routes';
 import usersRoutes from './routes/users.routes';
 import auditPlanRoutes from './routes/audit-plan.routes';
+import adminRoutes from './routes/admin.routes';
+import auditProgramRoutes from './routes/auditProgram.routes';
+import glpiRoutes from './routes/glpi.routes';
+import evidenceRoutes from './routes/evidence.routes';
+import approvalRoutes from './routes/approval.routes';
+import notificationRoutes from './routes/notification.routes';
+import auditLogRoutes from './routes/auditLog.routes';
 
 // Bootstrap
 import { bootstrapAdmin } from './bootstrap/adminBootstrap';
@@ -45,8 +53,16 @@ async function startServer() {
   app.use('/api/recommendations', recommendationRoutes);
   app.use('/api/findings', findingRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/referential', referentialRoutes);
   app.use('/api/users', usersRoutes);
   app.use('/api/plans', auditPlanRoutes);
+  app.use('/api/admin', adminRoutes);
+  app.use('/api/programs', auditProgramRoutes);
+  app.use('/api/glpi', glpiRoutes);
+  app.use('/api/evidences', evidenceRoutes);
+  app.use('/api/approvals', approvalRoutes);
+  app.use('/api/notifications', notificationRoutes);
+  app.use('/api/audit-logs', auditLogRoutes);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', service: 'SISAR API', tenant: 'SOREPCO' });

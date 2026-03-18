@@ -1,47 +1,68 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
+import { Edit2, Trash2, Settings as SettingsIcon, AlertCircle, CheckCircle2, Users } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 // Types
-interface Department { id: string; name: string; code: string; }
-interface AuditType { id: string; name: string; }
-interface RiskLevel { id: string; name: string; color: string | null; level: number; }
-interface PriorityLevel { id: string; name: string; level: number; }
+interface Department { id: number; name: string; code: string; }
+interface UserDepartment { user: { id: number; firstName: string; lastName: string; email: string; }; department: { id: number; name: string; code: string; }; isPrimary: boolean; startDate: string | null; endDate: string | null; }
+interface AuditType { id: number; name: string; }
+interface RiskLevel { id: number; name: string; color: string | null; level: number; }
+interface PriorityLevel { id: number; name: string; level: number; }
 
-type TabType = 'departments' | 'auditTypes' | 'riskLevels' | 'priorityLevels';
+type TabType = 'departments' | 'userDepartments' | 'auditTypes' | 'riskLevels' | 'priorityLevels';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabType>('departments');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
   // Data states
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [userDepartments, setUserDepartments] = useState<UserDepartment[]>([]);
   const [auditTypes, setAuditTypes] = useState<AuditType[]>([]);
   const [riskLevels, setRiskLevels] = useState<RiskLevel[]>([]);
   const [priorityLevels, setPriorityLevels] = useState<PriorityLevel[]>([]);
+  const [users, setUsers] = useState<any[]>([]); // For UserDepartment form
 
   // Form states
   const [isEditing, setIsEditing] = useState(false);
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [currentId, setCurrentId] = useState<any>(null); // can be number or object for composite keys
   const [formData, setFormData] = useState<any>({});
+
+  const showMessage = (msg: string, isError = false) => {
+    if (isError) { setError(msg); setSuccess(null); }
+    else { setSuccess(msg); setError(null); }
+    setTimeout(() => { setError(null); setSuccess(null); }, 5000);
+  };
 
   const fetchData = async () => {
     try {
-      const [deptRes, auditRes, riskRes, priorityRes] = await Promise.all([
+      const [deptRes, udRes, auditRes, riskRes, priorityRes, usersRes] = await Promise.all([
         apiFetch('/api/settings/departments'),
+        apiFetch('/api/settings/user-departments'),
         apiFetch('/api/settings/audit-types'),
         apiFetch('/api/settings/risk-levels'),
-        apiFetch('/api/settings/priority-levels')
+        apiFetch('/api/settings/priority-levels'),
+        apiFetch('/api/admin/users') // To populate dropdowns
       ]);
 
-      if (!deptRes.ok) throw new Error('Failed to fetch settings data');
+      if (!deptRes.ok) throw new Error('Erreur lors du chargement des départements');
+      if (!udRes.ok) throw new Error('Erreur lors du chargement des affectations');
+      if (!auditRes.ok) throw new Error('Erreur lors du chargement des types d\'audit');
+      if (!riskRes.ok) throw new Error('Erreur lors du chargement des niveaux de risque');
+      if (!priorityRes.ok) throw new Error('Erreur lors du chargement des niveaux de priorité');
 
       setDepartments(await deptRes.json());
+      setUserDepartments(await udRes.json());
       setAuditTypes(await auditRes.json());
       setRiskLevels(await riskRes.json());
       setPriorityLevels(await priorityRes.json());
+      
+      if(usersRes.ok) {
+        setUsers(await usersRes.json());
+      }
     } catch (err: any) {
-      setError(err.message || 'Error loading settings');
+      showMessage(err.message || 'Error loading settings', true);
     }
   };
 
@@ -49,40 +70,60 @@ export default function Settings() {
     fetchData();
   }, []);
 
-  const handleEdit = (item: any) => {
+  const handleEdit = (item: any, isComposite = false) => {
     setIsEditing(true);
-    setCurrentId(item.id);
-    setFormData({ ...item });
-  };
-
-  const handleDelete = async (id: string, endpoint: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) return;
-    try {
-      const res = await apiFetch(`/api/settings/${endpoint}/${id}`, {
-        method: 'DELETE'
+    if (isComposite) {
+      setCurrentId({ userId: item.user.id, departmentId: item.department.id });
+      setFormData({
+        userId: item.user.id,
+        departmentId: item.department.id,
+        isPrimary: item.isPrimary,
+        startDate: item.startDate ? item.startDate.split('T')[0] : '',
+        endDate: item.endDate ? item.endDate.split('T')[0] : ''
       });
-      if (!res.ok) throw new Error('Erreur lors de la suppression');
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
+    } else {
+      setCurrentId(item.id);
+      setFormData({ ...item });
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent, endpoint: string) => {
+  const handleDelete = async (id: any, endpoint: string, isComposite = false) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) return;
+    try {
+      const url = isComposite 
+        ? `/api/settings/${endpoint}/${id.userId}/${id.departmentId}`
+        : `/api/settings/${endpoint}/${id}`;
+        
+      const res = await apiFetch(url, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erreur lors de la suppression');
+      }
+      showMessage('Élément supprimé avec succès');
+      fetchData();
+    } catch (err: any) {
+      showMessage(err.message, true);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent, endpoint: string, isComposite = false) => {
     e.preventDefault();
     try {
       const method = isEditing ? 'PUT' : 'POST';
-      const url = isEditing ? `/api/settings/${endpoint}/${currentId}` : `/api/settings/${endpoint}`;
+      let url = `/api/settings/${endpoint}`;
       
-      // Convert level to number if it exists
+      if (isEditing) {
+        url = isComposite 
+          ? `/api/settings/${endpoint}/${currentId.userId}/${currentId.departmentId}`
+          : `/api/settings/${endpoint}/${currentId}`;
+      }
+      
       const payload = { ...formData };
       if (payload.level) payload.level = parseInt(payload.level, 10);
 
       const res = await apiFetch(url, {
         method,
-        headers: { 
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
@@ -91,47 +132,73 @@ export default function Settings() {
         throw new Error(data.error || 'Erreur lors de la sauvegarde');
       }
 
+      showMessage(isEditing ? 'Mise à jour réussie' : 'Création réussie');
       setFormData({});
       setIsEditing(false);
       setCurrentId(null);
       fetchData();
     } catch (err: any) {
-      setError(err.message);
+      showMessage(err.message, true);
     }
   };
 
-  const renderForm = (endpoint: string, fields: {name: string, label: string, type: string}[]) => (
-    <form onSubmit={(e) => handleSubmit(e, endpoint)} className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6">
-      <h3 className="text-lg font-medium text-slate-900 mb-4">
+  const renderForm = (endpoint: string, fields: {name: string, label: string, type: string, options?: any[]}[], isComposite = false) => (
+    <form onSubmit={(e) => handleSubmit(e, endpoint, isComposite)} className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8">
+      <h3 className="text-lg font-semibold text-slate-900 mb-4">
         {isEditing ? 'Modifier' : 'Ajouter'} un élément
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {fields.map(f => (
           <div key={f.name}>
             <label className="block text-sm font-medium text-slate-700 mb-1">{f.label}</label>
-            <input
-              type={f.type}
-              value={formData[f.name] || ''}
-              onChange={(e) => setFormData({...formData, [f.name]: e.target.value})}
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            {f.type === 'select' ? (
+              <select
+                value={formData[f.name] || ''}
+                onChange={(e) => setFormData({...formData, [f.name]: e.target.value})}
+                required={!isEditing || !isComposite} // disable changing IDs on edit for composite
+                disabled={isEditing && isComposite && (f.name === 'userId' || f.name === 'departmentId')}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              >
+                <option value="">Sélectionner</option>
+                {f.options?.map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                ))}
+              </select>
+            ) : f.type === 'checkbox' ? (
+              <div className="flex items-center h-full pt-6">
+                <input
+                  type="checkbox"
+                  checked={formData[f.name] || false}
+                  onChange={(e) => setFormData({...formData, [f.name]: e.target.checked})}
+                  className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                />
+                <span className="ml-2 text-sm text-slate-700">{f.label}</span>
+              </div>
+            ) : (
+              <input
+                type={f.type}
+                value={formData[f.name] || ''}
+                onChange={(e) => setFormData({...formData, [f.name]: e.target.value})}
+                required={f.type !== 'date' && f.type !== 'color'}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            )}
           </div>
         ))}
       </div>
-      <div className="mt-4 flex justify-end space-x-3">
+      <div className="mt-6 flex justify-end space-x-3">
         {isEditing && (
           <button
             type="button"
             onClick={() => { setIsEditing(false); setFormData({}); setCurrentId(null); }}
-            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
+            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
           >
             Annuler
           </button>
         )}
         <button
           type="submit"
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
         >
           {isEditing ? 'Mettre à jour' : 'Ajouter'}
         </button>
@@ -139,104 +206,107 @@ export default function Settings() {
     </form>
   );
 
-  const renderTable = (data: any[], endpoint: string, columns: {key: string, label: string}[]) => (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-      <table className="min-w-full divide-y divide-slate-200">
-        <thead className="bg-slate-50">
-          <tr>
-            {columns.map(c => (
-              <th key={c.key} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                {c.label}
-              </th>
-            ))}
-            <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-slate-200">
-          {data.map((item) => (
-            <tr key={item.id}>
-              {columns.map(c => (
-                <td key={c.key} className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  {c.key === 'color' && item[c.key] ? (
-                    <div className="flex items-center">
-                      <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: item[c.key] }}></div>
-                      {item[c.key]}
-                    </div>
-                  ) : item[c.key]}
-                </td>
-              ))}
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 mr-4">
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button onClick={() => handleDelete(item.id, endpoint)} className="text-red-600 hover:text-red-900">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </td>
-            </tr>
-          ))}
-          {data.length === 0 && (
+  const renderTable = (data: any[], endpoint: string, columns: {key: string, label: string, render?: (item: any) => React.ReactNode}[], isComposite = false) => (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-slate-200 text-sm text-left">
+          <thead className="bg-slate-50 text-slate-500 font-medium">
             <tr>
-              <td colSpan={columns.length + 1} className="px-6 py-4 text-center text-sm text-slate-500">
-                Aucune donnée disponible.
-              </td>
+              {columns.map(c => (
+                <th key={c.key} className="px-6 py-3 uppercase tracking-wider">
+                  {c.label}
+                </th>
+              ))}
+              <th className="px-6 py-3 text-right uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {data.map((item, idx) => {
+              const id = isComposite ? { userId: item.user.id, departmentId: item.department.id } : item.id;
+              return (
+                <tr key={idx} className="hover:bg-slate-50">
+                  {columns.map(c => (
+                    <td key={c.key} className="px-6 py-4 whitespace-nowrap text-slate-900">
+                      {c.render ? c.render(item) : item[c.key]}
+                    </td>
+                  ))}
+                  <td className="px-6 py-4 whitespace-nowrap text-right font-medium space-x-3">
+                    <button onClick={() => handleEdit(item, isComposite)} className="text-indigo-600 hover:text-indigo-900">
+                      <Edit2 className="w-4 h-4 inline" />
+                    </button>
+                    <button onClick={() => handleDelete(id, endpoint, isComposite)} className="text-red-600 hover:text-red-900">
+                      <Trash2 className="w-4 h-4 inline" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {data.length === 0 && (
+              <tr>
+                <td colSpan={columns.length + 1} className="px-6 py-8 text-center text-slate-500">
+                  Aucune donnée disponible.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center mb-8">
-        <SettingsIcon className="w-8 h-8 text-indigo-600 mr-3" />
-        <h1 className="text-2xl font-bold text-slate-900">Paramétrage</h1>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <SettingsIcon className="w-6 h-6 text-indigo-600" />
+            Paramétrage
+          </h1>
+          <p className="text-slate-500 mt-1">Gérez les référentiels de votre organisation.</p>
+        </div>
       </div>
 
       {error && (
-        <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 flex items-start">
-          <AlertCircle className="w-5 h-5 text-red-500 mr-2 mt-0.5" />
-          <p className="text-red-700">{error}</p>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5" /> {error}
+        </div>
+      )}
+      {success && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5" /> {success}
         </div>
       )}
 
       {/* Tabs */}
-      <div className="border-b border-slate-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          {[
-            { id: 'departments', label: 'Départements' },
-            { id: 'auditTypes', label: 'Types d\'Audit' },
-            { id: 'riskLevels', label: 'Niveaux de Risque' },
-            { id: 'priorityLevels', label: 'Niveaux de Priorité' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id as TabType);
-                setIsEditing(false);
-                setFormData({});
-                setCurrentId(null);
-                setError(null);
-              }}
-              className={`
-                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                ${activeTab === tab.id
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                }
-              `}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+      <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+        {[
+          { id: 'departments', label: 'Départements' },
+          { id: 'userDepartments', label: 'Affectations (Users ↔ Depts)' },
+          { id: 'auditTypes', label: 'Types d\'Audit' },
+          { id: 'riskLevels', label: 'Niveaux de Risque' },
+          { id: 'priorityLevels', label: 'Niveaux de Priorité' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              setActiveTab(tab.id as TabType);
+              setIsEditing(false);
+              setFormData({});
+              setCurrentId(null);
+            }}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Content */}
-      <div>
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
         {activeTab === 'departments' && (
           <>
             {renderForm('departments', [
@@ -245,8 +315,27 @@ export default function Settings() {
             ])}
             {renderTable(departments, 'departments', [
               { key: 'name', label: 'Nom' },
-              { key: 'code', label: 'Code' }
+              { key: 'code', label: 'Code', render: (item) => <span className="font-mono text-xs bg-slate-100 px-2 py-1 rounded">{item.code}</span> }
             ])}
+          </>
+        )}
+
+        {activeTab === 'userDepartments' && (
+          <>
+            {renderForm('user-departments', [
+              { name: 'userId', label: 'Utilisateur', type: 'select', options: users.map(u => ({ id: u.id, label: `${u.firstName} ${u.lastName} (${u.email})` })) },
+              { name: 'departmentId', label: 'Département', type: 'select', options: departments.map(d => ({ id: d.id, label: d.name })) },
+              { name: 'isPrimary', label: 'Département principal', type: 'checkbox' },
+              { name: 'startDate', label: 'Date de début', type: 'date' },
+              { name: 'endDate', label: 'Date de fin', type: 'date' }
+            ], true)}
+            {renderTable(userDepartments, 'user-departments', [
+              { key: 'user', label: 'Utilisateur', render: (item) => `${item.user.firstName} ${item.user.lastName}` },
+              { key: 'department', label: 'Département', render: (item) => item.department.name },
+              { key: 'isPrimary', label: 'Principal', render: (item) => item.isPrimary ? <span className="text-emerald-600 font-medium">Oui</span> : <span className="text-slate-400">Non</span> },
+              { key: 'startDate', label: 'Début', render: (item) => item.startDate ? new Date(item.startDate).toLocaleDateString() : '-' },
+              { key: 'endDate', label: 'Fin', render: (item) => item.endDate ? new Date(item.endDate).toLocaleDateString() : '-' }
+            ], true)}
           </>
         )}
 
@@ -266,12 +355,17 @@ export default function Settings() {
             {renderForm('risk-levels', [
               { name: 'name', label: 'Niveau de risque', type: 'text' },
               { name: 'level', label: 'Valeur (Tri)', type: 'number' },
-              { name: 'color', label: 'Couleur (Hex)', type: 'text' }
+              { name: 'color', label: 'Couleur (Hex)', type: 'color' }
             ])}
             {renderTable(riskLevels, 'risk-levels', [
               { key: 'name', label: 'Nom' },
               { key: 'level', label: 'Valeur' },
-              { key: 'color', label: 'Couleur' }
+              { key: 'color', label: 'Couleur', render: (item) => (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: item.color || '#ccc' }}></div>
+                  <span className="font-mono text-xs">{item.color || 'N/A'}</span>
+                </div>
+              )}
             ])}
           </>
         )}
@@ -292,3 +386,4 @@ export default function Settings() {
     </div>
   );
 }
+

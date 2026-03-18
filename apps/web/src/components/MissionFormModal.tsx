@@ -12,13 +12,18 @@ interface MissionFormModalProps {
 export default function MissionFormModal({ isOpen, onClose, onSuccess, mission }: MissionFormModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [objective, setObjective] = useState('');
+  const [scopeDescription, setScopeDescription] = useState('');
+  const [methodology, setMethodology] = useState('');
   const [planId, setPlanId] = useState('');
+  const [auditTypeId, setAuditTypeId] = useState('');
   const [leaderId, setLeaderId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
   const [plans, setPlans] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [auditTypes, setAuditTypes] = useState<any[]>([]);
   
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,26 +33,42 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess, mission }
       if (mission) {
         setTitle(mission.title || '');
         setDescription(mission.description || '');
+        setObjective(mission.objective || '');
+        setScopeDescription(mission.scopeDescription || '');
+        setMethodology(mission.methodology || '');
         setPlanId(mission.planId || '');
+        setAuditTypeId(mission.auditTypeId || '');
         setLeaderId(mission.leaderId || (mission.leader ? mission.leader.id : ''));
         setStartDate(mission.startDate ? new Date(mission.startDate).toISOString().split('T')[0] : '');
         setEndDate(mission.endDate ? new Date(mission.endDate).toISOString().split('T')[0] : '');
       } else {
         setTitle('');
         setDescription('');
+        setObjective('');
+        setScopeDescription('');
+        setMethodology('');
         setPlanId('');
+        setAuditTypeId('');
         setLeaderId('');
         setStartDate('');
         setEndDate('');
       }
 
       // Fetch plans
-      apiFetch('/api/audit-plans')
+      apiFetch('/api/plans')
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) setPlans(data);
         })
         .catch(err => console.error('Failed to fetch plans', err));
+
+      // Fetch audit types
+      apiFetch('/api/referential/audit-types')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setAuditTypes(data);
+        })
+        .catch(err => console.error('Failed to fetch audit types', err));
 
       // Fetch users (for leader selection)
       apiFetch('/api/users')
@@ -73,7 +94,11 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess, mission }
       const payload: any = {
         title,
         description,
+        objective,
+        scopeDescription,
+        methodology,
         planId,
+        auditTypeId: auditTypeId || null,
         leaderId,
       };
 
@@ -146,11 +171,45 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess, mission }
                 <textarea
                   id="description"
                   required
-                  rows={4}
+                  rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="objective" className="block text-sm font-medium text-slate-700">Objectif</label>
+                <textarea
+                  id="objective"
+                  rows={2}
+                  value={objective}
+                  onChange={(e) => setObjective(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="scopeDescription" className="block text-sm font-medium text-slate-700">Périmètre (description)</label>
+                  <textarea
+                    id="scopeDescription"
+                    rows={2}
+                    value={scopeDescription}
+                    onChange={(e) => setScopeDescription(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="methodology" className="block text-sm font-medium text-slate-700">Méthodologie</label>
+                  <textarea
+                    id="methodology"
+                    rows={2}
+                    value={methodology}
+                    onChange={(e) => setMethodology(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -170,6 +229,23 @@ export default function MissionFormModal({ isOpen, onClose, onSuccess, mission }
                   </select>
                 </div>
                 
+                <div>
+                  <label htmlFor="auditTypeId" className="block text-sm font-medium text-slate-700">Type d'audit</label>
+                  <select
+                    id="auditTypeId"
+                    value={auditTypeId}
+                    onChange={(e) => setAuditTypeId(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  >
+                    <option value="">Sélectionner un type</option>
+                    {auditTypes.map(type => (
+                      <option key={type.id} value={type.id}>{type.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="leaderId" className="block text-sm font-medium text-slate-700">Chef de mission *</label>
                   <select

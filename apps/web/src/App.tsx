@@ -7,7 +7,13 @@ import Missions from './pages/Missions';
 import MissionDetails from './pages/MissionDetails';
 import MissionReport from './pages/MissionReport';
 import FindingDetails from './pages/FindingDetails';
+import RecommendationDetails from './pages/RecommendationDetails';
+import AuditProgramDetails from './pages/AuditProgramDetails';
 import Settings from './pages/Settings';
+import AdminSettings from './pages/AdminSettings';
+import Referential from './pages/Referential';
+import AuditPlans from './pages/AuditPlans';
+import AuditPlanDetails from './pages/AuditPlanDetails';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -33,11 +39,17 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="plans" element={<AuditPlans />} />
+            <Route path="plans/:id" element={<AuditPlanDetails />} />
             <Route path="missions" element={<Missions />} />
             <Route path="missions/:id" element={<MissionDetails />} />
             <Route path="missions/:id/report" element={<MissionReport />} />
+            <Route path="programs/:id" element={<AuditProgramDetails />} />
             <Route path="findings/:id" element={<FindingDetails />} />
+            <Route path="recommendations/:id" element={<RecommendationDetails />} />
+            <Route path="referential" element={<Referential />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="admin" element={<AdminSettings />} />
           </Route>
         </Routes>
       </AuthProvider>

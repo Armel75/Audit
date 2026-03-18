@@ -5,15 +5,17 @@ import MissionFormModal from '../components/MissionFormModal';
 import { apiFetch } from '../lib/api';
 
 interface Mission {
-  id: string;
+  id: number;
   title: string;
   description: string;
   startDate: string | null;
   endDate: string | null;
   status: 'PLANNED' | 'IN_PROGRESS' | 'IN_REVIEW' | 'VALIDATED' | 'CLOSED';
-  leader: { id: string; firstName: string; lastName: string; email: string };
-  planId: string;
-  _count: { findings: number; documents: number };
+  leader: { id: number; firstName: string; lastName: string; email: string };
+  planId: number;
+  plan: { id: number; year: number; title: string | null };
+  auditType: { id: number; name: string } | null;
+  _count: { findings: number; documents: number; members: number; scopes: number };
 }
 
 const statusConfig = {
@@ -63,7 +65,7 @@ export default function Missions() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.preventDefault(); // Prevent link navigation
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette mission ?')) return;
     try {
@@ -183,6 +185,11 @@ export default function Missions() {
                 
                 <div className="space-y-3 mt-4">
                   <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <Briefcase className="w-4 h-4" />
+                    <span>Plan {mission.plan.year} {mission.auditType ? `- ${mission.auditType.name}` : ''}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
                     <Calendar className="w-4 h-4" />
                     <span>
                       {mission.startDate ? new Date(mission.startDate).toLocaleDateString() : 'Non définie'} 
@@ -196,9 +203,15 @@ export default function Missions() {
                     <span>Chef: {mission.leader.firstName} {mission.leader.lastName}</span>
                   </div>
                   
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{mission._count.findings} constat(s)</span>
+                  <div className="flex items-center gap-4 text-sm text-slate-600 mt-2">
+                    <div className="flex items-center gap-1" title="Constats">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>{mission._count.findings}</span>
+                    </div>
+                    <div className="flex items-center gap-1" title="Membres">
+                      <Users className="w-4 h-4" />
+                      <span>{mission._count.members}</span>
+                    </div>
                   </div>
                 </div>
               </Link>
