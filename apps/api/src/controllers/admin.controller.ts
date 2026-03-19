@@ -266,3 +266,71 @@ export const invalidatePasswordResetToken = async (req: Request, res: Response) 
     res.status(400).json({ error: error.message });
   }
 };
+
+
+export const approveUser = async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+
+    if (Number.isNaN(userId)) {
+      return res.status(400).json({ error: 'Identifiant utilisateur invalide' });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        matricule: true,
+        status: true,
+        tenantId: true,
+        roleId: true
+      }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+
+    if (existingUser.status === 'ACTIVE') {
+      return res.json({
+        message: 'Cet utilisateur est déjà actif',
+        user: existingUser
+      });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        status: 'ACTIVE',
+        failedLogins: 0,
+        lockedUntil: null
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        matricule: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        status: true,
+        failedLogins: true,
+        lockedUntil: true,
+        lastLoginAt: true,
+        roleId: true,
+        role: { select: { name: true } },
+        tenant: { select: { name: true } }
+      }
+    });
+
+    res.json({
+      message: 'Utilisateur validé avec succès',
+      user: updatedUser
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};

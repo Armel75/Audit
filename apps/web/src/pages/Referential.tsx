@@ -50,46 +50,118 @@ export default function Referential() {
     }
   };
 
+  // const fetchReferenceData = async () => {
+  //   try {
+  //     const [depsRes, usersRes, entRes, procRes, ctrlRes, riskRes] = await Promise.all([
+  //       apiFetch('/api/v1/settings/departments'),
+  //       apiFetch('/api/v1/users'),
+  //       apiFetch('/api/v1/referential/auditable-entities'),
+  //       apiFetch('/api/v1/referential/business-processes'),
+  //       apiFetch('/api/v1/referential/controls'),
+  //       apiFetch('/api/v1/referential/risks')
+  //     ]);
+  //     setDepartments(depsRes);
+  //     setUsers(usersRes);
+  //     setEntities(entRes);
+  //     setProcesses(procRes);
+  //     setControls(ctrlRes);
+  //     setRisks(riskRes);
+  //   } catch (err) {
+  //     console.error('Error fetching reference data:', err);
+  //   }
+  // };
+
   const fetchReferenceData = async () => {
     try {
       const [depsRes, usersRes, entRes, procRes, ctrlRes, riskRes] = await Promise.all([
-        apiFetch('/api/settings/departments'),
-        apiFetch('/api/users'),
-        apiFetch('/api/referential/auditable-entities'),
-        apiFetch('/api/referential/business-processes'),
-        apiFetch('/api/referential/controls'),
-        apiFetch('/api/referential/risks')
+        apiFetch('/api/v1/settings/departments'),
+        apiFetch('/api/v1/users'),
+        apiFetch('/api/v1/referential/auditable-entities'),
+        apiFetch('/api/v1/referential/business-processes'),
+        apiFetch('/api/v1/referential/controls'),
+        apiFetch('/api/v1/referential/risks')
       ]);
-      setDepartments(depsRes);
-      setUsers(usersRes);
-      setEntities(entRes);
-      setProcesses(procRes);
-      setControls(ctrlRes);
-      setRisks(riskRes);
+
+      const [
+        departmentsData,
+        usersData,
+        entitiesData,
+        processesData,
+        controlsData,
+        risksData
+      ] = await Promise.all([
+        depsRes.json(),
+        usersRes.json(),
+        entRes.json(),
+        procRes.json(),
+        ctrlRes.json(),
+        riskRes.json()
+      ]);
+
+      setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
+      setUsers(Array.isArray(usersData) ? usersData : []);
+      setEntities(Array.isArray(entitiesData) ? entitiesData : []);
+      setProcesses(Array.isArray(processesData) ? processesData : []);
+      setControls(Array.isArray(controlsData) ? controlsData : []);
+      setRisks(Array.isArray(risksData) ? risksData : []);
     } catch (err) {
       console.error('Error fetching reference data:', err);
     }
   };
+
+  // const fetchData = async () => {
+  //   setLoading(true);
+  //   try {
+  //     let endpoint = '';
+  //     switch (activeTab) {
+  //       case 'entities': endpoint = '/api/v1/referential/auditable-entities'; break;
+  //       case 'processes': endpoint = '/api/v1/referential/business-processes'; break;
+  //       case 'controls': endpoint = '/api/v1/referential/controls'; break;
+  //       case 'risks': endpoint = '/api/v1/referential/risks'; break;
+  //       case 'risk-controls': endpoint = '/api/v1/referential/risk-controls'; break;
+  //     }
+  //     const res = await apiFetch(endpoint);
+  //     setData(res);
+  //   } catch (err: any) {
+  //     showMessage(err.message || 'Erreur lors du chargement des données', true);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const fetchData = async () => {
     setLoading(true);
     try {
       let endpoint = '';
       switch (activeTab) {
-        case 'entities': endpoint = '/api/referential/auditable-entities'; break;
-        case 'processes': endpoint = '/api/referential/business-processes'; break;
-        case 'controls': endpoint = '/api/referential/controls'; break;
-        case 'risks': endpoint = '/api/referential/risks'; break;
-        case 'risk-controls': endpoint = '/api/referential/risk-controls'; break;
+        case 'entities':
+          endpoint = '/api/v1/referential/auditable-entities';
+          break;
+        case 'processes':
+          endpoint = '/api/v1/referential/business-processes';
+          break;
+        case 'controls':
+          endpoint = '/api/v1/referential/controls';
+          break;
+        case 'risks':
+          endpoint = '/api/v1/referential/risks';
+          break;
+        case 'risk-controls':
+          endpoint = '/api/v1/referential/risk-controls';
+          break;
       }
+
       const res = await apiFetch(endpoint);
-      setData(res);
+      const json = await res.json();
+
+      setData(Array.isArray(json) ? json : []);
     } catch (err: any) {
       showMessage(err.message || 'Erreur lors du chargement des données', true);
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleEdit = (record: any) => {
     setCurrentRecord(record);
@@ -108,11 +180,11 @@ export default function Referential() {
     try {
       let endpoint = '';
       switch (activeTab) {
-        case 'entities': endpoint = `/api/referential/auditable-entities/${id}`; break;
-        case 'processes': endpoint = `/api/referential/business-processes/${id}`; break;
-        case 'controls': endpoint = `/api/referential/controls/${id}`; break;
-        case 'risks': endpoint = `/api/referential/risks/${id}`; break;
-        case 'risk-controls': endpoint = `/api/referential/risk-controls/${id}`; break;
+        case 'entities': endpoint = `/api/v1/referential/auditable-entities/${id}`; break;
+        case 'processes': endpoint = `/api/v1/referential/business-processes/${id}`; break;
+        case 'controls': endpoint = `/api/v1/referential/controls/${id}`; break;
+        case 'risks': endpoint = `/api/v1/referential/risks/${id}`; break;
+        case 'risk-controls': endpoint = `/api/v1/referential/risk-controls/${id}`; break;
       }
       await apiFetch(endpoint, { method: 'DELETE' });
       showMessage('Élément supprimé avec succès');
@@ -128,11 +200,11 @@ export default function Referential() {
     try {
       let endpoint = '';
       switch (activeTab) {
-        case 'entities': endpoint = '/api/referential/auditable-entities'; break;
-        case 'processes': endpoint = '/api/referential/business-processes'; break;
-        case 'controls': endpoint = '/api/referential/controls'; break;
-        case 'risks': endpoint = '/api/referential/risks'; break;
-        case 'risk-controls': endpoint = '/api/referential/risk-controls'; break;
+        case 'entities': endpoint = '/api/v1/referential/auditable-entities'; break;
+        case 'processes': endpoint = '/api/v1/referential/business-processes'; break;
+        case 'controls': endpoint = '/api/v1/referential/controls'; break;
+        case 'risks': endpoint = '/api/v1/referential/risks'; break;
+        case 'risk-controls': endpoint = '/api/v1/referential/risk-controls'; break;
       }
 
       const method = currentRecord ? 'PUT' : 'POST';

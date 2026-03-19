@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload, Users, Target, Clock, Edit2, Trash2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload, Users, Target, Clock, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import FindingFormModal from '../components/FindingFormModal';
 import { apiFetch } from '../lib/api';
 
@@ -125,7 +125,7 @@ export default function MissionDetails() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchMission = () => {
-    apiFetch(`/api/missions/${id}`)
+    apiFetch(`/api/v1/missions/${id}`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement de la mission');
         return res.json();
@@ -144,7 +144,7 @@ export default function MissionDetails() {
     fetchMission();
     
     // Fetch users for members modal
-    apiFetch('/api/users')
+    apiFetch('/api/v1/users')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setUsers(data);
@@ -152,7 +152,7 @@ export default function MissionDetails() {
       .catch(console.error);
       
     // Fetch entities for scope modal
-    apiFetch('/api/referential/entities')
+    apiFetch('/api/v1/referential/entities')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setEntities(data);
@@ -170,7 +170,7 @@ export default function MissionDetails() {
     formData.append('missionId', id!);
 
     try {
-      const res = await apiFetch('/api/documents/upload', {
+      const res = await apiFetch('/api/v1/documents/upload', {
         method: 'POST',
         body: formData
       });
@@ -192,7 +192,7 @@ export default function MissionDetails() {
   const handleStatusChange = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await apiFetch(`/api/missions/${id}/status`, {
+      const response = await apiFetch(`/api/v1/missions/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(statusForm),
@@ -213,7 +213,7 @@ export default function MissionDetails() {
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await apiFetch(`/api/missions/${id}/members`, {
+      const response = await apiFetch(`/api/v1/missions/${id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(memberForm),
@@ -235,7 +235,7 @@ export default function MissionDetails() {
   const handleRemoveMember = async (memberId: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir retirer ce membre ?')) return;
     try {
-      const response = await apiFetch(`/api/missions/members/${memberId}`, {
+      const response = await apiFetch(`/api/v1/missions/members/${memberId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -252,7 +252,7 @@ export default function MissionDetails() {
   const handleAddScope = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await apiFetch(`/api/missions/${id}/scopes`, {
+      const response = await apiFetch(`/api/v1/missions/${id}/scopes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scopeForm),
@@ -274,7 +274,7 @@ export default function MissionDetails() {
   const handleCreateProgram = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await apiFetch(`/api/programs`, {
+      const response = await apiFetch(`/api/v1/programs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...programForm, missionId: id }),
@@ -296,7 +296,7 @@ export default function MissionDetails() {
   const handleRemoveScope = async (scopeId: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir retirer cette entité du périmètre ?')) return;
     try {
-      const response = await apiFetch(`/api/missions/scopes/${scopeId}`, {
+      const response = await apiFetch(`/api/v1/missions/scopes/${scopeId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -314,7 +314,7 @@ export default function MissionDetails() {
     e.preventDefault();
     if (!editingHistory) return;
     try {
-      const response = await apiFetch(`/api/missions/history/${editingHistory.id}`, {
+      const response = await apiFetch(`/api/v1/missions/history/${editingHistory.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(historyForm),
@@ -335,7 +335,7 @@ export default function MissionDetails() {
   const handleDeleteHistory = async (historyId: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet historique ?')) return;
     try {
-      const response = await apiFetch(`/api/missions/history/${historyId}`, {
+      const response = await apiFetch(`/api/v1/missions/history/${historyId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -600,7 +600,7 @@ export default function MissionDetails() {
                     <li key={doc.id} className="py-3 flex items-center justify-between">
                       <div className="flex items-center min-w-0">
                         <Paperclip className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
-                        <a href={`/api/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                        <a href={`/api/v1/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
                           {doc.originalName}
                         </a>
                       </div>

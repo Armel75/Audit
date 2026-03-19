@@ -80,7 +80,7 @@ export class AuthService {
     return user;
   }
 
-  static async logAudit(action: string, userId: string | null, ipAddress?: string, userAgent?: string, details?: string) {
+  static async logAudit(action: string, userId: number | null, ipAddress?: string, userAgent?: string, details?: string) {
     try {
       await prisma.auditLog.create({
         data: {

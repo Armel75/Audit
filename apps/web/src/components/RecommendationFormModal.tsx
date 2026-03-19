@@ -25,12 +25,12 @@ export default function RecommendationFormModal({ isOpen, onClose, findingId, on
 
   useEffect(() => {
     if (isOpen) {
-      apiFetch('/api/settings/priority-levels')
+      apiFetch('/api/v1/settings/priority-levels')
         .then(res => res.json())
         .then(data => { if (Array.isArray(data)) setPriorities(data); })
         .catch(err => console.error('Failed to fetch priorities', err));
 
-      apiFetch('/api/settings/departments')
+      apiFetch('/api/v1/settings/departments')
         .then(res => res.json())
         .then(data => { if (Array.isArray(data)) setDepartments(data); })
         .catch(err => console.error('Failed to fetch departments', err));
@@ -45,7 +45,7 @@ export default function RecommendationFormModal({ isOpen, onClose, findingId, on
     setError(null);
 
     try {
-      const res = await apiFetch('/api/recommendations', {
+      const res = await apiFetch('/api/v1/recommendations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

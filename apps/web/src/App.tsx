@@ -14,6 +14,7 @@ import AdminSettings from './pages/AdminSettings';
 import Referential from './pages/Referential';
 import AuditPlans from './pages/AuditPlans';
 import AuditPlanDetails from './pages/AuditPlanDetails';
+import CreateMission from './pages/CreateMission';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -26,7 +27,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/audit">
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="referential" element={<Referential />} />
             <Route path="settings" element={<Settings />} />
             <Route path="admin" element={<AdminSettings />} />
+            <Route path="/missions/new" element={<CreateMission />} />
           </Route>
         </Routes>
       </AuthProvider>

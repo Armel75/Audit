@@ -31,7 +31,7 @@ import { bootstrapAdmin } from './bootstrap/adminBootstrap';
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.NODE_ENV === 'production' ? 3000 : parseInt(process.env.API_PORT || '3001', 10);
+  const PORT = process.env.NODE_ENV === 'production' ? 3003 : parseInt(process.env.API_PORT || '3003', 10);
 
   app.use(cors({
     origin: true,
@@ -47,24 +47,24 @@ async function startServer() {
   }
 
   // API Routes
-  app.use('/api/auth', authRoutes);
-  app.use('/api/documents', documentRoutes);
-  app.use('/api/missions', missionRoutes);
-  app.use('/api/recommendations', recommendationRoutes);
-  app.use('/api/findings', findingRoutes);
-  app.use('/api/settings', settingsRoutes);
-  app.use('/api/referential', referentialRoutes);
-  app.use('/api/users', usersRoutes);
-  app.use('/api/plans', auditPlanRoutes);
-  app.use('/api/admin', adminRoutes);
-  app.use('/api/programs', auditProgramRoutes);
-  app.use('/api/glpi', glpiRoutes);
-  app.use('/api/evidences', evidenceRoutes);
-  app.use('/api/approvals', approvalRoutes);
-  app.use('/api/notifications', notificationRoutes);
-  app.use('/api/audit-logs', auditLogRoutes);
+  app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/documents', documentRoutes);
+  app.use('/api/v1/missions', missionRoutes);
+  app.use('/api/v1/recommendations', recommendationRoutes);
+  app.use('/api/v1/findings', findingRoutes);
+  app.use('/api/v1/settings', settingsRoutes);
+  app.use('/api/v1/referential', referentialRoutes);
+  app.use('/api/v1/users', usersRoutes);
+  app.use('/api/v1/plans', auditPlanRoutes);
+  app.use('/api/v1/admin', adminRoutes);
+  app.use('/api/v1/programs', auditProgramRoutes);
+  app.use('/api/v1/glpi', glpiRoutes);
+  app.use('/api/v1/evidences', evidenceRoutes);
+  app.use('/api/v1/approvals', approvalRoutes);
+  app.use('/api/v1/notifications', notificationRoutes);
+  app.use('/api/v1/audit-logs', auditLogRoutes);
 
-  app.get('/api/health', (req, res) => {
+  app.get('/api/v1/health', (req, res) => {
     res.json({ status: 'ok', service: 'SISAR API', tenant: 'SOREPCO' });
   });
 

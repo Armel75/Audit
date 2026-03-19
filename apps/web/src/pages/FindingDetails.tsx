@@ -92,7 +92,7 @@ export default function FindingDetails() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchFinding = () => {
-    apiFetch(`/api/findings/${id}`)
+    apiFetch(`/api/v1/findings/${id}`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement du constat');
         return res.json();
@@ -116,7 +116,7 @@ export default function FindingDetails() {
     if (!newComment.trim()) return;
 
     try {
-      const res = await apiFetch(`/api/findings/${id}/comments`, {
+      const res = await apiFetch(`/api/v1/findings/${id}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -137,7 +137,7 @@ export default function FindingDetails() {
     if (!confirm(`Voulez-vous vraiment passer ce constat au statut ${newStatus} ?`)) return;
 
     try {
-      const res = await apiFetch(`/api/findings/${id}/status`, {
+      const res = await apiFetch(`/api/v1/findings/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -162,7 +162,7 @@ export default function FindingDetails() {
     formData.append('findingId', id!);
 
     try {
-      const res = await apiFetch('/api/documents/upload', {
+      const res = await apiFetch('/api/v1/documents/upload', {
         method: 'POST',
         body: formData
       });
@@ -545,7 +545,7 @@ export default function FindingDetails() {
                   <li key={doc.id} className="py-3 flex items-center justify-between">
                     <div className="flex items-center min-w-0">
                       <Paperclip className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
-                      <a href={`/api/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                      <a href={`/api/v1/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
                         {doc.originalName}
                       </a>
                     </div>

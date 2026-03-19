@@ -14,6 +14,23 @@ declare global {
   }
 }
 
+interface AuthUser {
+  id: string;
+  tenantId: string;
+  permissions: string[];
+  [key: string]: any;
+}
+
+const isAuthUser = (user: any): user is AuthUser => {
+  return (
+    user &&
+    typeof user === 'object' &&
+    (typeof user.id === 'string' || typeof user.id === 'number') &&
+    (typeof user.tenantId === 'string' || typeof user.tenantId === 'number') &&
+    Array.isArray(user.permissions)
+  );
+};
+
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_development_only';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
@@ -24,11 +41,20 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    //  console.log("TOKEN:", token);
+    // console.log("DECODED:", decoded);
+    // console.log("ERROR:", err);
     if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+      return res.status(401).json({ error: 'Invalid or expired token' });
     }
-    (req as any).user = user;
+
+    if (!isAuthUser(decoded)) {
+       console.log("INVALID PAYLOAD");
+      return res.status(401).json({ error: 'Invalid token payload' });
+    }
+
+    req.user = decoded; // ✅ maintenant safe
     next();
   });
 };

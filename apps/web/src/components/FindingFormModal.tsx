@@ -29,7 +29,7 @@ export default function FindingFormModal({ isOpen, onClose, missionId, onSuccess
   useEffect(() => {
     if (isOpen) {
       // Fetch risk levels
-      apiFetch('/api/settings/risk-levels')
+      apiFetch('/api/v1/settings/risk-levels')
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -48,7 +48,7 @@ export default function FindingFormModal({ isOpen, onClose, missionId, onSuccess
     setError(null);
 
     try {
-      const res = await apiFetch('/api/findings', {
+      const res = await apiFetch('/api/v1/findings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

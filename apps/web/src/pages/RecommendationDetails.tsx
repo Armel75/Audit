@@ -104,7 +104,7 @@ export default function RecommendationDetails() {
   const [availableTickets, setAvailableTickets] = useState<any[]>([]);
 
   const fetchRecommendation = () => {
-    apiFetch(`/api/recommendations/${id}`)
+    apiFetch(`/api/v1/recommendations/${id}`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement de la recommandation');
         return res.json();
@@ -123,7 +123,7 @@ export default function RecommendationDetails() {
   useEffect(() => {
     fetchRecommendation();
     
-    apiFetch('/api/glpi/tickets')
+    apiFetch('/api/v1/glpi/tickets')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setAvailableTickets(data);
@@ -136,7 +136,7 @@ export default function RecommendationDetails() {
     if (!newComment.trim()) return;
 
     try {
-      const res = await apiFetch(`/api/recommendations/${id}/comments`, {
+      const res = await apiFetch(`/api/v1/recommendations/${id}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -157,7 +157,7 @@ export default function RecommendationDetails() {
     if (!confirm(`Voulez-vous vraiment passer cette recommandation au statut ${newStatus} ?`)) return;
 
     try {
-      const res = await apiFetch(`/api/recommendations/${id}/status`, {
+      const res = await apiFetch(`/api/v1/recommendations/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -182,7 +182,7 @@ export default function RecommendationDetails() {
     formData.append('recommendationId', id!);
 
     try {
-      const res = await apiFetch('/api/documents/upload', {
+      const res = await apiFetch('/api/v1/documents/upload', {
         method: 'POST',
         body: formData
       });
@@ -203,7 +203,7 @@ export default function RecommendationDetails() {
     setSubmittingFollowUp(true);
 
     try {
-      const res = await apiFetch(`/api/recommendations/${id}/follow-ups`, {
+      const res = await apiFetch(`/api/v1/recommendations/${id}/follow-ups`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -233,7 +233,7 @@ export default function RecommendationDetails() {
     setSubmittingTicket(true);
 
     try {
-      const res = await apiFetch(`/api/glpi/recommendations/${id}/tickets`, {
+      const res = await apiFetch(`/api/v1/glpi/recommendations/${id}/tickets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -261,7 +261,7 @@ export default function RecommendationDetails() {
     if (!window.confirm('Êtes-vous sûr de vouloir délier ce ticket ?')) return;
 
     try {
-      const res = await apiFetch(`/api/glpi/recommendations/${id}/tickets/${linkId}`, {
+      const res = await apiFetch(`/api/v1/glpi/recommendations/${id}/tickets/${linkId}`, {
         method: 'DELETE'
       });
 
@@ -691,7 +691,7 @@ export default function RecommendationDetails() {
                   <li key={doc.id} className="py-3 flex items-center justify-between">
                     <div className="flex items-center min-w-0">
                       <Paperclip className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
-                      <a href={`/api/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                      <a href={`/api/v1/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
                         {doc.originalName}
                       </a>
                     </div>

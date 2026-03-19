@@ -28,12 +28,12 @@ export default function AdminSettings() {
   const fetchData = async () => {
     try {
       const [tenantsRes, usersRes, rolesRes, permsRes, rTokensRes, pTokensRes] = await Promise.all([
-        apiFetch('/api/admin/tenants'),
-        apiFetch('/api/admin/users'),
-        apiFetch('/api/admin/roles'),
-        apiFetch('/api/admin/permissions'),
-        apiFetch('/api/admin/tokens/refresh'),
-        apiFetch('/api/admin/tokens/reset')
+        apiFetch('/api/v1/admin/tenants'),
+        apiFetch('/api/v1/admin/users'),
+        apiFetch('/api/v1/admin/roles'),
+        apiFetch('/api/v1/admin/permissions'),
+        apiFetch('/api/v1/admin/tokens/refresh'),
+        apiFetch('/api/v1/admin/tokens/reset')
       ]);
 
       setTenants(await tenantsRes.json());
@@ -60,7 +60,7 @@ export default function AdminSettings() {
     e.preventDefault();
     try {
       const method = isEditingTenant ? 'PUT' : 'POST';
-      const url = isEditingTenant ? `/api/admin/tenants/${tenantForm.id}` : '/api/admin/tenants';
+      const url = isEditingTenant ? `/api/v1/admin/tenants/${tenantForm.id}` : '/api/v1/admin/tenants';
       
       const res = await apiFetch(url, {
         method,
@@ -81,7 +81,7 @@ export default function AdminSettings() {
 
   const toggleTenantStatus = async (tenant: any) => {
     try {
-      await apiFetch(`/api/admin/tenants/${tenant.id}`, {
+      await apiFetch(`/api/v1/admin/tenants/${tenant.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !tenant.isActive })
@@ -98,7 +98,7 @@ export default function AdminSettings() {
     e.preventDefault();
     try {
       const method = isEditingUser ? 'PUT' : 'POST';
-      const url = isEditingUser ? `/api/admin/users/${userForm.id}` : '/api/admin/users';
+      const url = isEditingUser ? `/api/v1/admin/users/${userForm.id}` : '/api/v1/admin/users';
       
       const payload = { ...userForm };
       payload.tenantId = parseInt(payload.tenantId, 10);
@@ -121,10 +121,31 @@ export default function AdminSettings() {
     }
   };
 
+  const approveUser = async (id: number) => {
+    if (!confirm('Valider cet utilisateur ? Il pourra ensuite se connecter.')) return;
+
+    try {
+      const res = await apiFetch(`/api/v1/admin/users/${id}/approve`, {
+        method: 'PATCH'
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la validation');
+      }
+
+      showMessage(data.message || 'Utilisateur validé avec succès');
+      fetchData();
+    } catch (err: any) {
+      showMessage(err.message, true);
+    }
+  };
+
   const deactivateUser = async (id: number) => {
     if(!confirm('Désactiver cet utilisateur ?')) return;
     try {
-      await apiFetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/v1/admin/users/${id}`, { method: 'DELETE' });
       showMessage('Utilisateur désactivé');
       fetchData();
     } catch (err: any) {
@@ -147,7 +168,7 @@ export default function AdminSettings() {
   const saveRolePermissions = async () => {
     if (!selectedRole) return;
     try {
-      const res = await apiFetch(`/api/admin/roles/${selectedRole.id}/permissions`, {
+      const res = await apiFetch(`/api/v1/admin/roles/${selectedRole.id}/permissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ permissionIds: rolePermissions })
@@ -164,7 +185,7 @@ export default function AdminSettings() {
   const revokeRefreshToken = async (id: number) => {
     if(!confirm('Révoquer ce token déconnectera immédiatement l\'utilisateur. Continuer ?')) return;
     try {
-      await apiFetch(`/api/admin/tokens/refresh/${id}/revoke`, { method: 'POST' });
+      await apiFetch(`/api/v1/admin/tokens/refresh/${id}/revoke`, { method: 'POST' });
       showMessage('Refresh Token révoqué');
       fetchData();
     } catch (err: any) {
@@ -175,7 +196,7 @@ export default function AdminSettings() {
   const invalidateResetToken = async (id: number) => {
     if(!confirm('Invalider ce token de réinitialisation ?')) return;
     try {
-      await apiFetch(`/api/admin/tokens/reset/${id}/revoke`, { method: 'POST' });
+      await apiFetch(`/api/v1/admin/tokens/reset/${id}/revoke`, { method: 'POST' });
       showMessage('Password Reset Token invalidé');
       fetchData();
     } catch (err: any) {
@@ -353,13 +374,50 @@ export default function AdminSettings() {
                       <td className="px-4 py-3 text-slate-600">{u.tenant?.name}</td>
                       <td className="px-4 py-3 text-slate-600">{u.role?.name}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-md text-xs font-medium ${u.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {/* <span className={`px-2 py-1 rounded-md text-xs font-medium ${u.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {u.status}
+                        </span> */}
+                        <span
+                          className={`px-2 py-1 rounded-md text-xs font-medium ${
+                            u.status === 'ACTIVE'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : u.status === 'PENDING'
+                              ? 'bg-amber-100 text-amber-700'
+                              : u.status === 'LOCKED'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
                           {u.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right space-x-3">
+                      {/* <td className="px-4 py-3 text-right space-x-3">
                         <button onClick={() => { setIsEditingUser(true); setUserForm(u); }} className="text-indigo-600 hover:underline">Éditer</button>
                         <button onClick={() => deactivateUser(u.id)} className="text-red-600 hover:underline">Désactiver</button>
+                      </td> */}
+                      <td className="px-4 py-3 text-right space-x-3">
+                        {u.status === 'PENDING' && (
+                          <button
+                            onClick={() => approveUser(u.id)}
+                            className="text-emerald-600 hover:underline"
+                          >
+                            Valider
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => { setIsEditingUser(true); setUserForm(u); }}
+                          className="text-indigo-600 hover:underline"
+                        >
+                          Éditer
+                        </button>
+
+                        <button
+                          onClick={() => deactivateUser(u.id)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Désactiver
+                        </button>
                       </td>
                     </tr>
                   ))}

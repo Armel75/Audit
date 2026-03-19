@@ -39,7 +39,7 @@ export default function AuditPlans() {
 
   const fetchPlans = async () => {
     try {
-      const response = await apiFetch('/api/plans');
+      const response = await apiFetch('/api/v1/plans');
       if (response.ok) {
         const data = await response.json();
         setPlans(data);
@@ -74,7 +74,7 @@ export default function AuditPlans() {
   const handleDelete = async (id: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce plan ?')) return;
     try {
-      const response = await apiFetch(`/api/plans/${id}`, {
+      const response = await apiFetch(`/api/v1/plans/${id}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -91,7 +91,7 @@ export default function AuditPlans() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const url = editingPlan ? `/api/plans/${editingPlan.id}` : '/api/plans';
+      const url = editingPlan ? `/api/v1/plans/${editingPlan.id}` : '/api/v1/plans';
       const method = editingPlan ? 'PUT' : 'POST';
       
       const response = await apiFetch(url, {

@@ -16,7 +16,7 @@ const prismaClientSingleton = () => {
                 data: {
                   action: operation.toUpperCase(),
                   entityName: model,
-                  entityId: (result as any)?.id || 'UNKNOWN',
+                  entityId: String((result as any)?.id ?? 'UNKNOWN'),
                   newValues: operation !== 'delete' ? JSON.stringify(result) : null,
                   // oldValues would require a pre-query fetch in a full implementation
                 }

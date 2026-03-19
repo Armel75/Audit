@@ -15,7 +15,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabType>('departments');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
+
   // Data states
   const [departments, setDepartments] = useState<Department[]>([]);
   const [userDepartments, setUserDepartments] = useState<UserDepartment[]>([]);
@@ -38,12 +38,12 @@ export default function Settings() {
   const fetchData = async () => {
     try {
       const [deptRes, udRes, auditRes, riskRes, priorityRes, usersRes] = await Promise.all([
-        apiFetch('/api/settings/departments'),
-        apiFetch('/api/settings/user-departments'),
-        apiFetch('/api/settings/audit-types'),
-        apiFetch('/api/settings/risk-levels'),
-        apiFetch('/api/settings/priority-levels'),
-        apiFetch('/api/admin/users') // To populate dropdowns
+        apiFetch('/api/v1/settings/departments'),
+        apiFetch('/api/v1/settings/user-departments'),
+        apiFetch('/api/v1/settings/audit-types'),
+        apiFetch('/api/v1/settings/risk-levels'),
+        apiFetch('/api/v1/settings/priority-levels'),
+        apiFetch('/api/v1/admin/users') // To populate dropdowns
       ]);
 
       if (!deptRes.ok) throw new Error('Erreur lors du chargement des départements');
@@ -57,8 +57,8 @@ export default function Settings() {
       setAuditTypes(await auditRes.json());
       setRiskLevels(await riskRes.json());
       setPriorityLevels(await priorityRes.json());
-      
-      if(usersRes.ok) {
+
+      if (usersRes.ok) {
         setUsers(await usersRes.json());
       }
     } catch (err: any) {
@@ -90,10 +90,10 @@ export default function Settings() {
   const handleDelete = async (id: any, endpoint: string, isComposite = false) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) return;
     try {
-      const url = isComposite 
-        ? `/api/settings/${endpoint}/${id.userId}/${id.departmentId}`
-        : `/api/settings/${endpoint}/${id}`;
-        
+      const url = isComposite
+        ? `/api/v1/settings/${endpoint}/${id.userId}/${id.departmentId}`
+        : `/api/v1/settings/${endpoint}/${id}`;
+
       const res = await apiFetch(url, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
@@ -110,14 +110,14 @@ export default function Settings() {
     e.preventDefault();
     try {
       const method = isEditing ? 'PUT' : 'POST';
-      let url = `/api/settings/${endpoint}`;
-      
+      let url = `/api/v1/settings/${endpoint}`;
+
       if (isEditing) {
-        url = isComposite 
-          ? `/api/settings/${endpoint}/${currentId.userId}/${currentId.departmentId}`
-          : `/api/settings/${endpoint}/${currentId}`;
+        url = isComposite
+          ? `/api/v1/settings/${endpoint}/${currentId.userId}/${currentId.departmentId}`
+          : `/api/v1/settings/${endpoint}/${currentId}`;
       }
-      
+
       const payload = { ...formData };
       if (payload.level) payload.level = parseInt(payload.level, 10);
 
@@ -142,7 +142,7 @@ export default function Settings() {
     }
   };
 
-  const renderForm = (endpoint: string, fields: {name: string, label: string, type: string, options?: any[]}[], isComposite = false) => (
+  const renderForm = (endpoint: string, fields: { name: string, label: string, type: string, options?: any[] }[], isComposite = false) => (
     <form onSubmit={(e) => handleSubmit(e, endpoint, isComposite)} className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8">
       <h3 className="text-lg font-semibold text-slate-900 mb-4">
         {isEditing ? 'Modifier' : 'Ajouter'} un élément
@@ -154,7 +154,7 @@ export default function Settings() {
             {f.type === 'select' ? (
               <select
                 value={formData[f.name] || ''}
-                onChange={(e) => setFormData({...formData, [f.name]: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
                 required={!isEditing || !isComposite} // disable changing IDs on edit for composite
                 disabled={isEditing && isComposite && (f.name === 'userId' || f.name === 'departmentId')}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
@@ -169,7 +169,7 @@ export default function Settings() {
                 <input
                   type="checkbox"
                   checked={formData[f.name] || false}
-                  onChange={(e) => setFormData({...formData, [f.name]: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, [f.name]: e.target.checked })}
                   className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                 />
                 <span className="ml-2 text-sm text-slate-700">{f.label}</span>
@@ -178,7 +178,7 @@ export default function Settings() {
               <input
                 type={f.type}
                 value={formData[f.name] || ''}
-                onChange={(e) => setFormData({...formData, [f.name]: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
                 required={f.type !== 'date' && f.type !== 'color'}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -206,7 +206,7 @@ export default function Settings() {
     </form>
   );
 
-  const renderTable = (data: any[], endpoint: string, columns: {key: string, label: string, render?: (item: any) => React.ReactNode}[], isComposite = false) => (
+  const renderTable = (data: any[], endpoint: string, columns: { key: string, label: string, render?: (item: any) => React.ReactNode }[], isComposite = false) => (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm text-left">
@@ -296,9 +296,8 @@ export default function Settings() {
               setFormData({});
               setCurrentId(null);
             }}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-              activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
           >
             {tab.label}
           </button>
@@ -360,12 +359,14 @@ export default function Settings() {
             {renderTable(riskLevels, 'risk-levels', [
               { key: 'name', label: 'Nom' },
               { key: 'level', label: 'Valeur' },
-              { key: 'color', label: 'Couleur', render: (item) => (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: item.color || '#ccc' }}></div>
-                  <span className="font-mono text-xs">{item.color || 'N/A'}</span>
-                </div>
-              )}
+              {
+                key: 'color', label: 'Couleur', render: (item) => (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: item.color || '#ccc' }}></div>
+                    <span className="font-mono text-xs">{item.color || 'N/A'}</span>
+                  </div>
+                )
+              }
             ])}
           </>
         )}
