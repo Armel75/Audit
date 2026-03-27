@@ -1,26 +1,32 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 import prisma from '@audit/database';
-import { authenticateToken } from '../middleware/auth.middleware';
 import { AuthService } from '../services/auth.service';
+import { forgotPassword } from '../controllers/auth.controller';
 
 const router = Router();
 
 const ACCESS_TOKEN_EXPIRES_IN = '15m'; // Short-lived JWT
 const REFRESH_TOKEN_EXPIRES_DAYS = 7; // Long-lived refresh token
-const RESET_TOKEN_EXPIRES_HOURS = 1; // Limited-lifetime reset token
+//const RESET_TOKEN_EXPIRES_HOURS = 1; // Limited-lifetime reset token
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_development_only';
 
 // Helper to generate tokens
 const generateAccessToken = (user: any) => {
+  const permissions =
+    user?.role?.permissions?.map((p: any) => p?.permission?.code) || [];
+
+  if (!Array.isArray(permissions)) {
+    throw new Error('[AUTH] Permissions invalid in token generation');
+  }
+
   return jwt.sign(
     { 
       id: user.id, 
       tenantId: user.tenantId, 
-      permissions: user.role?.permissions?.map((p: any) => p.permission.code) || [] 
+      permissions
     },
     JWT_SECRET,
     { expiresIn: ACCESS_TOKEN_EXPIRES_IN }
@@ -170,14 +176,15 @@ router.post('/logout', async (req, res) => {
         await prisma.refreshToken.delete({
           where: { id: storedToken.id }
         });
-        
-        const ipAddress = req.ip || req.socket.remoteAddress;
-        const userAgent = req.headers['user-agent'];
-        await AuthService.logAudit('LOGOUT', storedToken.userId, ipAddress, userAgent);
       }
     }
 
-    res.clearCookie('refreshToken');
+    //res.clearCookie('refreshToken');
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+    });
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
@@ -185,81 +192,35 @@ router.post('/logout', async (req, res) => {
   }
 });
 
-router.post('/forgot-password', async (req, res) => {
-  try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { email } });
-    
-    if (user) {
-      const resetToken = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + RESET_TOKEN_EXPIRES_HOURS);
-
-      await prisma.passwordResetToken.create({
-        data: {
-          token: resetToken,
-          userId: user.id,
-          expiresAt
-        }
-      });
-
-      // Simulate sending email
-      console.log(`[Email Simulation] Password reset token for ${email}: ${resetToken}`);
-    }
-
-    // Always return success to prevent email enumeration
-    res.json({ message: 'If the email exists, a reset link has been sent.' });
-  } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
 router.post('/reset-password', async (req, res) => {
   try {
     const { token, newPassword } = req.body;
-    
+
     if (!token || !newPassword) {
       return res.status(400).json({ error: 'Token and new password are required' });
     }
 
-    const resetToken = await prisma.passwordResetToken.findUnique({
-      where: { token }
+    await AuthService.resetPassword(token, newPassword);
+
+    return res.json({
+      message: 'Mot de passe mis à jour'
     });
 
-    if (!resetToken || resetToken.used) {
-      return res.status(400).json({ error: 'Invalid or already used token' });
-    }
-
-    if (resetToken.expiresAt < new Date()) {
-      return res.status(400).json({ error: 'Token has expired' });
-    }
-
-    const passwordHash = await bcrypt.hash(newPassword, 10);
-
-    // Update password and mark token as used in a transaction
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: resetToken.userId },
-        data: { passwordHash }
-      }),
-      prisma.passwordResetToken.update({
-        where: { id: resetToken.id },
-        data: { used: true }
-      })
-    ]);
-
-    res.json({ message: 'Password has been reset successfully' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Reset password error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+
+    if (error.message === 'INVALID_TOKEN') {
+      return res.status(400).json({ error: 'Token invalide ou expiré' });
+    }
+
+    if (error.message === 'WEAK_PASSWORD') {
+      return res.status(400).json({ error: 'Mot de passe trop faible' });
+    }
+
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 router.post('/register', async (req, res) => {
   try {
@@ -295,6 +256,10 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12); // Use cost 12 for better security
     const role = await prisma.role.findFirst({ where: { name: 'Auditeur' } });
 
+    if (!role) {
+      return res.status(500).json({ error: 'Role introuvable' });
+    }
+
     const user = await prisma.user.create({
       data: {
         tenantId: tenant.id,
@@ -304,7 +269,7 @@ router.post('/register', async (req, res) => {
         firstName,
         lastName,
         status: 'PENDING',
-        roleId: role?.id || null,
+        roleId: role.id, // ✅ toujours défini
       }
     });
 
@@ -314,5 +279,7 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ error: 'Erreur interne du serveur' });
   }
 });
+
+router.post("/forgot-password", forgotPassword);
 
 export default router;

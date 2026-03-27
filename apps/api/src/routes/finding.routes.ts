@@ -5,11 +5,11 @@ import * as findingController from '../controllers/finding.controller';
 const router = Router();
 router.use(requireAuth);
 
-router.get('/', requirePermission('can_view_tasks'), findingController.getFindings);
-router.get('/:id', requirePermission('can_view_tasks'), findingController.getFinding);
-router.post('/', requirePermission('can_manage_tasks'), findingController.createFinding);
-router.put('/:id', requirePermission('can_manage_tasks'), findingController.updateFinding);
-router.patch('/:id/status', requirePermission('can_manage_tasks'), findingController.updateFindingStatus);
-router.post('/:id/comments', requirePermission('can_view_tasks'), findingController.addFindingComment);
+router.get('/', findingController.getFindings);
+router.get('/:id', findingController.getFinding);
+router.post('/', findingController.createFinding);
+router.put('/:id', findingController.updateFinding);
+router.patch('/:id/status', findingController.updateFindingStatus);
+router.post('/:id/comments', findingController.addFindingComment);
 
 export default router;

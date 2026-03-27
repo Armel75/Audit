@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { 
-  Building2, 
-  GitMerge, 
-  ShieldCheck, 
-  AlertTriangle, 
+import {
+  Building2,
+  GitMerge,
+  ShieldCheck,
+  AlertTriangle,
   Link as LinkIcon,
   Plus,
   Pencil,
@@ -34,6 +34,7 @@ export default function Referential() {
   const [processes, setProcesses] = useState<any[]>([]);
   const [controls, setControls] = useState<any[]>([]);
   const [risks, setRisks] = useState<any[]>([]);
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     fetchData();
@@ -50,36 +51,15 @@ export default function Referential() {
     }
   };
 
-  // const fetchReferenceData = async () => {
-  //   try {
-  //     const [depsRes, usersRes, entRes, procRes, ctrlRes, riskRes] = await Promise.all([
-  //       apiFetch('/api/v1/settings/departments'),
-  //       apiFetch('/api/v1/users'),
-  //       apiFetch('/api/v1/referential/auditable-entities'),
-  //       apiFetch('/api/v1/referential/business-processes'),
-  //       apiFetch('/api/v1/referential/controls'),
-  //       apiFetch('/api/v1/referential/risks')
-  //     ]);
-  //     setDepartments(depsRes);
-  //     setUsers(usersRes);
-  //     setEntities(entRes);
-  //     setProcesses(procRes);
-  //     setControls(ctrlRes);
-  //     setRisks(riskRes);
-  //   } catch (err) {
-  //     console.error('Error fetching reference data:', err);
-  //   }
-  // };
-
   const fetchReferenceData = async () => {
     try {
       const [depsRes, usersRes, entRes, procRes, ctrlRes, riskRes] = await Promise.all([
-        apiFetch('/api/v1/settings/departments'),
-        apiFetch('/api/v1/users'),
-        apiFetch('/api/v1/referential/auditable-entities'),
-        apiFetch('/api/v1/referential/business-processes'),
-        apiFetch('/api/v1/referential/controls'),
-        apiFetch('/api/v1/referential/risks')
+        apiFetch(`${API_BASE}/settings/departments`),
+        apiFetch(`${API_BASE}/users`),
+        apiFetch(`${API_BASE}/referential/auditable-entities`),
+        apiFetch(`${API_BASE}/referential/business-processes`),
+        apiFetch(`${API_BASE}/referential/controls`),
+        apiFetch(`${API_BASE}/referential/risks`)
       ]);
 
       const [
@@ -109,25 +89,6 @@ export default function Referential() {
     }
   };
 
-  // const fetchData = async () => {
-  //   setLoading(true);
-  //   try {
-  //     let endpoint = '';
-  //     switch (activeTab) {
-  //       case 'entities': endpoint = '/api/v1/referential/auditable-entities'; break;
-  //       case 'processes': endpoint = '/api/v1/referential/business-processes'; break;
-  //       case 'controls': endpoint = '/api/v1/referential/controls'; break;
-  //       case 'risks': endpoint = '/api/v1/referential/risks'; break;
-  //       case 'risk-controls': endpoint = '/api/v1/referential/risk-controls'; break;
-  //     }
-  //     const res = await apiFetch(endpoint);
-  //     setData(res);
-  //   } catch (err: any) {
-  //     showMessage(err.message || 'Erreur lors du chargement des données', true);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const fetchData = async () => {
     setLoading(true);
@@ -135,19 +96,19 @@ export default function Referential() {
       let endpoint = '';
       switch (activeTab) {
         case 'entities':
-          endpoint = '/api/v1/referential/auditable-entities';
+          endpoint = `${API_BASE}/referential/auditable-entities`;
           break;
         case 'processes':
-          endpoint = '/api/v1/referential/business-processes';
+          endpoint = `${API_BASE}/referential/business-processes`;
           break;
         case 'controls':
-          endpoint = '/api/v1/referential/controls';
+          endpoint = `${API_BASE}/referential/controls`;
           break;
         case 'risks':
-          endpoint = '/api/v1/referential/risks';
+          endpoint = `${API_BASE}/referential/risks`;
           break;
         case 'risk-controls':
-          endpoint = '/api/v1/referential/risk-controls';
+          endpoint = `${API_BASE}/referential/risk-controls`;
           break;
       }
 
@@ -180,11 +141,11 @@ export default function Referential() {
     try {
       let endpoint = '';
       switch (activeTab) {
-        case 'entities': endpoint = `/api/v1/referential/auditable-entities/${id}`; break;
-        case 'processes': endpoint = `/api/v1/referential/business-processes/${id}`; break;
-        case 'controls': endpoint = `/api/v1/referential/controls/${id}`; break;
-        case 'risks': endpoint = `/api/v1/referential/risks/${id}`; break;
-        case 'risk-controls': endpoint = `/api/v1/referential/risk-controls/${id}`; break;
+        case 'entities': endpoint = `${API_BASE}/referential/auditable-entities/${id}`; break;
+        case 'processes': endpoint = `${API_BASE}/referential/business-processes/${id}`; break;
+        case 'controls': endpoint = `${API_BASE}/referential/controls/${id}`; break;
+        case 'risks': endpoint = `${API_BASE}/referential/risks/${id}`; break;
+        case 'risk-controls': endpoint = `${API_BASE}/referential/risk-controls/${id}`; break;
       }
       await apiFetch(endpoint, { method: 'DELETE' });
       showMessage('Élément supprimé avec succès');
@@ -200,24 +161,45 @@ export default function Referential() {
     try {
       let endpoint = '';
       switch (activeTab) {
-        case 'entities': endpoint = '/api/v1/referential/auditable-entities'; break;
-        case 'processes': endpoint = '/api/v1/referential/business-processes'; break;
-        case 'controls': endpoint = '/api/v1/referential/controls'; break;
-        case 'risks': endpoint = '/api/v1/referential/risks'; break;
-        case 'risk-controls': endpoint = '/api/v1/referential/risk-controls'; break;
+        case 'entities': endpoint = `${API_BASE}/referential/auditable-entities`; break;
+        case 'processes': endpoint = `${API_BASE}/referential/business-processes`; break;
+        case 'controls': endpoint = `${API_BASE}/referential/controls`; break;
+        case 'risks': endpoint = `${API_BASE}/referential/risks`; break;
+        case 'risk-controls': endpoint = `${API_BASE}/referential/risk-controls`; break;
       }
 
       const method = currentRecord ? 'PUT' : 'POST';
       const url = currentRecord ? `${endpoint}/${currentRecord.id}` : endpoint;
 
       // Clean up payload based on tab
-      const payload = { ...formData };
-      
+      //const payload = { ...formData };
+      const payload = {
+        ...formData,
+
+        inherentImpact:
+          formData.inherentImpact === '' ? null : Number(formData.inherentImpact),
+
+        inherentLikelihood:
+          formData.inherentLikelihood === '' ? null : Number(formData.inherentLikelihood),
+
+        businessProcessId:
+          formData.businessProcessId === '' ? null : Number(formData.businessProcessId),
+
+        auditableEntityId:
+          formData.auditableEntityId === '' ? null : Number(formData.auditableEntityId),
+
+        ownerDepartmentId:
+          formData.ownerDepartmentId === '' ? null : Number(formData.ownerDepartmentId),
+      };
+
       await apiFetch(url, {
         method,
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
-
+      console.log('PAYLOAD SENT:', payload);
       showMessage(currentRecord ? 'Élément mis à jour' : 'Élément créé');
       setIsEditing(false);
       fetchData();
@@ -249,7 +231,7 @@ export default function Referential() {
                   type="text"
                   required
                   value={formData.code || ''}
-                  onChange={e => setFormData({...formData, code: e.target.value})}
+                  onChange={e => setFormData({ ...formData, code: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -259,7 +241,7 @@ export default function Referential() {
                   type="text"
                   required
                   value={formData.name || ''}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -275,7 +257,7 @@ export default function Referential() {
                   <select
                     required
                     value={formData.entityType || ''}
-                    onChange={e => setFormData({...formData, entityType: e.target.value})}
+                    onChange={e => setFormData({ ...formData, entityType: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Sélectionner...</option>
@@ -289,7 +271,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Criticité</label>
                   <select
                     value={formData.criticality || ''}
-                    onChange={e => setFormData({...formData, criticality: e.target.value})}
+                    onChange={e => setFormData({ ...formData, criticality: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Sélectionner...</option>
@@ -304,7 +286,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Entité Parente</label>
                   <select
                     value={formData.parentId || ''}
-                    onChange={e => setFormData({...formData, parentId: e.target.value})}
+                    onChange={e => setFormData({ ...formData, parentId: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Aucune</option>
@@ -317,7 +299,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Département Propriétaire</label>
                   <select
                     value={formData.ownerDepartmentId || ''}
-                    onChange={e => setFormData({...formData, ownerDepartmentId: e.target.value})}
+                    onChange={e => setFormData({ ...formData, ownerDepartmentId: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Aucun</option>
@@ -330,7 +312,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Manager</label>
                   <select
                     value={formData.managerUserId || ''}
-                    onChange={e => setFormData({...formData, managerUserId: e.target.value})}
+                    onChange={e => setFormData({ ...formData, managerUserId: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Aucun</option>
@@ -350,7 +332,7 @@ export default function Referential() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Entité Auditable</label>
                 <select
                   value={formData.auditableEntityId || ''}
-                  onChange={e => setFormData({...formData, auditableEntityId: e.target.value})}
+                  onChange={e => setFormData({ ...formData, auditableEntityId: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Aucune</option>
@@ -363,7 +345,7 @@ export default function Referential() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Département Propriétaire</label>
                 <select
                   value={formData.ownerDepartmentId || ''}
-                  onChange={e => setFormData({...formData, ownerDepartmentId: e.target.value})}
+                  onChange={e => setFormData({ ...formData, ownerDepartmentId: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Aucun</option>
@@ -383,7 +365,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Type de contrôle</label>
                   <select
                     value={formData.controlType || ''}
-                    onChange={e => setFormData({...formData, controlType: e.target.value})}
+                    onChange={e => setFormData({ ...formData, controlType: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Sélectionner...</option>
@@ -396,7 +378,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Fréquence</label>
                   <select
                     value={formData.frequency || ''}
-                    onChange={e => setFormData({...formData, frequency: e.target.value})}
+                    onChange={e => setFormData({ ...formData, frequency: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Sélectionner...</option>
@@ -413,7 +395,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Processus Métier</label>
                   <select
                     value={formData.businessProcessId || ''}
-                    onChange={e => setFormData({...formData, businessProcessId: e.target.value})}
+                    onChange={e => setFormData({ ...formData, businessProcessId: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Aucun</option>
@@ -426,7 +408,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Département Propriétaire</label>
                   <select
                     value={formData.ownerDepartmentId || ''}
-                    onChange={e => setFormData({...formData, ownerDepartmentId: e.target.value})}
+                    onChange={e => setFormData({ ...formData, ownerDepartmentId: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Aucun</option>
@@ -441,7 +423,7 @@ export default function Referential() {
                   <input
                     type="checkbox"
                     checked={formData.isKey || false}
-                    onChange={e => setFormData({...formData, isKey: e.target.checked})}
+                    onChange={e => setFormData({ ...formData, isKey: e.target.checked })}
                     className="rounded text-emerald-600 focus:ring-emerald-500"
                   />
                   <span className="text-sm text-slate-700">Contrôle Clé</span>
@@ -450,7 +432,7 @@ export default function Referential() {
                   <input
                     type="checkbox"
                     checked={formData.isAutomated || false}
-                    onChange={e => setFormData({...formData, isAutomated: e.target.checked})}
+                    onChange={e => setFormData({ ...formData, isAutomated: e.target.checked })}
                     className="rounded text-emerald-600 focus:ring-emerald-500"
                   />
                   <span className="text-sm text-slate-700">Automatisé</span>
@@ -467,7 +449,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Catégorie</label>
                   <select
                     value={formData.category || ''}
-                    onChange={e => setFormData({...formData, category: e.target.value})}
+                    onChange={e => setFormData({ ...formData, category: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Sélectionner...</option>
@@ -483,7 +465,7 @@ export default function Referential() {
                     type="number"
                     min="1" max="5"
                     value={formData.inherentImpact || ''}
-                    onChange={e => setFormData({...formData, inherentImpact: e.target.value})}
+                    onChange={e => setFormData({ ...formData, inherentImpact: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -493,7 +475,7 @@ export default function Referential() {
                     type="number"
                     min="1" max="5"
                     value={formData.inherentLikelihood || ''}
-                    onChange={e => setFormData({...formData, inherentLikelihood: e.target.value})}
+                    onChange={e => setFormData({ ...formData, inherentLikelihood: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -503,7 +485,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Processus Métier</label>
                   <select
                     value={formData.businessProcessId || ''}
-                    onChange={e => setFormData({...formData, businessProcessId: e.target.value})}
+                    onChange={e => setFormData({ ...formData, businessProcessId: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Aucun</option>
@@ -516,7 +498,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Entité Auditable</label>
                   <select
                     value={formData.auditableEntityId || ''}
-                    onChange={e => setFormData({...formData, auditableEntityId: e.target.value})}
+                    onChange={e => setFormData({ ...formData, auditableEntityId: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Aucune</option>
@@ -529,7 +511,7 @@ export default function Referential() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Département Propriétaire</label>
                   <select
                     value={formData.ownerDepartmentId || ''}
-                    onChange={e => setFormData({...formData, ownerDepartmentId: e.target.value})}
+                    onChange={e => setFormData({ ...formData, ownerDepartmentId: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Aucun</option>
@@ -550,7 +532,7 @@ export default function Referential() {
                 <select
                   required
                   value={formData.riskId || ''}
-                  onChange={e => setFormData({...formData, riskId: e.target.value})}
+                  onChange={e => setFormData({ ...formData, riskId: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Sélectionner...</option>
@@ -564,7 +546,7 @@ export default function Referential() {
                 <select
                   required
                   value={formData.controlId || ''}
-                  onChange={e => setFormData({...formData, controlId: e.target.value})}
+                  onChange={e => setFormData({ ...formData, controlId: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Sélectionner...</option>
@@ -577,7 +559,7 @@ export default function Referential() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Efficacité de conception</label>
                 <select
                   value={formData.designEffectiveness || ''}
-                  onChange={e => setFormData({...formData, designEffectiveness: e.target.value})}
+                  onChange={e => setFormData({ ...formData, designEffectiveness: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Sélectionner...</option>
@@ -590,7 +572,7 @@ export default function Referential() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Efficacité opérationnelle</label>
                 <select
                   value={formData.operatingEffectiveness || ''}
-                  onChange={e => setFormData({...formData, operatingEffectiveness: e.target.value})}
+                  onChange={e => setFormData({ ...formData, operatingEffectiveness: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Sélectionner...</option>
@@ -609,7 +591,7 @@ export default function Referential() {
               <textarea
                 rows={3}
                 value={formData.description || ''}
-                onChange={e => setFormData({...formData, description: e.target.value})}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -622,7 +604,7 @@ export default function Referential() {
                 type="checkbox"
                 id="isActive"
                 checked={formData.isActive !== false}
-                onChange={e => setFormData({...formData, isActive: e.target.checked})}
+                onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
                 className="rounded text-emerald-600 focus:ring-emerald-500"
               />
               <label htmlFor="isActive" className="text-sm text-slate-700">Actif</label>
@@ -661,12 +643,12 @@ export default function Referential() {
               <tr>
                 {activeTab !== 'risk-controls' && <th className="px-6 py-4">Code</th>}
                 {activeTab !== 'risk-controls' && <th className="px-6 py-4">Nom</th>}
-                
+
                 {activeTab === 'entities' && <th className="px-6 py-4">Type</th>}
                 {activeTab === 'processes' && <th className="px-6 py-4">Entité</th>}
                 {activeTab === 'controls' && <th className="px-6 py-4">Type</th>}
                 {activeTab === 'risks' && <th className="px-6 py-4">Catégorie</th>}
-                
+
                 {activeTab === 'risk-controls' && <th className="px-6 py-4">Risque</th>}
                 {activeTab === 'risk-controls' && <th className="px-6 py-4">Contrôle</th>}
                 {activeTab === 'risk-controls' && <th className="px-6 py-4">Efficacité</th>}
@@ -680,7 +662,7 @@ export default function Referential() {
                 <tr key={item.id} className="hover:bg-slate-50">
                   {activeTab !== 'risk-controls' && <td className="px-6 py-4 font-medium text-slate-900">{item.code}</td>}
                   {activeTab !== 'risk-controls' && <td className="px-6 py-4">{item.name}</td>}
-                  
+
                   {activeTab === 'entities' && <td className="px-6 py-4">{item.entityType}</td>}
                   {activeTab === 'processes' && <td className="px-6 py-4">{item.auditableEntity?.name || '-'}</td>}
                   {activeTab === 'controls' && <td className="px-6 py-4">{item.controlType || '-'}</td>}
@@ -699,9 +681,8 @@ export default function Referential() {
 
                   {activeTab !== 'risk-controls' && (
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'
-                      }`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'
+                        }`}>
                         {item.isActive ? 'Actif' : 'Inactif'}
                       </span>
                     </td>
@@ -767,45 +748,40 @@ export default function Referential() {
       <div className="flex overflow-x-auto border-b border-slate-200">
         <button
           onClick={() => { setActiveTab('entities'); setIsEditing(false); }}
-          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-            activeTab === 'entities' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-          }`}
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'entities' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            }`}
         >
           <Building2 className="w-4 h-4" />
           Entités Auditables
         </button>
         <button
           onClick={() => { setActiveTab('processes'); setIsEditing(false); }}
-          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-            activeTab === 'processes' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-          }`}
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'processes' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            }`}
         >
           <GitMerge className="w-4 h-4" />
           Processus Métiers
         </button>
         <button
           onClick={() => { setActiveTab('risks'); setIsEditing(false); }}
-          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-            activeTab === 'risks' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-          }`}
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'risks' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            }`}
         >
           <AlertTriangle className="w-4 h-4" />
           Risques
         </button>
         <button
           onClick={() => { setActiveTab('controls'); setIsEditing(false); }}
-          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-            activeTab === 'controls' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-          }`}
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'controls' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            }`}
         >
           <ShieldCheck className="w-4 h-4" />
           Contrôles
         </button>
         <button
           onClick={() => { setActiveTab('risk-controls'); setIsEditing(false); }}
-          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-            activeTab === 'risk-controls' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-          }`}
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'risk-controls' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            }`}
         >
           <LinkIcon className="w-4 h-4" />
           Matrice Risques-Contrôles

@@ -4,9 +4,16 @@ import path from 'path';
 import fs from 'fs';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import { runBootstrap } from './bootstrap';
 
 // Load env from root
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+const envPath = path.join(process.cwd(), '.env');
+
+if (!fs.existsSync(envPath)) {
+  console.warn('⚠️ .env not found at:', envPath);
+} else {
+  dotenv.config({ path: envPath });
+}
 
 // Routes
 import authRoutes from './routes/auth.routes';
@@ -25,13 +32,15 @@ import evidenceRoutes from './routes/evidence.routes';
 import approvalRoutes from './routes/approval.routes';
 import notificationRoutes from './routes/notification.routes';
 import auditLogRoutes from './routes/auditLog.routes';
+import auditableEntityRoutes from './routes/auditableEntity.routes';
+import businessProcessRoutes from './routes/businessProcess.routes';
 
-// Bootstrap
-import { bootstrapAdmin } from './bootstrap/adminBootstrap';
+console.log('authRoutes:', authRoutes);
+console.log("ENV LOADED:", process.env.JWT_SECRET);
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.NODE_ENV === 'production' ? 3003 : parseInt(process.env.API_PORT || '3003', 10);
+  const PORT = process.env.NODE_ENV === 'production' ? 3007 : parseInt(process.env.API_PORT || '3007', 10);
 
   app.use(cors({
     origin: true,
@@ -63,6 +72,8 @@ async function startServer() {
   app.use('/api/v1/approvals', approvalRoutes);
   app.use('/api/v1/notifications', notificationRoutes);
   app.use('/api/v1/audit-logs', auditLogRoutes);
+  app.use('/api/v1/auditable-entities', auditableEntityRoutes);
+  app.use('/api/v1/business-processes', businessProcessRoutes);
 
   app.get('/api/v1/health', (req, res) => {
     res.json({ status: 'ok', service: 'SISAR API', tenant: 'SOREPCO' });
@@ -77,7 +88,7 @@ async function startServer() {
   }
 
   try {
-    await bootstrapAdmin();
+    await runBootstrap();
   } catch (error) {
     console.error('[BOOTSTRAP] Failed to bootstrap admin:', error);
     // Optionally decide if server should crash or continue

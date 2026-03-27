@@ -61,6 +61,7 @@ export default function AuditPlanDetails() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [editingHistory, setEditingHistory] = useState<AuditPlanStatusHistory | null>(null);
   const [historyForm, setHistoryForm] = useState({ reason: '' });
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     fetchPlanDetails();
@@ -68,7 +69,7 @@ export default function AuditPlanDetails() {
 
   const fetchPlanDetails = async () => {
     try {
-      const response = await apiFetch(`/api/plans/${id}`);
+      const response = await apiFetch(`${API_BASE}/plans/${id}`);
       if (response.ok) {
         const data = await response.json();
         setPlan(data);
@@ -83,7 +84,7 @@ export default function AuditPlanDetails() {
   const handleStatusChange = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await apiFetch(`/api/plans/${id}/status`, {
+      const response = await apiFetch(`${API_BASE}/plans/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(statusForm),
@@ -104,7 +105,7 @@ export default function AuditPlanDetails() {
   const handleCreateOrUpdateVersion = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const url = editingVersion ? `/api/plans/versions/${editingVersion.id}` : `/api/plans/${id}/versions`;
+      const url = editingVersion ? `${API_BASE}/plans/versions/${editingVersion.id}` : `${API_BASE}/plans/${id}/versions`;
       const method = editingVersion ? 'PUT' : 'POST';
 
       const response = await apiFetch(url, {
@@ -128,7 +129,7 @@ export default function AuditPlanDetails() {
   const handleDeleteVersion = async (versionId: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette version ?')) return;
     try {
-      const response = await apiFetch(`/api/plans/versions/${versionId}`, {
+      const response = await apiFetch(`${API_BASE}/plans/versions/${versionId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -146,7 +147,7 @@ export default function AuditPlanDetails() {
     e.preventDefault();
     if (!editingHistory) return;
     try {
-      const response = await apiFetch(`/api/plans/history/${editingHistory.id}`, {
+      const response = await apiFetch(`${API_BASE}/plans/history/${editingHistory.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(historyForm),
@@ -167,7 +168,7 @@ export default function AuditPlanDetails() {
   const handleDeleteHistory = async (historyId: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet historique ?')) return;
     try {
-      const response = await apiFetch(`/api/plans/history/${historyId}`, {
+      const response = await apiFetch(`${API_BASE}/plans/history/${historyId}`, {
         method: 'DELETE'
       });
       if (response.ok) {

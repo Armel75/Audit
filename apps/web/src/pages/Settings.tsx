@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Edit2, Trash2, Settings as SettingsIcon, AlertCircle, CheckCircle2, Users } from 'lucide-react';
+import { Edit2, Trash2, Settings as SettingsIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 // Types
 interface Department { id: number; name: string; code: string; }
 interface UserDepartment { user: { id: number; firstName: string; lastName: string; email: string; }; department: { id: number; name: string; code: string; }; isPrimary: boolean; startDate: string | null; endDate: string | null; }
-interface AuditType { id: number; name: string; }
+interface AuditType { id: number; name: string; isActive: boolean; }
 interface RiskLevel { id: number; name: string; color: string | null; level: number; }
 interface PriorityLevel { id: number; name: string; level: number; }
 
@@ -28,6 +28,7 @@ export default function Settings() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<any>(null); // can be number or object for composite keys
   const [formData, setFormData] = useState<any>({});
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   const showMessage = (msg: string, isError = false) => {
     if (isError) { setError(msg); setSuccess(null); }
@@ -38,12 +39,12 @@ export default function Settings() {
   const fetchData = async () => {
     try {
       const [deptRes, udRes, auditRes, riskRes, priorityRes, usersRes] = await Promise.all([
-        apiFetch('/api/v1/settings/departments'),
-        apiFetch('/api/v1/settings/user-departments'),
-        apiFetch('/api/v1/settings/audit-types'),
-        apiFetch('/api/v1/settings/risk-levels'),
-        apiFetch('/api/v1/settings/priority-levels'),
-        apiFetch('/api/v1/admin/users') // To populate dropdowns
+        apiFetch(`${API_BASE}/settings/departments`),
+        apiFetch(`${API_BASE}/settings/user-departments`),
+        apiFetch(`${API_BASE}/settings/audit-types`),
+        apiFetch(`${API_BASE}/settings/risk-levels`),
+        apiFetch(`${API_BASE}/settings/priority-levels`),
+        apiFetch(`${API_BASE}/admin/users`) // To populate dropdowns
       ]);
 
       if (!deptRes.ok) throw new Error('Erreur lors du chargement des départements');
@@ -91,8 +92,8 @@ export default function Settings() {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) return;
     try {
       const url = isComposite
-        ? `/api/v1/settings/${endpoint}/${id.userId}/${id.departmentId}`
-        : `/api/v1/settings/${endpoint}/${id}`;
+        ? `${API_BASE}/settings/${endpoint}/${id.userId}/${id.departmentId}`
+        : `${API_BASE}/settings/${endpoint}/${id}`;
 
       const res = await apiFetch(url, { method: 'DELETE' });
       if (!res.ok) {
@@ -106,16 +107,44 @@ export default function Settings() {
     }
   };
 
+  const handleToggleActive = async (item: any, endpoint: string) => {
+    const action = item.isActive ? 'désactiver' : 'réactiver';
+
+    if (!confirm(`Êtes-vous sûr de vouloir ${action} cet élément ?`)) return;
+
+    try {
+      const res = await apiFetch(`${API_BASE}/settings/${endpoint}/${item.id}`, {
+        method: 'DELETE' // on garde DELETE → soft delete backend
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erreur lors de l\'action');
+      }
+
+      showMessage(
+        item.isActive
+          ? 'Type d\'audit désactivé avec succès'
+          : 'Type d\'audit réactivé avec succès'
+      );
+
+      fetchData();
+    } catch (err: any) {
+      showMessage(err.message, true);
+    }
+  };
+
+
   const handleSubmit = async (e: React.FormEvent, endpoint: string, isComposite = false) => {
     e.preventDefault();
     try {
       const method = isEditing ? 'PUT' : 'POST';
-      let url = `/api/v1/settings/${endpoint}`;
+      let url = `${API_BASE}/settings/${endpoint}`;
 
       if (isEditing) {
         url = isComposite
-          ? `/api/v1/settings/${endpoint}/${currentId.userId}/${currentId.departmentId}`
-          : `/api/v1/settings/${endpoint}/${currentId}`;
+          ? `${API_BASE}/settings/${endpoint}/${currentId.userId}/${currentId.departmentId}`
+          : `${API_BASE}/settings/${endpoint}/${currentId}`;
       }
 
       const payload = { ...formData };
@@ -236,9 +265,27 @@ export default function Settings() {
                     <button onClick={() => handleEdit(item, isComposite)} className="text-indigo-600 hover:text-indigo-900">
                       <Edit2 className="w-4 h-4 inline" />
                     </button>
-                    <button onClick={() => handleDelete(id, endpoint, isComposite)} className="text-red-600 hover:text-red-900">
+                    {/* <button onClick={() => handleDelete(id, endpoint, isComposite)} className="text-red-600 hover:text-red-900">
                       <Trash2 className="w-4 h-4 inline" />
-                    </button>
+                    </button> */}
+                    {endpoint === 'audit-types' ? (
+                      <button
+                        onClick={() => handleToggleActive(item, endpoint)}
+                        className={item.isActive
+                          ? "text-red-600 hover:text-red-900"
+                          : "text-emerald-600 hover:text-emerald-900"}
+                        title={item.isActive ? "Désactiver" : "Réactiver"}
+                      >
+                        <Trash2 className="w-4 h-4 inline" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleDelete(id, endpoint, isComposite)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        <Trash2 className="w-4 h-4 inline" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
@@ -343,8 +390,18 @@ export default function Settings() {
             {renderForm('audit-types', [
               { name: 'name', label: 'Type d\'audit', type: 'text' }
             ])}
+
             {renderTable(auditTypes, 'audit-types', [
-              { key: 'name', label: 'Nom' }
+              { key: 'name', label: 'Nom' },
+
+              // ✅ NOUVELLE COLONNE STATUT
+              {
+                key: 'isActive',
+                label: 'Statut',
+                render: (item) => item.isActive
+                  ? <span className="text-emerald-600 font-medium">Actif</span>
+                  : <span className="text-red-500 font-medium">Inactif</span>
+              }
             ])}
           </>
         )}

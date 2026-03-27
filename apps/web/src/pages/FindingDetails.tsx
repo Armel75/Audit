@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, MessageSquare, Paperclip, User, Calendar, ShieldAlert, CheckCircle, XCircle, Upload, Plus, Target, Briefcase, FileText, Clock } from 'lucide-react';
 import RecommendationFormModal from '../components/RecommendationFormModal';
 import { apiFetch } from '../lib/api';
@@ -22,7 +22,7 @@ interface Finding {
   process: string | null;
   cause: string | null;
   impact: string | null;
-  status: 'DRAFT' | 'CONFIRMED' | 'ADDRESSED' | 'REJECTED';
+  status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED' | 'REJECTED';
   riskLevel: { name: string; color: string } | null;
   mission: { id: number; title: string; status: string };
   author: { firstName: string; lastName: string } | null;
@@ -54,9 +54,10 @@ interface Finding {
     evidenceType: string;
     source: string | null;
   }>;
+
   approvals: Array<{
     id: number;
-    status: string;
+    decision: string;
     comments: string | null;
     createdAt: string;
     approver: { firstName: string; lastName: string };
@@ -68,8 +69,8 @@ interface Finding {
 
 const statusConfig = {
   DRAFT: { label: 'Brouillon', color: 'bg-slate-100 text-slate-800' },
+  SUBMITTED: { label: 'Soumis', color: 'bg-blue-100 text-blue-800' },
   CONFIRMED: { label: 'Confirmé', color: 'bg-amber-100 text-amber-800' },
-  ADDRESSED: { label: 'Traité', color: 'bg-emerald-100 text-emerald-800' },
   REJECTED: { label: 'Rejeté', color: 'bg-red-100 text-red-800' },
 };
 
@@ -90,9 +91,11 @@ export default function FindingDetails() {
   const [uploading, setUploading] = useState(false);
   const [isRecoModalOpen, setIsRecoModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   const fetchFinding = () => {
-    apiFetch(`/api/v1/findings/${id}`)
+    apiFetch(`${API_BASE}/findings/${id}`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement du constat');
         return res.json();
@@ -107,6 +110,16 @@ export default function FindingDetails() {
       });
   };
 
+  const decide = async (decision: string, approvalId: number) => {
+    await apiFetch(`${API_BASE}/approvals/${approvalId}/decide`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision })
+    });
+
+    fetchFinding();
+  };
+
   useEffect(() => {
     fetchFinding();
   }, [id]);
@@ -116,7 +129,7 @@ export default function FindingDetails() {
     if (!newComment.trim()) return;
 
     try {
-      const res = await apiFetch(`/api/v1/findings/${id}/comments`, {
+      const res = await apiFetch(`${API_BASE}/findings/${id}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -137,12 +150,15 @@ export default function FindingDetails() {
     if (!confirm(`Voulez-vous vraiment passer ce constat au statut ${newStatus} ?`)) return;
 
     try {
-      const res = await apiFetch(`/api/v1/findings/${id}/status`, {
+      const res = await apiFetch(`${API_BASE}/findings/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({
+          status: newStatus,
+          reason: 'Changement via UI'
+        })
       });
 
       if (!res.ok) throw new Error('Erreur lors de la mise à jour du statut');
@@ -162,7 +178,7 @@ export default function FindingDetails() {
     formData.append('findingId', id!);
 
     try {
-      const res = await apiFetch('/api/v1/documents/upload', {
+      const res = await apiFetch(`${API_BASE}/documents/upload`, {
         method: 'POST',
         body: formData
       });
@@ -245,19 +261,87 @@ export default function FindingDetails() {
             <div className="flex space-x-2 mt-2">
               {finding.status === 'DRAFT' && (
                 <>
-                  <button onClick={() => handleStatusChange('CONFIRMED')} className="text-xs inline-flex items-center px-2 py-1 bg-amber-100 text-amber-700 rounded hover:bg-amber-200">
-                    <CheckCircle className="w-3 h-3 mr-1" /> Confirmer
+                  {/* CAS 1 — pas d’approbation */}
+                  {(!finding.approvals || finding.approvals.length === 0) && (
+                    <button
+                      onClick={async () => {
+                        await apiFetch(`${API_BASE}/approvals`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            approvalType: 'FINDING_VALIDATION',
+                            findingId: finding.id
+                          })
+                        });
+                        fetchFinding();
+                      }}
+                      className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded"
+                    >
+                      Demander validation
+                    </button>
+                  )}
+
+                  {/* CAS 2 — en attente */}
+                  {finding.approvals?.some(a => a.decision === 'PENDING') && (
+                    <span className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded">
+                      Validation en attente
+                    </span>
+                  )}
+
+                  {/* CAS 3 — validé */}
+                  {/* {finding.approvals?.some(a => a.decision === 'APPROVED') && (
+                    <button
+                      onClick={() => handleStatusChange('SUBMITTED')}
+                      className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded"
+                    >
+                      Confirmer
+                    </button>
+                  )} */}
+                  <button
+                    onClick={() => handleStatusChange('SUBMITTED')}
+                    className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded"
+                  >
+                    Soumettre pour validation
                   </button>
-                  <button onClick={() => handleStatusChange('REJECTED')} className="text-xs inline-flex items-center px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">
-                    <XCircle className="w-3 h-3 mr-1" /> Rejeter
+                  {/* REJET */}
+                  <button
+                    onClick={() => handleStatusChange('REJECTED')}
+                    className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded"
+                  >
+                    Rejeter
                   </button>
                 </>
               )}
-              {finding.status === 'CONFIRMED' && (
-                <button onClick={() => handleStatusChange('ADDRESSED')} className="text-xs inline-flex items-center px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">
-                  <CheckCircle className="w-3 h-3 mr-1" /> Marquer comme traité
-                </button>
+
+              {finding.status === 'SUBMITTED' && (
+                <>
+                  {/* attente validation */}
+                  {!finding.approvals?.some(a => a.decision === 'APPROVED') && (
+                    <span className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded">
+                      En attente d'approbation
+                    </span>
+                  )}
+
+                  {/* validé → peut confirmer */}
+                  {finding.approvals?.some(a => a.decision === 'APPROVED') && (
+                    <button
+                      onClick={() => handleStatusChange('CONFIRMED')}
+                      className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded"
+                    >
+                      Confirmer
+                    </button>
+                  )}
+
+                  {/* rejet possible */}
+                  <button
+                    onClick={() => handleStatusChange('REJECTED')}
+                    className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded"
+                  >
+                    Rejeter
+                  </button>
+                </>
               )}
+
             </div>
           </div>
         </div>
@@ -296,7 +380,7 @@ export default function FindingDetails() {
 
           {/* Evidences */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between mb-4">
+            {/* <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-slate-900 flex items-center">
                 <FileText className="w-5 h-5 mr-2 text-slate-400" />
                 Preuves ({finding.evidences?.length || 0})
@@ -304,6 +388,28 @@ export default function FindingDetails() {
               <button className="text-sm text-indigo-600 hover:text-indigo-900 font-medium">
                 + Ajouter une preuve
               </button>
+            </div> */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-slate-900 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-slate-400" />
+                Preuves ({finding.evidences?.length || 0})
+              </h3>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate(`/evidences?findingId=${finding.id}`)}
+                  className="text-sm bg-slate-800 text-white px-3 py-1 rounded"
+                >
+                  Voir tout
+                </button>
+
+                <button
+                  onClick={() => navigate(`/evidences/create?findingId=${finding.id}`)}
+                  className="text-sm text-indigo-600 hover:text-indigo-900 font-medium"
+                >
+                  + Ajouter
+                </button>
+              </div>
             </div>
             {finding.evidences && finding.evidences.length > 0 ? (
               <ul className="divide-y divide-slate-100">
@@ -314,7 +420,7 @@ export default function FindingDetails() {
                     </div>
                     <div className="ml-3 flex-1">
                       <p className="text-sm font-medium text-slate-900">{evidence.title}</p>
-                      <p className="text-xs text-slate-500">{evidence.evidenceType} - {evidence.source}</p>
+                      <p className="text-xs text-slate-500">{evidence.evidenceType} {evidence.source ? `- ${evidence.source}` : ''}</p>
                       {evidence.description && <p className="text-sm text-slate-600 mt-1">{evidence.description}</p>}
                     </div>
                   </li>
@@ -332,7 +438,21 @@ export default function FindingDetails() {
                 <CheckCircle className="w-5 h-5 mr-2 text-slate-400" />
                 Approbations ({finding.approvals?.length || 0})
               </h3>
-              <button className="text-sm text-indigo-600 hover:text-indigo-900 font-medium">
+              <button 
+                className="text-sm text-indigo-600 hover:text-indigo-900 font-medium"
+                onClick={async () => {
+                  await apiFetch(`${API_BASE}/approvals`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      approvalType: 'FINDING_VALIDATION',
+                      findingId: finding.id
+                    })
+                  });
+
+                  fetchFinding();
+                }}
+                >
                 + Demander une approbation
               </button>
             </div>
@@ -341,20 +461,38 @@ export default function FindingDetails() {
                 {finding.approvals.map(approval => (
                   <li key={approval.id} className="py-3 flex items-start">
                     <div className="flex-shrink-0">
-                      {approval.status === 'APPROVED' ? (
+                      {approval.decision === 'APPROVED' ? (
                         <CheckCircle className="w-5 h-5 text-emerald-500" />
-                      ) : approval.status === 'REJECTED' ? (
+                      ) : approval.decision === 'REJECTED' ? (
                         <XCircle className="w-5 h-5 text-red-500" />
                       ) : (
                         <AlertCircle className="w-5 h-5 text-amber-500" />
                       )}
                     </div>
                     <div className="ml-3 flex-1">
+                        {approval.decision === 'PENDING' && (
+                          <div className="mt-2 flex gap-2">
+                            <button onClick={() => decide('APPROVED', approval.id)}>
+                              Approuver
+                            </button>
+
+                            <button onClick={() => decide('REJECTED', approval.id)}>
+                              Rejeter
+                            </button>
+                          </div>
+                        )}
                       <p className="text-sm font-medium text-slate-900">
-                        {approval.approver.firstName} {approval.approver.lastName}
+                        {approval.approver?.firstName && approval.approver?.lastName
+                          ? `${approval.approver.firstName} ${approval.approver.lastName}`
+                          : 'Utilisateur inconnu'}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {new Date(approval.createdAt).toLocaleDateString()} - {approval.status}
+                        {new Date(approval.createdAt).toLocaleDateString()} - 
+                        {approval.decision === 'APPROVED'
+                          ? 'Approuvé'
+                          : approval.decision === 'REJECTED'
+                          ? 'Rejeté'
+                          : 'En attente'}
                       </p>
                       {approval.comments && <p className="text-sm text-slate-600 mt-1">{approval.comments}</p>}
                     </div>
@@ -545,7 +683,7 @@ export default function FindingDetails() {
                   <li key={doc.id} className="py-3 flex items-center justify-between">
                     <div className="flex items-center min-w-0">
                       <Paperclip className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
-                      <a href={`/api/v1/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                      <a href={`${API_BASE}/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
                         {doc.originalName}
                       </a>
                     </div>

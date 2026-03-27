@@ -26,7 +26,7 @@ export default function AuditPlans() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<AuditPlan | null>(null);
-  
+  const API_BASE = import.meta.env.VITE_API_URL;
   const [formData, setFormData] = useState({
     year: new Date().getFullYear() + 1,
     title: '',
@@ -39,7 +39,7 @@ export default function AuditPlans() {
 
   const fetchPlans = async () => {
     try {
-      const response = await apiFetch('/api/v1/plans');
+      const response = await apiFetch(`${API_BASE}/plans`);
       if (response.ok) {
         const data = await response.json();
         setPlans(data);
@@ -74,7 +74,7 @@ export default function AuditPlans() {
   const handleDelete = async (id: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce plan ?')) return;
     try {
-      const response = await apiFetch(`/api/v1/plans/${id}`, {
+      const response = await apiFetch(`${API_BASE}/plans/${id}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -91,7 +91,7 @@ export default function AuditPlans() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const url = editingPlan ? `/api/v1/plans/${editingPlan.id}` : '/api/v1/plans';
+      const url = editingPlan ? `${API_BASE}/plans/${editingPlan.id}` :  `${API_BASE}/plans`;
       const method = editingPlan ? 'PUT' : 'POST';
       
       const response = await apiFetch(url, {

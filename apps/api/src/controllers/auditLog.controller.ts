@@ -11,8 +11,9 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     const { entityType, entityId, action, userId, limit = 100, offset = 0 } = req.query;
 
     const where: any = { tenantId };
-    if (entityType) where.entityType = entityType as string;
-    if (entityId) where.entityId = parseInt(entityId as string);
+
+    if (entityType) where.entityName = entityType as string;
+    if (entityId) where.entityId = String(entityId); // ✅ FIX ICI
     if (action) where.action = action as string;
     if (userId) where.userId = parseInt(userId as string);
 

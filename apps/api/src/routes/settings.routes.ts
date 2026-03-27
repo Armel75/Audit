@@ -19,6 +19,23 @@ router.post('/user-departments', settingsController.createUserDepartment);
 router.put('/user-departments/:userId/:departmentId', settingsController.updateUserDepartment);
 router.delete('/user-departments/:userId/:departmentId', settingsController.deleteUserDepartment);
 
+
+// ================= USER ↔ DEPARTMENTS (METIER) =================
+
+// Get departments by user
+router.get('/users/:id/departments', settingsController.getDepartmentsByUser);
+
+// Assign department to user
+router.post('/users/:id/departments', settingsController.assignDepartmentToUser);
+
+// Set primary department
+router.patch('/users/:id/departments/:departmentId/primary', settingsController.setPrimaryDepartment);
+
+// Remove department from user (soft delete)
+router.delete('/users/:id/departments/:departmentId', settingsController.removeDepartmentFromUser);
+
+
+
 // Audit Types
 router.get('/audit-types', settingsController.getAuditTypes);
 router.post('/audit-types', settingsController.createAuditType);

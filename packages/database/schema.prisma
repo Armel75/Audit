@@ -10,7 +10,7 @@ datasource db {
 // ================= MULTI-TENANT =================
 model Tenant {
   id                          Int                           @id @default(autoincrement())
-  name                        String                        @db.VarChar(4000)
+  name                        String                        @unique @db.VarChar(4000)
   code                        String                        @unique @db.VarChar(255)
   isActive                    Boolean                       @default(true)
 
@@ -131,7 +131,7 @@ model User {
 
 model Role {
   id          Int              @id @default(autoincrement())
-  name        String           @db.VarChar(255)
+  name        String           @unique @db.VarChar(255)
   users       User[]
   permissions RolePermission[]
 }
@@ -169,15 +169,20 @@ model RefreshToken {
 
 model PasswordResetToken {
   id         Int      @id @default(autoincrement())
-  token      String   @unique @db.VarChar(255)
+
+  tokenHash  String   @unique @db.VarChar(255) // ✅ au lieu de token
+
   userId     Int
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   expiresAt  DateTime
   used       Boolean  @default(false)
   usedAt     DateTime?
+
   createdAt  DateTime @default(now())
 
   @@index([userId, expiresAt])
+  @@index([tokenHash])
 }
 
 // ================= PARAMÉTRAGE =================
@@ -200,7 +205,7 @@ model Department {
   updatedAt         DateTime           @updatedAt
 
   @@unique([tenantId, code])
-  @@index([tenantId, name])
+  @@unique([tenantId, name])
 }
 
 model AuditType {
@@ -209,13 +214,14 @@ model AuditType {
   tenant      Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   name        String         @db.VarChar(255)
-
+  isActive    Boolean        @default(true)
   missions    AuditMission[]
 
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   @@unique([tenantId, name])
+  @@unique([tenantId, name, isActive])
   @@index([tenantId, name])
 }
 

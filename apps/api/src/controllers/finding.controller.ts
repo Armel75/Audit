@@ -1,7 +1,13 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-
+import { findingWorkflow } from '../services/workflow/finding.workflow'; // ✅ AJOUT
 const prisma = new PrismaClient();
+
+
+// ✅ AJOUT — helper local (pas intrusif)
+const canTransition = (current: string, next: string) => {
+  return findingWorkflow[current]?.includes(next);
+};
 
 export const getFindings = async (req: Request, res: Response) => {
   try {
@@ -157,6 +163,45 @@ export const updateFinding = async (req: Request, res: Response) => {
   }
 };
 
+// export const updateFindingStatus = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params;
+//     const tenantId = req.user?.tenantId;
+//     const userId = req.user?.id;
+//     if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
+
+//     const { status, reason } = req.body;
+//     if (!status || !reason) return res.status(400).json({ error: 'Statut et raison requis' });
+
+//     const existing = await prisma.finding.findFirst({ where: { id: Number(id), tenantId } });
+//     if (!existing) return res.status(404).json({ error: 'Constat introuvable' });
+
+//     await prisma.$transaction(async (tx) => {
+//       await tx.finding.update({
+//         where: { id: Number(id) },
+//         data: { status }
+//       });
+
+//       await tx.findingStatusHistory.create({
+//         data: {
+//           tenantId,
+//           findingId: Number(id),
+//           previousStatus: existing.status,
+//           newStatus: status,
+//           reason,
+//           changedById: userId
+//         }
+//       });
+//     });
+
+//     res.json({ success: true });
+//   } catch (error) {
+//     console.error('Error updating finding status:', error);
+//     res.status(500).json({ error: 'Erreur lors de la mise à jour du statut' });
+//   }
+// };
+
+
 export const updateFindingStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -170,6 +215,29 @@ export const updateFindingStatus = async (req: Request, res: Response) => {
     const existing = await prisma.finding.findFirst({ where: { id: Number(id), tenantId } });
     if (!existing) return res.status(404).json({ error: 'Constat introuvable' });
 
+    // 🔴 AJOUT — verrouillage du workflow
+    if (!canTransition(existing.status, status)) {
+      return res.status(400).json({
+        error: `Transition interdite: ${existing.status} → ${status}`
+      });
+    }
+
+    // 🔴 AJOUT — APPROVAL OBLIGATOIRE
+    if (status === 'CONFIRMED') {
+      const approval = await prisma.approval.findFirst({
+        where: {
+          findingId: Number(id),
+          decision: 'APPROVED'
+        }
+      });
+
+      if (!approval) {
+        return res.status(400).json({
+          error: 'Validation requise pour confirmer le constat'
+        });
+      }
+    }
+    
     await prisma.$transaction(async (tx) => {
       await tx.finding.update({
         where: { id: Number(id) },

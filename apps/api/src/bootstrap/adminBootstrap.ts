@@ -30,6 +30,7 @@ export async function bootstrapAdmin() {
   try {
     let tenant = null;
 
+    // ================= TENANT =================
     if (tenantIdRaw) {
       const tenantId = Number(tenantIdRaw);
 
@@ -42,7 +43,7 @@ export async function bootstrapAdmin() {
       });
 
       if (!tenant) {
-        console.warn(`[BOOTSTRAP] Tenant with id ${tenantId} not found. Falling back to automatic tenant resolution.`);
+        console.warn(`[BOOTSTRAP] Tenant with id ${tenantId} not found. Falling back.`);
       }
     }
 
@@ -70,6 +71,7 @@ export async function bootstrapAdmin() {
       console.log(`[BOOTSTRAP] Tenant found with id ${tenant.id}`);
     }
 
+    // ================= ROLE =================
     let role = await prisma.role.findFirst({
       where: { name: roleName }
     });
@@ -83,6 +85,7 @@ export async function bootstrapAdmin() {
       console.log('[BOOTSTRAP] Role already exists');
     }
 
+    // ================= USER =================
     let user = await prisma.user.findFirst({
       where: {
         OR: [
@@ -127,6 +130,25 @@ export async function bootstrapAdmin() {
 
       console.log('[BOOTSTRAP] User updated');
     }
+
+    // ================= 🔥 PERMISSIONS =================
+    const permissions = await prisma.permission.findMany();
+
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: role.id }
+    });
+
+    if (permissions.length > 0) {
+      await prisma.rolePermission.createMany({
+        data: permissions.map(p => ({
+          roleId: role.id,
+          permissionId: p.id
+        }))
+      });
+    }
+
+    console.log('[BOOTSTRAP] Permissions attribuées au rôle admin');
+
   } catch (error) {
     console.error('[BOOTSTRAP] Error during bootstrap:', error);
     throw error;

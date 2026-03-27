@@ -1,33 +1,35 @@
 {
   "name": "@audit/api",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "dev": "tsx src/server.ts",
-    "build": "tsup src/server.ts --format esm --clean",
+    "build": "tsc",
     "start": "node dist/server.js"
   },
   "dependencies": {
     "@audit/database": "*",
     "@audit/shared": "*",
-    "express": "^4.21.2",
-    "cors": "^2.8.6",
-    "cookie-parser": "^1.4.7",
-    "dotenv": "^17.2.3",
-    "jsonwebtoken": "^9.0.3",
     "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "mysql2": "^3.11.0",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "nodemailer": "^8.0.3",
+    "puppeteer": "^24.40.0"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/cors": "^2.8.19",
-    "@types/cookie-parser": "^1.4.10",
-    "@types/jsonwebtoken": "^9.0.10",
     "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
     "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^7.0.11",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"
   }

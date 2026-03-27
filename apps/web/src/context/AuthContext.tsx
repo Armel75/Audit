@@ -1,5 +1,5 @@
+import { apiFetch } from '@/lib/api';
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: string;
@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('accessToken'));
   const [isLoading, setIsLoading] = useState(true);
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -40,19 +41,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setToken(newToken);
     setUser(newUser);
   };
+  
+const logout = async () => {
+  try {
+    await apiFetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include', // ✅ obligatoire ici
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
+    setToken(null);
+    setUser(null);
+  }
+};
 
-  const logout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('user');
-      setToken(null);
-      setUser(null);
-    }
-  };
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, isLoading }}>

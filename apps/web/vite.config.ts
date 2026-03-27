@@ -23,10 +23,10 @@ export default defineConfig(({ mode, command }) => {
       port: 5173,
       strictPort: true,
       proxy: {
-        '/api/v1': {
-          target: 'http://localhost:3003',
+        '/api/audit': {
+          target: 'http://localhost:3007',
           changeOrigin: true,
-          // rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
+          rewrite: (path) => path.replace(/^\/api\/audit/, '/api/v1'),
         },
       },
       hmr: process.env.DISABLE_HMR !== 'true',

@@ -10,25 +10,27 @@ router.use(requireAuth);
 // Audit Mission
 router.get('/', missionController.getMissions);
 router.get('/:id', missionController.getMission);
-router.post('/', requirePermission('can_manage_tasks'), missionController.createMission);
-router.put('/:id', requirePermission('can_manage_tasks'), missionController.updateMission);
-router.delete('/:id', requirePermission('can_manage_tasks'), missionController.deleteMission);
+router.post('/', missionController.createMission);
+router.put('/:id', missionController.updateMission);
+router.delete('/:id', missionController.deleteMission);
 
 // Mission Status
-router.patch('/:id/status', requirePermission('can_manage_tasks'), missionController.updateMissionStatus);
-router.put('/history/:historyId', requirePermission('can_manage_tasks'), missionController.updateMissionStatusHistory);
-router.delete('/history/:historyId', requirePermission('can_manage_tasks'), missionController.deleteMissionStatusHistory);
+router.patch('/:id/status', missionController.updateMissionStatus);
+router.put('/history/:historyId', missionController.updateMissionStatusHistory);
+router.delete('/history/:historyId', missionController.deleteMissionStatusHistory);
 
 // Mission Members
-router.post('/:id/members', requirePermission('can_manage_tasks'), missionController.addMissionMember);
-router.put('/members/:memberId', requirePermission('can_manage_tasks'), missionController.updateMissionMember);
-router.delete('/members/:memberId', requirePermission('can_manage_tasks'), missionController.removeMissionMember);
+router.post('/:id/members', missionController.addMissionMember);
+router.put('/members/:memberId', missionController.updateMissionMember);
+router.delete('/members/:memberId', missionController.removeMissionMember);
 
 // Mission Scopes
-router.post('/:id/scopes', requirePermission('can_manage_tasks'), missionController.addMissionScope);
-router.delete('/scopes/:scopeId', requirePermission('can_manage_tasks'), missionController.removeMissionScope);
+router.post('/:id/scopes', missionController.addMissionScope);
+router.delete('/scopes/:scopeId', missionController.removeMissionScope);
 
 // Reports
 router.get('/:id/report', missionController.getMissionReport);
+
+router.post('/:id/report/generate', missionController.generateMissionReport);
 
 export default router;

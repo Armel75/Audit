@@ -4,7 +4,8 @@ import crypto from 'crypto';
 
 export class DocumentService {
   static async saveFileLocally(tenantId: number, buffer: Buffer, originalName: string, mimeType: string) {
-    const storagePath = path.join(process.cwd(), '../../.storage', tenantId.toString());
+    //const storagePath = path.join(process.cwd(), '../../.storage', tenantId.toString());
+    const storagePath = path.resolve(process.cwd(), 'storage', tenantId.toString());
     if (!fs.existsSync(storagePath)) {
       fs.mkdirSync(storagePath, { recursive: true });
     }

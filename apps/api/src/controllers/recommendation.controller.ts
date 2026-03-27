@@ -1,7 +1,14 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { getRecommendationsByMission } from '../services/recommendation.service';
+import { recommendationWorkflow } from '../services/workflow/recommendation.workflow'; // ✅ AJOUT
 
 const prisma = new PrismaClient();
+
+// ✅ AJOUT helper local
+const canTransition = (current: string, next: string) => {
+  return recommendationWorkflow[current]?.includes(next);
+};
 
 export const getRecommendations = async (req: Request, res: Response) => {
   try {
@@ -15,7 +22,7 @@ export const getRecommendations = async (req: Request, res: Response) => {
         priority: true,
         department: true,
         assigneeUser: { select: { firstName: true, lastName: true } },
-        _count: { select: { comments: true, followUps: true, tickets: true } }
+        _count: { select: { comments: true, followUps: true, ticketLinks: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -40,7 +47,7 @@ export const getRecommendation = async (req: Request, res: Response) => {
         priority: true,
         department: true,
         assigneeUser: { select: { id: true, firstName: true, lastName: true } },
-        validator: { select: { id: true, firstName: true, lastName: true } },
+        validatedBy: { select: { id: true, firstName: true, lastName: true } },
         comments: {
           include: { author: { select: { firstName: true, lastName: true } } },
           orderBy: { createdAt: 'desc' }
@@ -91,7 +98,7 @@ export const createRecommendation = async (req: Request, res: Response) => {
           tenantId,
           title,
           actionPlan,
-          targetDate: targetDate ? new Date(targetDate) : null,
+          ...(targetDate && { targetDate: new Date(targetDate) }),
           priorityId: priorityId ? Number(priorityId) : null,
           departmentId: departmentId ? Number(departmentId) : null,
           assigneeUserId: assigneeUserId ? Number(assigneeUserId) : null,
@@ -128,28 +135,84 @@ export const updateRecommendation = async (req: Request, res: Response) => {
 
     const { title, actionPlan, targetDate, revisedTargetDate, priorityId, departmentId, assigneeUserId, implementedPercent } = req.body;
 
+    // 🔴 AJOUT — récupération + verrouillage
+    const existing = await prisma.recommendation.findFirst({
+      where: { id: Number(id), tenantId }
+    });
+
+    if (!existing) return res.status(404).json({ error: 'Recommandation introuvable' });
+
+    if (existing.status === 'VALIDATED' || existing.status === 'CLOSED') {
+      return res.status(400).json({
+        error: 'Modification interdite après validation'
+      });
+    }
+
     const recommendation = await prisma.recommendation.updateMany({
       where: { id: Number(id), tenantId },
       data: {
         title,
         actionPlan,
-        targetDate: targetDate ? new Date(targetDate) : null,
+        targetDate: targetDate ? new Date(targetDate) : undefined,
         revisedTargetDate: revisedTargetDate ? new Date(revisedTargetDate) : null,
         priorityId: priorityId ? Number(priorityId) : null,
         departmentId: departmentId ? Number(departmentId) : null,
         assigneeUserId: assigneeUserId ? Number(assigneeUserId) : null,
-        implementedPercent: implementedPercent ? Number(implementedPercent) : null,
+        implementedPercent: implementedPercent ? Number(implementedPercent) : undefined,
       }
     });
 
     if (recommendation.count === 0) return res.status(404).json({ error: 'Recommandation introuvable' });
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating recommendation:', error);
     res.status(500).json({ error: 'Erreur lors de la mise à jour de la recommandation' });
   }
 };
+
+// export const updateRecommendationStatus = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params;
+//     const tenantId = req.user?.tenantId;
+//     const userId = req.user?.id;
+//     if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
+
+//     const { status, reason } = req.body;
+//     if (!status || !reason) return res.status(400).json({ error: 'Statut et raison requis' });
+
+//     const existing = await prisma.recommendation.findFirst({ where: { id: Number(id), tenantId } });
+//     if (!existing) return res.status(404).json({ error: 'Recommandation introuvable' });
+
+//     await prisma.$transaction(async (tx) => {
+//       await tx.recommendation.update({
+//         where: { id: Number(id) },
+//         data: {
+//           status,
+//           closedAt: status === 'CLOSED' ? new Date() : null,
+//           validatedAt: status === 'VALIDATED' ? new Date() : null,
+//           validatedById: status === 'VALIDATED' ? userId : null
+//         }
+//       });
+
+//       await tx.recommendationStatusHistory.create({
+//         data: {
+//           tenantId,
+//           recommendationId: Number(id),
+//           previousStatus: existing.status,
+//           newStatus: status,
+//           reason,
+//           changedById: userId
+//         }
+//       });
+//     });
+
+//     res.json({ success: true });
+//   } catch (error) {
+//     console.error('Error updating recommendation status:', error);
+//     res.status(500).json({ error: 'Erreur lors de la mise à jour du statut' });
+//   }
+// };
 
 export const updateRecommendationStatus = async (req: Request, res: Response) => {
   try {
@@ -164,10 +227,33 @@ export const updateRecommendationStatus = async (req: Request, res: Response) =>
     const existing = await prisma.recommendation.findFirst({ where: { id: Number(id), tenantId } });
     if (!existing) return res.status(404).json({ error: 'Recommandation introuvable' });
 
+    // 🔴 AJOUT — verrouillage workflow
+    if (!canTransition(existing.status, status)) {
+      return res.status(400).json({
+        error: `Transition interdite: ${existing.status} → ${status}`
+      });
+    }
+
+    // 🔴 AJOUT — APPROVAL OBLIGATOIRE
+    if (status === 'VALIDATED') {
+      const approval = await prisma.approval.findFirst({
+        where: {
+          recommendationId: Number(id),
+          decision: 'APPROVED'
+        }
+      });
+
+      if (!approval) {
+        return res.status(400).json({
+          error: 'Validation requise pour valider la recommandation'
+        });
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.recommendation.update({
         where: { id: Number(id) },
-        data: { 
+        data: {
           status,
           closedAt: status === 'CLOSED' ? new Date() : null,
           validatedAt: status === 'VALIDATED' ? new Date() : null,
@@ -193,6 +279,7 @@ export const updateRecommendationStatus = async (req: Request, res: Response) =>
     res.status(500).json({ error: 'Erreur lors de la mise à jour du statut' });
   }
 };
+
 
 export const addRecommendationComment = async (req: Request, res: Response) => {
   try {
@@ -236,7 +323,7 @@ export const addRecommendationFollowUp = async (req: Request, res: Response) => 
         tenantId,
         recommendationId: Number(id),
         statusSnapshot: statusSnapshot || existing.status,
-        progressPercent: progressPercent ? Number(progressPercent) : null,
+        progressPercent: progressPercent !== undefined ? Number(progressPercent) : undefined,
         comment,
         evidenceSummary,
         nextAction,
@@ -260,3 +347,21 @@ export const addRecommendationFollowUp = async (req: Request, res: Response) => 
     res.status(500).json({ error: 'Erreur lors de l\'ajout du suivi' });
   }
 };
+
+export const getMissionRecommendations = async (req: Request, res: Response) => {
+  try {
+    const missionId = Number(req.params.missionId);
+
+    if (!missionId) {
+      return res.status(400).json({ error: 'missionId invalide' });
+    }
+
+    const recos = await getRecommendationsByMission(missionId);
+
+    res.json(recos);
+  } catch (error) {
+    console.error('getMissionRecommendations error:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+

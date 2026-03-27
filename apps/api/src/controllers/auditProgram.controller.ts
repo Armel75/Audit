@@ -22,9 +22,9 @@ export const getAuditPrograms = async (req: Request, res: Response) => {
         preparedBy: {
           select: { id: true, firstName: true, lastName: true }
         },
-        reviewedBy: {
-          select: { id: true, firstName: true, lastName: true }
-        },
+        // reviewedBy: {
+        //   select: { id: true, firstName: true, lastName: true }
+        // },
         approvedBy: {
           select: { id: true, firstName: true, lastName: true }
         },
@@ -58,9 +58,9 @@ export const getAuditProgramById = async (req: Request, res: Response) => {
         preparedBy: {
           select: { id: true, firstName: true, lastName: true }
         },
-        reviewedBy: {
-          select: { id: true, firstName: true, lastName: true }
-        },
+        // reviewedBy: {
+        //   select: { id: true, firstName: true, lastName: true }
+        // },
         approvedBy: {
           select: { id: true, firstName: true, lastName: true }
         },
@@ -293,8 +293,8 @@ export const updateAuditProcedure = async (req: Request, res: Response) => {
       performedById,
       sequenceNo,
       status,
-      actualResult,
-      conclusion
+      //actualResult,
+      //conclusion
     } = req.body;
 
     const procedure = await prisma.auditProcedure.findFirst({
@@ -316,8 +316,8 @@ export const updateAuditProcedure = async (req: Request, res: Response) => {
         performedById: performedById ? Number(performedById) : undefined,
         sequenceNo,
         status,
-        actualResult,
-        conclusion
+        //actualResult,
+        //conclusion
       }
     });
 

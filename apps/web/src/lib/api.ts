@@ -1,4 +1,5 @@
 const originalFetch = window.fetch;
+const API_BASE = import.meta.env.VITE_API_URL;
 
 let refreshPromise: Promise<string | null> | null = null;
 
@@ -13,10 +14,10 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit) => 
     typeof input === 'string'
       ? input
       : input instanceof URL
-      ? input.toString()
-      : input.url;
+        ? input.toString()
+        : input.url;
 
-  if (url.startsWith('/api/v1/') && !url.startsWith('/api/v1/auth/')) {
+  if (url.startsWith(`${API_BASE}/`) && !url.startsWith(`${API_BASE}/auth/`)) {
     const token = localStorage.getItem('accessToken');
 
     const headers = new Headers(init?.headers);
@@ -34,11 +35,10 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit) => 
 
     // 🔴 CAS TOKEN EXPIRE
     if (response.status === 401) {
-      // 👉 Si aucun refresh en cours → on lance
       if (!refreshPromise) {
         refreshPromise = (async () => {
           try {
-            const refreshResponse = await originalFetch('/api/v1/auth/refresh', {
+            const refreshResponse = await originalFetch(`${API_BASE}/auth/refresh`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -62,7 +62,6 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit) => 
         })();
       }
 
-      // 👉 Toutes les requêtes attendent ici
       const newToken = await refreshPromise;
 
       // 🔴 Si refresh échoue → logout
@@ -71,19 +70,27 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit) => 
         return response;
       }
 
-      // 🔁 Retry avec nouveau token
-      headers.set('Authorization', `Bearer ${newToken}`);
-
-      return originalFetch(input, {
+      // 🔁 Retry avec nouveau token (sécurisé)
+      const retryResponse = await originalFetch(input, {
         ...options,
-        headers,
+        headers: new Headers({
+          ...Object.fromEntries(headers.entries()),
+          Authorization: `Bearer ${newToken}`,
+        }),
         credentials: 'include',
       });
+
+      // 🔴 Si même après refresh → toujours 401 → logout
+      if (retryResponse.status === 401) {
+        handleLogout();
+      }
+
+      return retryResponse;
     }
 
-    // 🔴 Sécurité (si backend renvoie encore 403)
+    // 🔴 403 → ne pas logout (gestion côté UI)
     if (response.status === 403) {
-      handleLogout();
+      return response;
     }
 
     return response;

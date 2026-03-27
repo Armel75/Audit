@@ -5,7 +5,7 @@ export class AuditPlanService {
    * Creates a new Annual Audit Plan.
    * Business Rule: A tenant can only have one plan per year.
    */
-  static async createPlan(tenantId: string, year: number) {
+  static async createPlan(tenantId: number, year: number) {
     const existingPlan = await prisma.auditPlan.findUnique({
       where: {
         tenantId_year: { tenantId, year }
@@ -28,7 +28,7 @@ export class AuditPlanService {
   /**
    * Retrieves all audit plans for a tenant, including the count of associated missions.
    */
-  static async getPlans(tenantId: string) {
+  static async getPlans(tenantId: number) {
     return prisma.auditPlan.findMany({
       where: { tenantId },
       include: {
@@ -44,15 +44,15 @@ export class AuditPlanService {
    * Updates the status of an audit plan.
    * Handles transitions: DRAFT -> PENDING_APPROVAL -> VALIDATED | REJECTED
    */
-  static async updateStatus(tenantId: string, planId: string, status: string) {
+  static async updateStatus(tenantId: number, planId: number, status: string) {
     const validStatuses = ['DRAFT', 'PENDING_APPROVAL', 'VALIDATED', 'REJECTED'];
-    
+
     if (!validStatuses.includes(status)) {
       throw new Error(`Statut invalide. Valeurs autorisées: ${validStatuses.join(', ')}`);
     }
 
     return prisma.auditPlan.update({
-      where: { 
+      where: {
         id: planId,
         tenantId // Ensure the plan belongs to the tenant
       },
@@ -63,7 +63,7 @@ export class AuditPlanService {
   /**
    * Updates an audit plan (e.g., year).
    */
-  static async updatePlan(tenantId: string, planId: string, year: number) {
+  static async updatePlan(tenantId: number, planId: number, year: number) {
     const existingPlan = await prisma.auditPlan.findUnique({
       where: {
         tenantId_year: { tenantId, year }
@@ -83,7 +83,7 @@ export class AuditPlanService {
   /**
    * Deletes an audit plan.
    */
-  static async deletePlan(tenantId: string, planId: string) {
+  static async deletePlan(tenantId: number, planId: number) {
     return prisma.auditPlan.delete({
       where: { id: planId, tenantId }
     });

@@ -31,6 +31,7 @@ export default function Login() {
   const [matricule, setMatricule] = useState(''); // Used for register
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +41,7 @@ export default function Login() {
 
     try {
       if (mode === 'login') {
-        const res = await fetch('/api/v1/auth/login', {
+        const res = await fetch(`${API_BASE}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -54,7 +55,7 @@ export default function Login() {
         navigate('/dashboard');
 
       } else if (mode === 'register') {
-        const res = await fetch('/api/v1/auth/register', {
+        const res = await fetch(`${API_BASE}/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -68,7 +69,7 @@ export default function Login() {
         setMode('login');
 
       } else if (mode === 'forgot') {
-        const res = await fetch('/api/v1/auth/forgot-password', {
+        const res = await fetch(`${API_BASE}/auth/forgot-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -78,8 +79,9 @@ export default function Login() {
 
         if (!res.ok) throw new Error(data.error || 'Erreur lors de la demande');
 
-        setSuccess(data.message);
-        setMode('login');
+        setSuccess("Un email de réinitialisation a été envoyé.");
+        setEmail(''); // ✅ AJOUT ICI
+        // ❌ NE PAS changer le mode
       }
     } catch (err: any) {
       setError(err.message);
@@ -429,6 +431,19 @@ export default function Login() {
                     )}
                   </button>
                 </div>
+                {mode === 'forgot' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      setError(null);
+                      setSuccess(null);
+                    }}
+                    className="mt-3 text-sm text-slate-500 hover:text-emerald-600"
+                  >
+                    ← Retour à la connexion
+                  </button>
+                )}
               </form>
 
               <div className="mt-8">

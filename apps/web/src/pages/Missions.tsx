@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 export default function Missions() {
@@ -11,21 +11,36 @@ export default function Missions() {
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  // PAGINATION
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const [totalPages, setTotalPages] = useState(1);
+  const API_BASE = import.meta.env.VITE_API_URL;
+
   useEffect(() => {
     fetchMissions();
-  }, []);
+  }, [page]);
 
   const fetchMissions = async () => {
     try {
       setLoading(true);
-      const res = await apiFetch('/api/v1/missions');
+
+      const res = await apiFetch(`${API_BASE}/missions?page=${page}&limit=${limit}`);
       const data = await res.json();
 
+      // 🔥 FIX CRITIQUE : gérer les 2 cas
       if (Array.isArray(data)) {
+        // backend actuel (sans pagination)
         setMissions(data);
+        setTotalPages(1);
+      } else if (Array.isArray(data.data)) {
+        // backend paginé (quand tu le corrigeras)
+        setMissions(data.data);
+        setTotalPages(data.totalPages || 1);
       } else {
         setMissions([]);
       }
+
     } catch (err) {
       setError('Erreur lors du chargement des missions');
     } finally {
@@ -37,15 +52,13 @@ export default function Missions() {
     if (!confirm('Supprimer cette mission ?')) return;
 
     try {
-      const res = await apiFetch(`/api/v1/missions/${id}`, {
+      const res = await apiFetch(`${API_BASE}/missions/${id}`, {
         method: 'DELETE'
       });
 
-      if (!res.ok) {
-        throw new Error();
-      }
+      if (!res.ok) throw new Error();
 
-      setMissions(prev => prev.filter(m => m.id !== id));
+      fetchMissions();
     } catch {
       alert('Erreur lors de la suppression');
     }
@@ -90,7 +103,7 @@ export default function Missions() {
         </div>
       )}
 
-      {/* LOADING */}
+      {/* TABLE */}
       {loading ? (
         <div>Chargement...</div>
       ) : filteredMissions.length === 0 ? (
@@ -110,7 +123,11 @@ export default function Missions() {
 
             <tbody>
               {filteredMissions.map((m) => (
-                <tr key={m.id} className="border-t">
+                <tr
+                  key={m.id}
+                  className="border-t cursor-pointer hover:bg-slate-50"
+                  onClick={() => navigate(`/missions/${m.id}`)}
+                >
                   <td className="p-3 font-medium">{m.title}</td>
 
                   <td className="p-3">
@@ -126,8 +143,7 @@ export default function Missions() {
                   <td className="p-3">
                     {m.startDate
                       ? new Date(m.startDate).toLocaleDateString()
-                      : '-'}{' '}
-                    →{' '}
+                      : '-'} →{' '}
                     {m.endDate
                       ? new Date(m.endDate).toLocaleDateString()
                       : '-'}
@@ -137,17 +153,33 @@ export default function Missions() {
                     <div className="flex justify-end gap-2">
 
                       <button
-                        onClick={() => navigate(`/missions/${m.id}/edit`)}
-                        className="p-2 hover:bg-slate-100 rounded"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/missions/${m.id}`);
+                        }}
+                        className="px-3 py-1 text-sm border rounded hover:bg-slate-100"
                       >
-                        <Edit2 size={16} />
+                        Voir détails
                       </button>
 
                       <button
-                        onClick={() => handleDelete(m.id)}
-                        className="p-2 hover:bg-red-100 text-red-600 rounded"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/missions/${m.id}/edit`);
+                        }}
+                        className="px-3 py-1 text-sm border rounded hover:bg-slate-100"
                       >
-                        <Trash2 size={16} />
+                        Modifier mission
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(m.id);
+                        }}
+                        className="px-3 py-1 text-sm border rounded text-red-600 hover:bg-red-100"
+                      >
+                        Supprimer mission
                       </button>
 
                     </div>
@@ -156,6 +188,30 @@ export default function Missions() {
               ))}
             </tbody>
           </table>
+
+          {/* PAGINATION */}
+          <div className="flex justify-between items-center p-4 border-t">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage(p => p - 1)}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Précédent
+            </button>
+
+            <span className="text-sm">
+              Page {page} / {totalPages}
+            </span>
+
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage(p => p + 1)}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Suivant
+            </button>
+          </div>
+
         </div>
       )}
     </div>

@@ -1,7 +1,12 @@
 import prisma from '@audit/database';
+import { findingWorkflow } from './workflow/finding.workflow';
+
+const canTransition = (current: string, next: string) => {
+  return findingWorkflow[current]?.includes(next);
+};
 
 export class FindingService {
-  static async getByMissionId(missionId: string) {
+  static async getByMissionId(missionId: number) {
     return prisma.finding.findMany({
       where: { missionId },
       include: {
@@ -29,7 +34,7 @@ export class FindingService {
     });
   }
 
-  static async getById(id: string) {
+  static async getById(id: number) {
     const finding = await prisma.finding.findUnique({
       where: { id },
       include: {
@@ -76,8 +81,19 @@ export class FindingService {
   }) {
     return prisma.finding.create({
       data: {
-        ...data,
-        status: 'DRAFT'
+        title: data.title,
+        description: data.description,
+        status: 'DRAFT',
+
+        missionId: Number(data.missionId),
+        authorId: Number(data.authorId),
+
+        ...(data.riskLevelId && {
+          riskLevelId: Number(data.riskLevelId)
+        }),
+        ...(data.process && { process: data.process }),
+        ...(data.cause && { cause: data.cause }),
+        ...(data.impact && { impact: data.impact })
       },
       include: {
         riskLevel: true,
@@ -88,7 +104,7 @@ export class FindingService {
     });
   }
 
-  static async update(id: string, data: {
+  static async update(id: number, data: {
     title?: string;
     description?: string;
     riskLevelId?: string;
@@ -96,39 +112,88 @@ export class FindingService {
     cause?: string;
     impact?: string;
   }) {
+
+    // 🔴 AJOUT — verrouillage après validation
+    const finding = await prisma.finding.findUnique({
+      where: { id }
+    });
+
+    if (!finding) throw new Error('Finding not found');
+
+    if (finding.status === 'VALIDATED') {
+      throw new Error('Modification interdite après validation');
+    }
+
     return prisma.finding.update({
       where: { id },
-      data,
+      data: {
+        ...(data.title && { title: data.title }),
+        ...(data.description && { description: data.description }),
+        ...(data.process && { process: data.process }),
+        ...(data.cause && { cause: data.cause }),
+        ...(data.impact && { impact: data.impact }),
+        ...(data.riskLevelId && {
+          riskLevelId: Number(data.riskLevelId)
+        })
+      },
       include: {
         riskLevel: true
       }
     });
   }
 
-  static async updateStatus(id: string, status: string, validatorId?: string) {
-    const data: any = { status };
-    if (validatorId && (status === 'CONFIRMED' || status === 'REJECTED')) {
-      data.validatorId = validatorId;
+  static async updateStatus(id: number, status: string, userId: number, tenantId: number) {
+    const existing = await prisma.finding.findFirst({
+      where: { id, tenantId }
+    });
+
+    if (!existing) throw new Error('Finding not found');
+
+    // 🔴 WORKFLOW
+    if (!canTransition(existing.status, status)) {
+      throw new Error(`Transition interdite: ${existing.status} → ${status}`);
     }
 
-    return prisma.finding.update({
-      where: { id },
-      data,
-      include: {
-        validator: {
-          select: { firstName: true, lastName: true }
+    // 🔴 APPROVAL obligatoire
+    if (status === 'CONFIRMED') {
+      const approval = await prisma.approval.findFirst({
+        where: {
+          findingId: id,
+          decision: 'APPROVED'
         }
+      });
+
+      if (!approval) {
+        throw new Error('Validation requise');
       }
+    }
+
+    return prisma.$transaction(async (tx) => {
+      await tx.finding.update({
+        where: { id },
+        data: { status }
+      });
+
+      await tx.findingStatusHistory.create({
+        data: {
+          tenantId,
+          findingId: id,
+          previousStatus: existing.status,
+          newStatus: status,
+          reason: 'Workflow update',
+          changedById: userId
+        }
+      });
     });
   }
 
-  static async delete(id: string) {
+  static async delete(id: number) {
     return prisma.finding.delete({
       where: { id }
     });
   }
 
-  static async addComment(findingId: string, authorId: string, content: string) {
+  static async addComment(findingId: number, authorId: number, content: string) {
     return prisma.findingComment.create({
       data: {
         content,

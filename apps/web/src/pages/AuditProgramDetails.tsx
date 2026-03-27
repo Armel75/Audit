@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Edit, Trash2, CheckCircle, Clock, FileText, Target, List } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
@@ -40,7 +40,7 @@ export default function AuditProgramDetails() {
   const [error, setError] = useState<string | null>(null);
 
   // Procedure form state
-  const [isProcedureModalOpen, setIsProcedureModalOpen] = useState(false);
+  // const [isProcedureModalOpen, setIsProcedureModalOpen] = useState(false);
   const [editingProcedure, setEditingProcedure] = useState<Procedure | null>(null);
   const [procTitle, setProcTitle] = useState('');
   const [procType, setProcType] = useState('');
@@ -49,9 +49,11 @@ export default function AuditProgramDetails() {
   const [procDueDate, setProcDueDate] = useState('');
   const [procSequence, setProcSequence] = useState<number | ''>('');
   const [submittingProc, setSubmittingProc] = useState(false);
+  const navigate = useNavigate();
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   const fetchProgram = () => {
-    apiFetch(`/api/programs/${id}`)
+    apiFetch(`${API_BASE}/programs/${id}`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement du programme');
         return res.json();
@@ -70,16 +72,16 @@ export default function AuditProgramDetails() {
     fetchProgram();
   }, [id]);
 
-  const openNewProcedureModal = () => {
-    setEditingProcedure(null);
-    setProcTitle('');
-    setProcType('');
-    setProcDesc('');
-    setProcEvidence('');
-    setProcDueDate('');
-    setProcSequence(program?.procedures.length ? program.procedures.length + 1 : 1);
-    setIsProcedureModalOpen(true);
-  };
+  // const openNewProcedureModal = () => {
+  //   setEditingProcedure(null);
+  //   setProcTitle('');
+  //   setProcType('');
+  //   setProcDesc('');
+  //   setProcEvidence('');
+  //   setProcDueDate('');
+  //   setProcSequence(program?.procedures.length ? program.procedures.length + 1 : 1);
+  //   setIsProcedureModalOpen(true);
+  // };
 
   const openEditProcedureModal = (proc: Procedure) => {
     setEditingProcedure(proc);
@@ -89,7 +91,7 @@ export default function AuditProgramDetails() {
     setProcEvidence(proc.expectedEvidence || '');
     setProcDueDate(proc.dueDate ? new Date(proc.dueDate).toISOString().split('T')[0] : '');
     setProcSequence(proc.sequenceNo);
-    setIsProcedureModalOpen(true);
+    //setIsProcedureModalOpen(true);
   };
 
   const handleSaveProcedure = async (e: React.FormEvent) => {
@@ -98,8 +100,8 @@ export default function AuditProgramDetails() {
 
     try {
       const url = editingProcedure 
-        ? `/api/programs/procedures/${editingProcedure.id}`
-        : `/api/programs/${id}/procedures`;
+        ? `${API_BASE}/programs/procedures/${editingProcedure.id}`
+        : `${API_BASE}/programs/${id}/procedures`;
       
       const method = editingProcedure ? 'PUT' : 'POST';
 
@@ -118,7 +120,7 @@ export default function AuditProgramDetails() {
 
       if (!res.ok) throw new Error('Erreur lors de l\'enregistrement de la procédure');
       
-      setIsProcedureModalOpen(false);
+      //setIsProcedureModalOpen(false);
       fetchProgram();
     } catch (err: any) {
       alert(err.message);
@@ -131,7 +133,7 @@ export default function AuditProgramDetails() {
     if (!confirm('Voulez-vous vraiment supprimer cette procédure ?')) return;
 
     try {
-      const res = await apiFetch(`/api/programs/procedures/${procId}`, {
+      const res = await apiFetch(`${API_BASE}/programs/procedures/${procId}`, {
         method: 'DELETE'
       });
 
@@ -211,7 +213,8 @@ export default function AuditProgramDetails() {
                 Procédures d'audit ({program.procedures.length})
               </h3>
               <button
-                onClick={openNewProcedureModal}
+                // onClick={openNewProcedureModal}
+                onClick={() => navigate(`/programs/${program.id}/procedures/new`)}
                 className="mt-3 sm:mt-0 inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
               >
                 <Plus className="-ml-1 mr-2 h-4 w-4" />
@@ -317,7 +320,7 @@ export default function AuditProgramDetails() {
         </div>
       </div>
 
-      {isProcedureModalOpen && (
+      {/* {isProcedureModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" onClick={() => setIsProcedureModalOpen(false)}>
@@ -415,7 +418,7 @@ export default function AuditProgramDetails() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

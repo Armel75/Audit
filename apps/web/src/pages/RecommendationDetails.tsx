@@ -61,13 +61,22 @@ interface Recommendation {
     };
     linkType: string;
   }>;
-  approvals: Array<{
+  // approvals: Array<{
+  //   id: number;
+  //   status: string;
+  //   comments: string | null;
+  //   createdAt: string;
+  //   approver: { firstName: string; lastName: string };
+  // }>;
+
+    approvals: Array<{
     id: number;
-    status: string;
+    decision: string;
     comments: string | null;
     createdAt: string;
     approver: { firstName: string; lastName: string };
   }>;
+
   followUps: FollowUp[];
   createdAt: string;
   updatedAt: string;
@@ -102,9 +111,10 @@ export default function RecommendationDetails() {
   const [linkType, setLinkType] = useState('IMPLEMENTATION');
   const [submittingTicket, setSubmittingTicket] = useState(false);
   const [availableTickets, setAvailableTickets] = useState<any[]>([]);
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   const fetchRecommendation = () => {
-    apiFetch(`/api/v1/recommendations/${id}`)
+    apiFetch(`${API_BASE}/recommendations/${id}`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement de la recommandation');
         return res.json();
@@ -123,7 +133,7 @@ export default function RecommendationDetails() {
   useEffect(() => {
     fetchRecommendation();
     
-    apiFetch('/api/v1/glpi/tickets')
+    apiFetch(`${API_BASE}/glpi/tickets`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setAvailableTickets(data);
@@ -136,7 +146,7 @@ export default function RecommendationDetails() {
     if (!newComment.trim()) return;
 
     try {
-      const res = await apiFetch(`/api/v1/recommendations/${id}/comments`, {
+      const res = await apiFetch(`${API_BASE}/recommendations/${id}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -157,7 +167,7 @@ export default function RecommendationDetails() {
     if (!confirm(`Voulez-vous vraiment passer cette recommandation au statut ${newStatus} ?`)) return;
 
     try {
-      const res = await apiFetch(`/api/v1/recommendations/${id}/status`, {
+      const res = await apiFetch(`${API_BASE}/recommendations/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -182,7 +192,7 @@ export default function RecommendationDetails() {
     formData.append('recommendationId', id!);
 
     try {
-      const res = await apiFetch('/api/v1/documents/upload', {
+      const res = await apiFetch(`${API_BASE}/documents/upload`, {
         method: 'POST',
         body: formData
       });
@@ -203,7 +213,7 @@ export default function RecommendationDetails() {
     setSubmittingFollowUp(true);
 
     try {
-      const res = await apiFetch(`/api/v1/recommendations/${id}/follow-ups`, {
+      const res = await apiFetch(`${API_BASE}/recommendations/${id}/follow-ups`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -233,7 +243,7 @@ export default function RecommendationDetails() {
     setSubmittingTicket(true);
 
     try {
-      const res = await apiFetch(`/api/v1/glpi/recommendations/${id}/tickets`, {
+      const res = await apiFetch(`${API_BASE}/glpi/recommendations/${id}/tickets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -261,7 +271,7 @@ export default function RecommendationDetails() {
     if (!window.confirm('Êtes-vous sûr de vouloir délier ce ticket ?')) return;
 
     try {
-      const res = await apiFetch(`/api/v1/glpi/recommendations/${id}/tickets/${linkId}`, {
+      const res = await apiFetch(`${API_BASE}/recommendations/${id}/tickets/${linkId}`, {
         method: 'DELETE'
       });
 
@@ -509,9 +519,9 @@ export default function RecommendationDetails() {
                 {recommendation.approvals.map(approval => (
                   <li key={approval.id} className="py-3 flex items-start">
                     <div className="flex-shrink-0">
-                      {approval.status === 'APPROVED' ? (
+                      {approval.decision === 'APPROVED' ? (
                         <CheckCircle className="w-5 h-5 text-emerald-500" />
-                      ) : approval.status === 'REJECTED' ? (
+                      ) : approval.decision === 'REJECTED' ? (
                         <XCircle className="w-5 h-5 text-red-500" />
                       ) : (
                         <AlertCircle className="w-5 h-5 text-amber-500" />
@@ -522,7 +532,7 @@ export default function RecommendationDetails() {
                         {approval.approver.firstName} {approval.approver.lastName}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {new Date(approval.createdAt).toLocaleDateString()} - {approval.status}
+                        {new Date(approval.createdAt).toLocaleDateString()} - {approval.decision}
                       </p>
                       {approval.comments && <p className="text-sm text-slate-600 mt-1">{approval.comments}</p>}
                     </div>
@@ -691,7 +701,7 @@ export default function RecommendationDetails() {
                   <li key={doc.id} className="py-3 flex items-center justify-between">
                     <div className="flex items-center min-w-0">
                       <Paperclip className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
-                      <a href={`/api/v1/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                      <a href={`${API_BASE}/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
                         {doc.originalName}
                       </a>
                     </div>

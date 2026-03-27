@@ -1,0 +1,11 @@
+export const RECOMMENDATION_STATUS = {
+  DRAFT: 'DRAFT',
+  OPEN: 'OPEN',
+  IN_PROGRESS: 'IN_PROGRESS',
+  IMPLEMENTED: 'IMPLEMENTED',
+  VALIDATED: 'VALIDATED',
+  CLOSED: 'CLOSED'
+} as const;
+
+export type RecommendationStatus =
+  typeof RECOMMENDATION_STATUS[keyof typeof RECOMMENDATION_STATUS];

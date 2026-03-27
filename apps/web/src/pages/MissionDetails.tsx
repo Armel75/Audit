@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload, Users, Target, Clock, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
-import FindingFormModal from '../components/FindingFormModal';
 import { apiFetch } from '../lib/api';
+import RecommendationList from '../components/RecommendationList';
+import RecommendationFormModal from '../components/RecommendationFormModal';
 
 interface Finding {
   id: number;
@@ -70,9 +71,16 @@ interface Mission {
     sizeBytes: number;
     createdAt: string;
   }>;
+  // approvals: Array<{
+  //   id: number;
+  //   status: string;
+  //   comments: string | null;
+  //   createdAt: string;
+  //   approver: { firstName: string; lastName: string };
+  // }>;
   approvals: Array<{
     id: number;
-    status: string;
+    decision: string;
     comments: string | null;
     createdAt: string;
     approver: { firstName: string; lastName: string };
@@ -99,8 +107,11 @@ export default function MissionDetails() {
   const [mission, setMission] = useState<Mission | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'members' | 'scopes' | 'programs' | 'history'>('details');
-  
+  //const [activeTab, setActiveTab] = useState<'details' | 'members' | 'scopes' | 'programs' | 'history'>('details');
+  const [activeTab, setActiveTab] = useState<
+  'details' | 'members' | 'scopes' | 'programs' | 'history' | 'recommendations'
+>('details');
+
   // Modals state
   const [isFindingModalOpen, setIsFindingModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -123,9 +134,13 @@ export default function MissionDetails() {
 
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [isRecommendationModalOpen, setIsRecommendationModalOpen] = useState(false);
+  const [selectedFindingId, setSelectedFindingId] = useState<number | null>(null);
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   const fetchMission = () => {
-    apiFetch(`/api/v1/missions/${id}`)
+    apiFetch(`${API_BASE}/missions/${id}`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement de la mission');
         return res.json();
@@ -140,11 +155,21 @@ export default function MissionDetails() {
       });
   };
 
+  const fetchRecommendations = async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}/recommendations/mission/${id}`);
+      const data = await res.json();
+      setRecommendations(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchMission();
-    
+    fetchRecommendations();
     // Fetch users for members modal
-    apiFetch('/api/v1/users')
+    apiFetch(`${API_BASE}/users`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setUsers(data);
@@ -152,7 +177,7 @@ export default function MissionDetails() {
       .catch(console.error);
       
     // Fetch entities for scope modal
-    apiFetch('/api/v1/referential/entities')
+    apiFetch(`${API_BASE}/referential/auditable-entities`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setEntities(data);
@@ -170,7 +195,7 @@ export default function MissionDetails() {
     formData.append('missionId', id!);
 
     try {
-      const res = await apiFetch('/api/v1/documents/upload', {
+      const res = await apiFetch(`${API_BASE}/documents/upload`, {
         method: 'POST',
         body: formData
       });
@@ -192,7 +217,7 @@ export default function MissionDetails() {
   const handleStatusChange = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await apiFetch(`/api/v1/missions/${id}/status`, {
+      const response = await apiFetch(`${API_BASE}/missions/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(statusForm),
@@ -213,7 +238,7 @@ export default function MissionDetails() {
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await apiFetch(`/api/v1/missions/${id}/members`, {
+      const response = await apiFetch(`${API_BASE}/missions/${id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(memberForm),
@@ -235,7 +260,7 @@ export default function MissionDetails() {
   const handleRemoveMember = async (memberId: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir retirer ce membre ?')) return;
     try {
-      const response = await apiFetch(`/api/v1/missions/members/${memberId}`, {
+      const response = await apiFetch(`${API_BASE}/missions/members/${memberId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -252,7 +277,7 @@ export default function MissionDetails() {
   const handleAddScope = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await apiFetch(`/api/v1/missions/${id}/scopes`, {
+      const response = await apiFetch(`${API_BASE}/missions/${id}/scopes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scopeForm),
@@ -274,7 +299,7 @@ export default function MissionDetails() {
   const handleCreateProgram = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await apiFetch(`/api/v1/programs`, {
+      const response = await apiFetch(`${API_BASE}/programs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...programForm, missionId: id }),
@@ -296,7 +321,7 @@ export default function MissionDetails() {
   const handleRemoveScope = async (scopeId: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir retirer cette entité du périmètre ?')) return;
     try {
-      const response = await apiFetch(`/api/v1/missions/scopes/${scopeId}`, {
+      const response = await apiFetch(`${API_BASE}/missions/scopes/${scopeId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -314,7 +339,7 @@ export default function MissionDetails() {
     e.preventDefault();
     if (!editingHistory) return;
     try {
-      const response = await apiFetch(`/api/v1/missions/history/${editingHistory.id}`, {
+      const response = await apiFetch(`${API_BASE}/missions/history/${editingHistory.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(historyForm),
@@ -335,7 +360,7 @@ export default function MissionDetails() {
   const handleDeleteHistory = async (historyId: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet historique ?')) return;
     try {
-      const response = await apiFetch(`/api/v1/missions/history/${historyId}`, {
+      const response = await apiFetch(`${API_BASE}/missions/history/${historyId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -464,6 +489,17 @@ export default function MissionDetails() {
             <Clock className="w-4 h-4 mr-2" />
             Historique
           </button>
+
+          <button
+            onClick={() => setActiveTab('recommendations')}
+            className={`${
+              activeTab === 'recommendations'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+          >
+            Recommandations ({recommendations.length})
+          </button>
         </nav>
       </div>
 
@@ -510,14 +546,10 @@ export default function MissionDetails() {
                   </p>
                 </div>
                 <div className="mt-4 sm:mt-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsFindingModalOpen(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                  >
-                    <Plus className="-ml-1 mr-2 h-4 w-4" />
-                    Nouveau Constat
-                  </button>
+                  <Link to={`/missions/${id}/findings/new`} 
+                  className="inline-flex items-center bg-indigo-600 text-white px-4 py-2 rounded-md">
+                    + Nouveau constat
+                  </Link>
                 </div>
               </div>
 
@@ -600,7 +632,7 @@ export default function MissionDetails() {
                     <li key={doc.id} className="py-3 flex items-center justify-between">
                       <div className="flex items-center min-w-0">
                         <Paperclip className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
-                        <a href={`/api/v1/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                        <a href={`${API_BASE}/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
                           {doc.originalName}
                         </a>
                       </div>
@@ -655,9 +687,9 @@ export default function MissionDetails() {
                   {mission.approvals.map(approval => (
                     <li key={approval.id} className="py-3 flex items-start">
                       <div className="flex-shrink-0">
-                        {approval.status === 'APPROVED' ? (
+                        {approval.decision === 'APPROVED' ? (
                           <CheckCircle className="w-5 h-5 text-emerald-500" />
-                        ) : approval.status === 'REJECTED' ? (
+                        ) : approval.decision === 'REJECTED' ? (
                           <XCircle className="w-5 h-5 text-red-500" />
                         ) : (
                           <AlertCircle className="w-5 h-5 text-amber-500" />
@@ -668,7 +700,7 @@ export default function MissionDetails() {
                           {approval.approver.firstName} {approval.approver.lastName}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {new Date(approval.createdAt).toLocaleDateString()} - {approval.status}
+                          {new Date(approval.createdAt).toLocaleDateString()} - {approval.decision}
                         </p>
                       </div>
                     </li>
@@ -873,19 +905,42 @@ export default function MissionDetails() {
         </div>
       )}
 
-      {/* Modals */}
-      {isFindingModalOpen && (
-        <FindingFormModal 
-          isOpen={isFindingModalOpen} 
-          onClose={() => setIsFindingModalOpen(false)} 
-          missionId={id} 
-          onSuccess={() => {
-            fetchMission();
-            setIsFindingModalOpen(false);
-          }} 
-        />
+      {activeTab === 'recommendations' && (
+        <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-6 space-y-4">
+          
+          {/* HEADER */}
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium text-slate-900">
+              Recommandations
+            </h3>
+
+            <button
+              onClick={() => {
+                if (!mission.findings.length) {
+                  alert('Aucun constat disponible');
+                  return;
+                }
+
+                // on prend le premier finding par défaut (simple et safe)
+                setSelectedFindingId(mission.findings[0].id);
+                setIsRecommendationModalOpen(true);
+              }}
+              className="inline-flex items-center bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nouvelle recommandation
+            </button>
+          </div>
+
+          {/* LIST */}
+          <RecommendationList
+            recommendations={recommendations}
+            onRefresh={fetchRecommendations}
+          />
+        </div>
       )}
 
+      {/* Modals */}
       {/* Status Modal */}
       {isStatusModalOpen && (
         <div className="fixed inset-0 z-10 overflow-y-auto">
@@ -1114,6 +1169,7 @@ export default function MissionDetails() {
           </div>
         </div>
       )}
+
       {/* Program Modal */}
       {isProgramModalOpen && (
         <div className="fixed inset-0 z-10 overflow-y-auto">
@@ -1189,6 +1245,17 @@ export default function MissionDetails() {
             </div>
           </div>
         </div>
+      )}
+
+      {isRecommendationModalOpen && selectedFindingId && (
+        <RecommendationFormModal
+          isOpen={isRecommendationModalOpen}
+          onClose={() => setIsRecommendationModalOpen(false)}
+          findingId={selectedFindingId}
+          onSuccess={() => {
+            fetchRecommendations(); // 🔥 refresh auto
+          }}
+        />
       )}
     </div>
   );

@@ -59,9 +59,49 @@ export default function MissionReport() {
   const [report, setReport] = useState<MissionReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const API_BASE = import.meta.env.VITE_API_URL;
+
+  const downloadFile = async (docId: number, fileName: string) => {
+    const res = await apiFetch(`${API_BASE}/documents/download/${docId}`);
+
+    if (!res.ok) throw new Error('Erreur téléchargement');
+
+    const blob = await res.blob();
+
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName || 'rapport.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const generateReport = async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}/missions/${id}/report/generate`, {
+        method: 'POST'
+      });
+
+      if (!res.ok) {
+        throw new Error('Erreur génération PDF');
+      }
+
+      const doc = await res.json();
+
+      await downloadFile(doc.id, doc.originalName);
+
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de la génération du PDF');
+    }
+  };
 
   useEffect(() => {
-    apiFetch(`/api/missions/${id}/report`)
+    apiFetch(`${API_BASE}/missions/${id}/report`)
       .then(res => {
         if (!res.ok) throw new Error('Erreur lors du chargement du rapport');
         return res.json();
@@ -104,15 +144,16 @@ export default function MissionReport() {
           <ArrowLeft className="w-4 h-4 mr-1" /> Retour à la mission
         </Link>
         <div className="flex space-x-3">
-          <button 
-            onClick={() => window.print()} 
-            className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          <button
+            onClick={() => window.print()}
+            className="cursor-pointer inline-flex items-center px-4 py-2 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <Printer className="-ml-1 mr-2 h-4 w-4 text-slate-500" />
             Imprimer
           </button>
-          <button 
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          <button
+            onClick={generateReport}
+            className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
           >
             <Download className="-ml-1 mr-2 h-4 w-4" />
             Exporter PDF
@@ -135,7 +176,7 @@ export default function MissionReport() {
               {report.description}
             </p>
           </div>
-          
+
           <dl className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
             <div className="sm:col-span-1">
               <dt className="text-sm font-medium text-slate-500">Chef de mission</dt>
@@ -170,7 +211,7 @@ export default function MissionReport() {
             <div className="space-y-12">
               {report.findings.map((finding, index) => {
                 const fStatus = findingStatusConfig[finding.status] || findingStatusConfig.DRAFT;
-                
+
                 return (
                   <div key={finding.id} className="break-inside-avoid">
                     {/* Finding Header */}
@@ -183,10 +224,10 @@ export default function MissionReport() {
                       </h3>
                       <div className="flex space-x-2 ml-4 flex-shrink-0">
                         {finding.riskLevel && (
-                          <span 
+                          <span
                             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                            style={{ 
-                              backgroundColor: `${finding.riskLevel.color}15`, 
+                            style={{
+                              backgroundColor: `${finding.riskLevel.color}15`,
                               color: finding.riskLevel.color,
                               borderColor: `${finding.riskLevel.color}30`
                             }}
@@ -206,7 +247,7 @@ export default function MissionReport() {
                       <div className="prose prose-sm max-w-none text-slate-700 mb-4">
                         <p className="whitespace-pre-wrap">{finding.description}</p>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
                         <div>
                           <span className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Processus</span>
@@ -228,14 +269,14 @@ export default function MissionReport() {
                       <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
                         Recommandations associées ({finding.recos.length})
                       </h4>
-                      
+
                       {finding.recos.length === 0 ? (
                         <p className="text-sm text-slate-500 italic">Aucune recommandation pour ce constat.</p>
                       ) : (
                         <div className="space-y-4">
                           {finding.recos.map((reco, rIndex) => {
                             const rStatus = recoStatusConfig[reco.status] || recoStatusConfig.PENDING;
-                            
+
                             return (
                               <div key={reco.id} className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
                                 <div className="flex items-start justify-between mb-2">

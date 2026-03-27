@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import * as approvalController from '../controllers/approval.controller';
-import { requireAuth, requirePermission } from '../middleware/auth.middleware';
+import { requireAuth } from '../middleware/auth.middleware';
 
 const router = Router();
 
 router.use(requireAuth);
 
-router.get('/', requirePermission('can_view_tasks'), approvalController.getApprovals);
-router.post('/', requirePermission('can_manage_tasks'), approvalController.createApproval);
+router.get('/', approvalController.getApprovals);
+router.post('/', approvalController.createApproval);
+router.put('/:id/decide', approvalController.decideApproval);
+router.put('/:id/decide', approvalController.decideApproval);
 
 export default router;

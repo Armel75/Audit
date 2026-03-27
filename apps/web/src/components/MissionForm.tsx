@@ -25,6 +25,8 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [auditableEntities, setAuditableEntities] = useState<any[]>([]);
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     if (mission) {
@@ -40,20 +42,26 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
       setEndDate(mission.endDate ? new Date(mission.endDate).toISOString().split('T')[0] : '');
     }
 
-    apiFetch('/api/v1/plans')
+    apiFetch(`${API_BASE}/plans`)
       .then(res => res.json())
       .then(data => Array.isArray(data) && setPlans(data))
       .catch(err => console.error('Failed to fetch plans', err));
 
-    apiFetch('/api/v1/settings/audit-types')
+    apiFetch(`${API_BASE}/settings/audit-types`)
       .then(res => res.json())
       .then(data => Array.isArray(data) && setAuditTypes(data))
       .catch(err => console.error('Failed to fetch audit types', err));
 
-    apiFetch('/api/v1/users')
+    apiFetch(`${API_BASE}/users`)
       .then(res => res.json())
       .then(data => Array.isArray(data) && setUsers(data))
       .catch(err => console.error('Failed to fetch users', err));
+
+    apiFetch(`${API_BASE}/auditable-entities`)
+      .then(res => res.json())
+      .then(data => Array.isArray(data) && setAuditableEntities(data))
+      .catch(err => console.error('Failed to fetch auditable entities', err));
+
   }, [mission]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +70,7 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
     setError(null);
 
     try {
-      const url = mission ? `/api/v1/missions/${mission.id}` : '/api/v1/missions';
+      const url = mission ? `${API_BASE}/missions/${mission.id}` : `${API_BASE}/missions`;
       const method = mission ? 'PUT' : 'POST';
 
       const payload: any = {
@@ -71,9 +79,9 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
         objective,
         scopeDescription,
         methodology,
-        planId,
-        auditTypeId: auditTypeId || null,
-        leaderId,
+        planId: planId ? Number(planId) : null,
+        auditTypeId: auditTypeId ? Number(auditTypeId) : null,
+        leaderId: leaderId ? Number(leaderId) : null,
       };
 
       if (startDate) payload.startDate = new Date(startDate).toISOString();
@@ -96,6 +104,7 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
     } finally {
       setSubmitting(false);
     }
+    
   };
 
   return (
@@ -161,6 +170,24 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border px-3 py-2 rounded w-full" />
           <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border px-3 py-2 rounded w-full" />
         </div>
+
+        {/* 🔥 AJOUT ICI */}
+        {/* <select
+          multiple
+          value={selectedEntities.map(String)}
+          onChange={(e) => {
+            const values = Array.from(e.target.selectedOptions, o => Number(o.value));
+            setSelectedEntities(values);
+          }}
+          className="w-full border px-3 py-2 rounded"
+        >
+          <option disabled>Entités auditables (scope)</option>
+          {auditableEntities.map(e => (
+            <option key={e.id} value={e.id}>
+              {e.name}
+            </option>
+          ))}
+        </select> */}
 
         <div className="flex justify-end gap-3">
           <button type="button" onClick={onCancel} className="border px-4 py-2 rounded">

@@ -10,7 +10,7 @@ export const getNotifications = async (req: Request, res: Response) => {
     if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
 
     const notifications = await prisma.notification.findMany({
-      where: { tenantId, userId },
+      where: { tenantId, recipientUserId: userId },
       orderBy: { createdAt: 'desc' },
       take: 50
     });
@@ -31,8 +31,8 @@ export const markAsRead = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     await prisma.notification.updateMany({
-      where: { id: parseInt(id), tenantId, userId },
-      data: { isRead: true, readAt: new Date() }
+      where: { id: parseInt(id), tenantId, recipientUserId: userId },
+      data: { readAt: new Date() }
     });
 
     res.json({ success: true });
@@ -49,8 +49,8 @@ export const markAllAsRead = async (req: Request, res: Response) => {
     if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
 
     await prisma.notification.updateMany({
-      where: { tenantId, userId, isRead: false },
-      data: { isRead: true, readAt: new Date() }
+      where: { tenantId, recipientUserId: userId, readAt: null },
+      data: { readAt: new Date() }
     });
 
     res.json({ success: true });
