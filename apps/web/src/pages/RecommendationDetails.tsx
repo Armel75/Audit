@@ -82,13 +82,24 @@ interface Recommendation {
   updatedAt: string;
 }
 
+// const recoStatusConfig = {
+//   PENDING: { label: 'En attente', color: 'bg-slate-100 text-slate-800' },
+//   IN_PROGRESS: { label: 'En cours', color: 'bg-blue-100 text-blue-800' },
+//   IMPLEMENTED: { label: 'Mise en œuvre', color: 'bg-emerald-100 text-emerald-800' },
+//   VERIFIED: { label: 'Vérifiée', color: 'bg-purple-100 text-purple-800' },
+//   CLOSED: { label: 'Clôturée', color: 'bg-slate-800 text-white' },
+// };
+
 const recoStatusConfig = {
-  PENDING: { label: 'En attente', color: 'bg-slate-100 text-slate-800' },
-  IN_PROGRESS: { label: 'En cours', color: 'bg-blue-100 text-blue-800' },
-  IMPLEMENTED: { label: 'Mise en œuvre', color: 'bg-emerald-100 text-emerald-800' },
-  VERIFIED: { label: 'Vérifiée', color: 'bg-purple-100 text-purple-800' },
+  DRAFT: { label: 'Brouillon', color: 'bg-slate-100 text-slate-800' },
+  OPEN: { label: 'Ouverte', color: 'bg-blue-100 text-blue-800' },
+  IN_PROGRESS: { label: 'En cours', color: 'bg-indigo-100 text-indigo-800' },
+  IMPLEMENTED: { label: 'Implémentée', color: 'bg-purple-100 text-purple-800' },
+  VALIDATED: { label: 'Validée', color: 'bg-emerald-100 text-emerald-800' },
+  REJECTED: { label: 'Rejetée', color: 'bg-red-100 text-red-800' },
   CLOSED: { label: 'Clôturée', color: 'bg-slate-800 text-white' },
 };
+
 
 export default function RecommendationDetails() {
   const { id } = useParams<{ id: string }>();
@@ -306,7 +317,9 @@ export default function RecommendationDetails() {
     );
   }
 
-  const conf = recoStatusConfig[recommendation.status] || recoStatusConfig.PENDING;
+  //const conf = recoStatusConfig[recommendation.status] || recoStatusConfig.PENDING;
+  const conf = recoStatusConfig[recommendation.status as keyof typeof recoStatusConfig] 
+    || recoStatusConfig.DRAFT;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">

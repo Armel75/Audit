@@ -17,6 +17,11 @@ interface Procedure {
   conclusion: string | null;
 }
 
+interface Approval {
+  id: number;
+  decision: string;
+}
+
 interface Program {
   id: number;
   title: string;
@@ -31,6 +36,7 @@ interface Program {
   reviewedBy: { firstName: string; lastName: string } | null;
   approvedBy: { firstName: string; lastName: string } | null;
   procedures: Procedure[];
+  approvals?: Approval[]; // ✅ AJOUT
 }
 
 export default function AuditProgramDetails() {
@@ -51,6 +57,15 @@ export default function AuditProgramDetails() {
   const [submittingProc, setSubmittingProc] = useState(false);
   const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_URL;
+  // const hasPendingApproval =
+  //   program?.approvals?.some(a => a.decision === 'PENDING');
+
+  const pendingApproval =
+    program?.approvals?.find(a => a.decision === 'PENDING');
+  
+  const hasPendingApproval = !!pendingApproval;
+
+  const [approving, setApproving] = useState(false);
 
   const fetchProgram = () => {
     apiFetch(`${API_BASE}/programs/${id}`)
@@ -147,6 +162,73 @@ export default function AuditProgramDetails() {
   if (loading) return <div className="p-8 text-center text-slate-500">Chargement du programme...</div>;
   if (error || !program) return <div className="p-8 text-red-500">{error || 'Programme introuvable'}</div>;
 
+  const requestApproval = async () => {
+    try {
+      await apiFetch(`${API_BASE}/approvals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approvalType: 'PROGRAM_APPROVAL',
+          level: 1,
+          auditProgramId: program?.id
+        })
+      });
+
+      fetchProgram();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  // const approveProgram = async () => {
+  //   if (!pendingApproval) return;
+
+  //   try {
+  //     const res = await apiFetch(`${API_BASE}/approvals/${pendingApproval.id}/decide`, {
+  //       method: 'PUT',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({
+  //         decision: 'APPROVED'
+  //       })
+  //     });
+
+  //     if (!res.ok) throw new Error("Erreur validation");
+      
+  //     fetchProgram();
+  //   } catch (err: any) {
+  //     alert(err.message);
+  //   }
+  // };
+
+    const approveProgram = async () => {
+      if (!pendingApproval) return;
+
+      const confirmAction = window.confirm(
+        "Voulez-vous vraiment approuver ce programme d'audit ?"
+      );
+
+      if (!confirmAction) return;
+
+      setApproving(true); // ✅ ICI
+
+      try {
+        const res = await apiFetch(`${API_BASE}/approvals/${pendingApproval.id}/decide`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            decision: 'APPROVED'
+          })
+        });
+
+        if (!res.ok) throw new Error("Erreur validation");
+
+        fetchProgram();
+      } catch (err: any) {
+        setApproving(false); // ✅ ICI
+      }
+    };
+
+    
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       <div>
@@ -156,6 +238,44 @@ export default function AuditProgramDetails() {
         <div className="sm:flex sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{program.title}</h1>
+            <div className="flex gap-2 mt-4 sm:mt-0">
+
+              {/* DEMANDER VALIDATION */}
+              {program.status === 'DRAFT' && !hasPendingApproval && (
+                <button
+                  onClick={requestApproval}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+                >
+                  Demander validation
+                </button>
+              )}
+
+              {/* EN ATTENTE */}
+              {hasPendingApproval && (
+                <span className="px-4 py-2 text-sm text-yellow-700 bg-yellow-100 rounded-md">
+                  En attente de validation
+                </span>
+              )}
+
+              {/* APPROUVER */}
+              {/* {hasPendingApproval && (
+                <button
+                  onClick={approveProgram}
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                >
+                  Approuver
+                </button>
+              )} */}
+              {hasPendingApproval && program.status !== 'APPROVED' && (
+                <button
+                  onClick={approveProgram}
+                  disabled={approving}
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {approving ? 'Validation...' : 'Approuver'}
+                </button>
+              )}
+            </div>
             <div className="mt-2 flex items-center space-x-4 text-sm text-slate-500">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
                 {program.status}

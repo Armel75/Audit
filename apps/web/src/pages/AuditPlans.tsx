@@ -15,7 +15,7 @@ interface AuditPlan {
 }
 
 const statusConfig = {
-  DRAFT: { label: 'Brouillon', color: 'bg-slate-100 text-slate-800 border-slate-200', icon: FileText },
+  DRAFT: { label: 'Brouillon', color: 'bg-slate-100 text-slate-800 border-slate-200 dark:border-slate-700', icon: FileText },
   PENDING_APPROVAL: { label: 'En attente DG', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: Clock },
   VALIDATED: { label: 'Validé', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: CheckCircle },
   REJECTED: { label: 'Rejeté', color: 'bg-rose-100 text-rose-800 border-rose-200', icon: XCircle },
@@ -118,7 +118,7 @@ export default function AuditPlans() {
     <div className="space-y-6">
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Plans d'Audit Annuels</h2>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Plans d'Audit Annuels</h2>
           <p className="mt-1 text-sm text-slate-500">
             Gérez la planification stratégique des audits par année.
           </p>
@@ -149,7 +149,7 @@ export default function AuditPlans() {
           {plans.length === 0 && (
             <div className="col-span-full p-12 text-center border-2 border-dashed border-slate-300 rounded-xl">
               <Calendar className="mx-auto h-12 w-12 text-slate-400" />
-              <h3 className="mt-2 text-sm font-medium text-slate-900">Aucun plan d'audit</h3>
+              <h3 className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">Aucun plan d'audit</h3>
               <p className="mt-1 text-sm text-slate-500">Commencez par créer un plan pour la prochaine année.</p>
             </div>
           )}
@@ -159,12 +159,12 @@ export default function AuditPlans() {
             const StatusIcon = status.icon;
             
             return (
-              <div key={plan.id} className="bg-white overflow-hidden shadow-sm rounded-xl border border-slate-200 hover:shadow-md transition-shadow flex flex-col">
+              <div key={plan.id} className="bg-white dark:bg-slate-800 overflow-hidden shadow-sm rounded-xl border border-slate-200 dark:border-slate-700">
                 <div className="p-6 flex-1">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-5 w-5 text-slate-400" />
-                      <h3 className="text-xl font-bold text-slate-900">{plan.year}</h3>
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{plan.year}</h3>
                       <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md">v{plan.versionNumber}</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -181,7 +181,7 @@ export default function AuditPlans() {
                     </div>
                   </div>
                   
-                  <p className="text-sm font-medium text-slate-900 mb-1">
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">
                     {plan.title || `Plan d'audit annuel ${plan.year}`}
                   </p>
                   <p className="text-sm text-slate-500 line-clamp-2 mb-4">
@@ -218,13 +218,13 @@ export default function AuditPlans() {
         <div className="fixed inset-0 z-10 overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-500 bg-opacity-75 transition-opacity" onClick={() => setIsModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-xl bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+            <div className="relative transform overflow-hidden rounded-xl bg-white dark:bg-slate-800 px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
               <div>
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
                   <Calendar className="h-6 w-6 text-emerald-600" />
                 </div>
                 <div className="mt-3 text-center sm:mt-5">
-                  <h3 className="text-lg font-medium leading-6 text-slate-900">
+                  <h3 className="text-lg font-medium leading-6 text-slate-900 dark:text-slate-100">
                     {editingPlan ? "Modifier le Plan d'Audit" : "Créer un Plan d'Audit"}
                   </h3>
                 </div>
@@ -272,7 +272,7 @@ export default function AuditPlans() {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-base font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm"
+                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 bg-white dark:bg-slate-800 px-4 py-2 text-base font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm"
                   >
                     Annuler
                   </button>

@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+/* 🔥 ACTIVE DARK MODE VIA CLASS */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Optionnel mais recommandé */
+html {
+  color-scheme: light dark;
+}

@@ -118,6 +118,15 @@ export default function Login() {
     },
   ];
 
+  // 👇 AJOUT pour effet lumière dynamique
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    e.currentTarget.style.setProperty('--x', `${x}px`);
+    e.currentTarget.style.setProperty('--y', `${y}px`);
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 font-sans">
       <div className="grid min-h-screen lg:grid-cols-[1.08fr_0.92fr]">
@@ -128,7 +137,7 @@ export default function Login() {
           <div className="absolute left-10 top-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
           <div className="absolute bottom-10 right-10 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
 
-          <div className="relative z-10 flex w-full flex-col justify-between px-10 py-10 xl:px-14 xl:py-12">
+          <div className="relative z-10 mx-auto flex h-full w-full max-w-[1200px] flex-col justify-between px-10 py-10 xl:px-14 xl:py-12">
             <div>
               <div className="mb-14 flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-500/10 shadow-[0_10px_30px_rgba(16,185,129,0.16)] backdrop-blur-sm">
@@ -164,52 +173,142 @@ export default function Login() {
                 </p>
               </div>
 
-              <div className="mt-12 grid max-w-3xl grid-cols-1 gap-4 xl:grid-cols-2">
+              <div className="mt-12 grid max-w-3xl grid-cols-1 gap-6 xl:grid-cols-2">
                 {featureItems.map((item, index) => {
                   const Icon = item.icon;
+
                   return (
                     <div
                       key={item.title}
-                      className="group rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-400/20 hover:bg-white/[0.06] animate-in fade-in slide-in-from-left-2"
+                      onMouseMove={handleMouseMove}
+                      className="group relative h-full [transform-style:preserve-3d]"
                       style={{ animationDelay: `${index * 80}ms` }}
                     >
-                      <div className="flex items-start gap-4">
-                        <div className="mt-0.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-900/80 text-slate-100 shadow-inner">
-                          <Icon className="h-5 w-5 text-emerald-400" />
+                      {/* Ambient glow (VISIBLE même sans hover) */}
+                      <div className="absolute inset-0 rounded-3xl opacity-40 bg-[radial-gradient(500px_circle_at_20%_0%,rgba(16,185,129,0.12),transparent_60%)] blur-xl" />
+
+                      {/* Hover glow */}
+                      <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition duration-500 bg-[radial-gradient(400px_circle_at_var(--x)_var(--y),rgba(16,185,129,0.35),transparent_40%)] blur-xl" />
+
+                      {/* Card */}
+                      <div
+                        className="relative h-full rounded-3xl border border-white/10 backdrop-blur-xl p-6 transition-all duration-500"
+                        style={{
+                          transform: 'perspective(900px) rotateX(var(--rx)) rotateY(var(--ry))',
+                          background: `
+                            linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
+                            rgba(2,6,23,0.75)
+                          `
+                        }}
+                      >
+
+                        {/* Inner permanent light (IMPORTANT → état idle premium) */}
+                        <div className="absolute inset-0 rounded-3xl bg-[radial-gradient(600px_circle_at_top_left,rgba(255,255,255,0.08),transparent_60%)]" />
+
+                        {/* Hover light follow */}
+                        <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition duration-300 bg-[radial-gradient(500px_circle_at_var(--x)_var(--y),rgba(255,255,255,0.10),transparent_60%)]" />
+
+                        {/* Sheen subtil permanent */}
+                        <div className="absolute inset-0 rounded-3xl bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.04)_40%,transparent_60%)] opacity-40" />
+
+                        {/* Sheen animé au hover */}
+                        <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition duration-700 bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.18)_40%,transparent_60%)] translate-x-[-100%] group-hover:translate-x-[100%]" />
+
+                        {/* Content */}
+                        <div className="relative flex h-full flex-col justify-between">
+                          <div className="flex items-start gap-4">
+                            
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-slate-900/80 shadow-inner transition group-hover:border-emerald-400/40">
+                              <Icon className="h-5 w-5 text-emerald-400 transition duration-300 group-hover:scale-110" />
+                            </div>
+
+                            <div className="min-h-[72px]">
+                              <h3 className="text-sm font-semibold text-white">
+                                {item.title}
+                              </h3>
+                              <p className="mt-1 text-sm text-slate-300/90 group-hover:text-slate-200 transition">
+                                {item.description}
+                              </p>
+                            </div>
+
+                          </div>
+
+                          <div className="mt-6 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-40 group-hover:opacity-100 transition" />
                         </div>
-                        <div>
-                          <h3 className="text-sm font-semibold leading-6 text-white xl:text-[15px]">
-                            {item.title}
-                          </h3>
-                          <p className="mt-1 text-sm leading-6 text-slate-400">
-                            {item.description}
-                          </p>
-                        </div>
+
                       </div>
                     </div>
                   );
                 })}
-              </div>
+              </div>            
             </div>
 
             <div className="mt-10 grid grid-cols-2 gap-4 border-t border-white/10 pt-8">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                  Promesse produit
+              {/* Card 1 */}
+              <div
+                onMouseMove={handleMouseMove}
+                className="group relative h-full overflow-hidden rounded-2xl p-[1px]"
+              >
+                {/* Glow border */}
+                <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 bg-[radial-gradient(260px_circle_at_var(--x)_var(--y),rgba(16,185,129,0.25),transparent_45%)]" />
+
+                {/* Card */}
+                <div className="relative h-full rounded-2xl bg-slate-950/95 backdrop-blur-xl border border-white/10 p-5 transition-all duration-300 group-hover:border-emerald-400/30 group-hover:shadow-[0_20px_60px_rgba(16,185,129,0.12)]">
+
+                  {/* Light overlay */}
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 bg-[radial-gradient(400px_circle_at_var(--x)_var(--y),rgba(255,255,255,0.06),transparent_60%)]" />
+
+                  <div className="flex h-full flex-col justify-between">
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                        Promesse produit
+                      </div>
+
+                      <p className="mt-2 text-sm leading-6 text-slate-300 group-hover:text-slate-200 transition-colors">
+                        Rigueur, traçabilité, conformité et pilotage métier réunis dans une expérience sobre et fiable.
+                      </p>
+                    </div>
+
+                    {/* Ligne premium */}
+                    <div className="mt-5 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition" />
+                  </div>
+
                 </div>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Rigueur, traçabilité, conformité et pilotage métier réunis dans une expérience sobre et fiable.
-                </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                  Cadre d’usage
+
+              {/* Card 2 */}
+              <div
+                onMouseMove={handleMouseMove}
+                className="group relative h-full overflow-hidden rounded-2xl p-[1px]"
+              >
+                {/* Glow border */}
+                <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 bg-[radial-gradient(260px_circle_at_var(--x)_var(--y),rgba(16,185,129,0.25),transparent_45%)]" />
+
+                {/* Card */}
+                <div className="relative h-full rounded-2xl bg-slate-950/95 backdrop-blur-xl border border-white/10 p-5 transition-all duration-300 group-hover:border-emerald-400/30 group-hover:shadow-[0_20px_60px_rgba(16,185,129,0.12)]">
+
+                  {/* Light overlay */}
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 bg-[radial-gradient(400px_circle_at_var(--x)_var(--y),rgba(255,255,255,0.06),transparent_60%)]" />
+
+                  <div className="flex h-full flex-col justify-between">
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                        Cadre d’usage
+                      </div>
+
+                      <p className="mt-2 text-sm leading-6 text-slate-300 group-hover:text-slate-200 transition-colors">
+                        Pensé pour les équipes audit, contrôle interne, conformité et gouvernance.
+                      </p>
+                    </div>
+
+                    {/* Ligne premium */}
+                    <div className="mt-5 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition" />
+                  </div>
+
                 </div>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Pensé pour les équipes audit, contrôle interne, conformité et gouvernance.
-                </p>
               </div>
-            </div>
+
+            </div>            
           </div>
         </section>
 

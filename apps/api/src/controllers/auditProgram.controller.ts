@@ -64,6 +64,12 @@ export const getAuditProgramById = async (req: Request, res: Response) => {
         approvedBy: {
           select: { id: true, firstName: true, lastName: true }
         },
+        approvals: {
+          where: {
+            approvalType: 'PROGRAM_APPROVAL'
+          },
+          orderBy: { createdAt: 'desc' }
+        },
         procedures: {
           include: {
             performedBy: {
@@ -115,6 +121,13 @@ export const createAuditProgram = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Mission not found' });
     }
 
+    // 🔴 AJOUT — verrouillage cadrage
+    if (!['PLANNED', 'READY'].includes(mission.status)) {
+      return res.status(400).json({
+        error: 'Cadrage verrouillé : mission déjà démarrée'
+      });
+    }
+
     const program = await prisma.auditProgram.create({
       data: {
         tenantId,
@@ -161,6 +174,12 @@ export const updateAuditProgram = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Audit program not found' });
     }
 
+    if (status && status !== program.status) {
+      return res.status(400).json({
+        error: "Changement de statut interdit via cette route"
+      });
+    }
+
     const updatedProgram = await prisma.auditProgram.update({
       where: { id: Number(id) },
       data: {
@@ -170,7 +189,6 @@ export const updateAuditProgram = async (req: Request, res: Response) => {
         methodology,
         auditCriteria,
         samplingApproach,
-        status
       }
     });
 
@@ -237,12 +255,27 @@ export const createAuditProcedure = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Title is required' });
     }
 
+
     const program = await prisma.auditProgram.findFirst({
       where: { id: Number(programId), tenantId }
     });
 
     if (!program) {
       return res.status(404).json({ error: 'Audit program not found' });
+    }
+
+    const mission = await prisma.auditMission.findUnique({
+      where: { id: program.missionId }
+    });
+
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission introuvable' });
+    }
+
+    if (!['PLANNED', 'READY'].includes(mission.status)) {
+      return res.status(400).json({
+        error: 'Cadrage verrouillé : mission déjà démarrée'
+      });
     }
 
     // Determine next sequence number if not provided
@@ -293,8 +326,6 @@ export const updateAuditProcedure = async (req: Request, res: Response) => {
       performedById,
       sequenceNo,
       status,
-      //actualResult,
-      //conclusion
     } = req.body;
 
     const procedure = await prisma.auditProcedure.findFirst({
@@ -303,6 +334,23 @@ export const updateAuditProcedure = async (req: Request, res: Response) => {
 
     if (!procedure) {
       return res.status(404).json({ error: 'Audit procedure not found' });
+    }
+
+    const mission = await prisma.auditMission.findFirst({
+      where: { 
+        id: procedure.missionId,
+        tenantId
+      }
+    });
+
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission introuvable' });
+    }
+
+    if (!['PLANNED', 'READY'].includes(mission.status)) {
+      return res.status(400).json({
+        error: 'Modification interdite : mission déjà démarrée'
+      });
     }
 
     const updatedProcedure = await prisma.auditProcedure.update({
@@ -316,8 +364,6 @@ export const updateAuditProcedure = async (req: Request, res: Response) => {
         performedById: performedById ? Number(performedById) : undefined,
         sequenceNo,
         status,
-        //actualResult,
-        //conclusion
       }
     });
 

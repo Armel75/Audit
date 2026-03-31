@@ -1,0 +1,6 @@
+export type ApprovalType =
+  | 'PLAN_APPROVAL'
+  | 'MISSION_APPROVAL'
+  | 'FINDING_APPROVAL'
+  | 'RECOMMENDATION_APPROVAL'
+  | 'PROGRAM_APPROVAL' // 🔥 AJOUT;

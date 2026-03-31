@@ -26,6 +26,8 @@ import ProcedureFormPage from './pages/ProcedureFormPage';
 import Evidences from './pages/Evidences';
 import EvidenceCreate from './pages/EvidenceCreate';
 import EvidenceEdit from './pages/EvidenceEdit';
+import DashboardDG from './pages/DashboardDG';
+import ApprovalCenter from './pages/ApprovalCenter';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -52,9 +54,11 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="dashboard-dg" element={<DashboardDG />} />
             <Route path="plans" element={<AuditPlans />} />
             <Route path="plans/:id" element={<AuditPlanDetails />} />
             <Route path="missions" element={<Missions />} />
+            <Route path="missions/archive" element={<Missions mode="archive" />} />
             <Route path="missions/:id" element={<MissionDetails />} />
             <Route path="missions/:id/report" element={<MissionReport />} />
             <Route path="programs/:id" element={<AuditProgramDetails />} />
@@ -75,6 +79,7 @@ export default function App() {
             <Route path="/evidences" element={<Evidences />} />
             <Route path="/evidences/create" element={<EvidenceCreate />} />
             <Route path="/evidences/edit/:id" element={<EvidenceEdit />} />
+            <Route path="/approvals" element={<ApprovalCenter />} />
           </Route>
         </Routes>
       </AuthProvider>

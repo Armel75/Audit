@@ -34,6 +34,7 @@ import notificationRoutes from './routes/notification.routes';
 import auditLogRoutes from './routes/auditLog.routes';
 import auditableEntityRoutes from './routes/auditableEntity.routes';
 import businessProcessRoutes from './routes/businessProcess.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 console.log('authRoutes:', authRoutes);
 console.log("ENV LOADED:", process.env.JWT_SECRET);
@@ -74,6 +75,7 @@ async function startServer() {
   app.use('/api/v1/audit-logs', auditLogRoutes);
   app.use('/api/v1/auditable-entities', auditableEntityRoutes);
   app.use('/api/v1/business-processes', businessProcessRoutes);
+  app.use('/api/v1/dashboard', dashboardRoutes);
 
   app.get('/api/v1/health', (req, res) => {
     res.json({ status: 'ok', service: 'SISAR API', tenant: 'SOREPCO' });

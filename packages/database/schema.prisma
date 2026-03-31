@@ -48,6 +48,7 @@ model Tenant {
   recommendationStatusHistory RecommendationStatusHistory[]
   recommendationFollowUps     RecommendationFollowUp[]
   recommendationTickets       RecommendationTicket[]
+  dashboardSnapshots          DashboardSnapshot[]
 
   documents                   Document[]
   evidences                   Evidence[]
@@ -1165,4 +1166,19 @@ model AuditLog {
 
   @@index([tenantId, entityName, entityId])
   @@index([createdAt])
+}
+
+model DashboardSnapshot {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  year        Int?
+  month       Int?
+
+  data        String   @db.VarChar(4000) // JSON stringifié
+
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, year, month])
 }

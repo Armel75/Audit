@@ -142,9 +142,13 @@ export const updateRecommendation = async (req: Request, res: Response) => {
 
     if (!existing) return res.status(404).json({ error: 'Recommandation introuvable' });
 
-    if (existing.status === 'VALIDATED' || existing.status === 'CLOSED') {
+    if (
+      existing.status === 'VALIDATED' ||
+      existing.status === 'CLOSED' ||
+      existing.status === 'REJECTED'
+    ) {
       return res.status(400).json({
-        error: 'Modification interdite après validation'
+        error: 'Modification interdite après validation ou rejet'
       });
     }
 
@@ -170,49 +174,6 @@ export const updateRecommendation = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Erreur lors de la mise à jour de la recommandation' });
   }
 };
-
-// export const updateRecommendationStatus = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
-//     const tenantId = req.user?.tenantId;
-//     const userId = req.user?.id;
-//     if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
-
-//     const { status, reason } = req.body;
-//     if (!status || !reason) return res.status(400).json({ error: 'Statut et raison requis' });
-
-//     const existing = await prisma.recommendation.findFirst({ where: { id: Number(id), tenantId } });
-//     if (!existing) return res.status(404).json({ error: 'Recommandation introuvable' });
-
-//     await prisma.$transaction(async (tx) => {
-//       await tx.recommendation.update({
-//         where: { id: Number(id) },
-//         data: {
-//           status,
-//           closedAt: status === 'CLOSED' ? new Date() : null,
-//           validatedAt: status === 'VALIDATED' ? new Date() : null,
-//           validatedById: status === 'VALIDATED' ? userId : null
-//         }
-//       });
-
-//       await tx.recommendationStatusHistory.create({
-//         data: {
-//           tenantId,
-//           recommendationId: Number(id),
-//           previousStatus: existing.status,
-//           newStatus: status,
-//           reason,
-//           changedById: userId
-//         }
-//       });
-//     });
-
-//     res.json({ success: true });
-//   } catch (error) {
-//     console.error('Error updating recommendation status:', error);
-//     res.status(500).json({ error: 'Erreur lors de la mise à jour du statut' });
-//   }
-// };
 
 export const updateRecommendationStatus = async (req: Request, res: Response) => {
   try {

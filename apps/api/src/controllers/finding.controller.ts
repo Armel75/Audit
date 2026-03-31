@@ -91,6 +91,23 @@ export const createFinding = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Titre, description et mission sont requis' });
     }
 
+    const mission = await prisma.auditMission.findFirst({
+      where: {
+        id: Number(missionId),
+        tenantId
+      }
+    });
+
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission introuvable' });
+    }
+
+    if (mission.status !== 'IN_PROGRESS') {
+      return res.status(400).json({
+        error: 'Impossible de créer un constat : mission non démarrée'
+      });
+    }
+    
     const finding = await prisma.$transaction(async (tx) => {
       const newFinding = await tx.finding.create({
         data: {

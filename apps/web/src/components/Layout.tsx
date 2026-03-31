@@ -10,15 +10,20 @@ import {
   ShieldAlert,
   User,
   Database,
-  Calendar
+  Calendar,
+  Archive,
+  Sun, 
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { CheckCircle } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+  const { resolvedTheme, toggleTheme } = useTheme();
   // Sidebar collapse
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -29,15 +34,18 @@ export default function Layout() {
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
+    { path: '/dashboard-dg', icon: LayoutDashboard, label: 'Tableau de bord DG' },
     { path: '/plans', icon: Calendar, label: 'Plans d\'audit' },
-    { path: '/missions', icon: Briefcase, label: 'Missions d\'audit' },
+    { path: '/missions', icon: Briefcase, label: 'Missions' },
+    { path: '/missions/archive', icon: Archive, label: 'Archives missions' },
+    { path: '/approvals', icon: CheckCircle, label: 'Approbations' },
     { path: '/referential', icon: Database, label: 'Référentiel' },
     { path: '/settings', icon: SettingsIcon, label: 'Paramètres' },
     { path: '/admin', icon: ShieldAlert, label: 'Administration' },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans">
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -119,6 +127,23 @@ export default function Layout() {
             </div>
           )}
 
+          <div className="mb-3">
+            <button
+              onClick={toggleTheme}
+              className={`flex items-center ${
+                isCollapsed ? 'justify-center' : 'gap-3'
+              } px-3 py-2.5 w-full rounded-lg font-medium transition-colors
+              bg-slate-800 text-slate-200 hover:bg-slate-700`}
+            >
+              {resolvedTheme === 'dark' ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+              {!isCollapsed && 'Thème'}
+            </button>
+          </div>
+
           {/* Logout rouge foncé */}
           <button
             onClick={handleLogout}
@@ -136,7 +161,7 @@ export default function Layout() {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:hidden z-30">
+        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:hidden z-30">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center border border-emerald-100">
               <ShieldAlert className="w-4 h-4 text-emerald-600" />
@@ -145,12 +170,33 @@ export default function Layout() {
               SISAR
             </span>
           </div>
-          <button
+          {/* <button
             onClick={() => setIsMobileMenuOpen(true)}
             className="p-2 -mr-2 text-slate-500 hover:bg-slate-100 rounded-lg"
           >
             <Menu className="w-6 h-6" />
-          </button>
+          </button> */}
+          <div className="flex items-center gap-2">
+            {/* Toggle Theme */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
+            >
+              {resolvedTheme === 'dark' ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+            </button>
+
+            {/* Menu */}
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 -mr-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
         </header>
 
         {/* Content */}

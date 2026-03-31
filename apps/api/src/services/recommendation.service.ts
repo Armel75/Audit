@@ -103,8 +103,25 @@ export class RecommendationService {
       assigneeName?: string;
     }
   ) {
+    const existing = await prisma.recommendation.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!existing) {
+      throw new Error('Recommandation introuvable');
+    }
+
+    // 🔒 VERROU MÉTIER GLOBAL
+    if (
+      existing.status === 'VALIDATED' ||
+      existing.status === 'CLOSED' ||
+      existing.status === 'REJECTED'
+    ) {
+      throw new Error('Modification interdite après validation ou rejet');
+    }
+
     return prisma.recommendation.update({
-      where: { id: Number(id) }, // ✅ FIX
+      where: { id: Number(id) },
       data: {
         title: data.title,
         actionPlan: data.actionPlan,

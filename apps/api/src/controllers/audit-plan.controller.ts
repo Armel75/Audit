@@ -12,8 +12,13 @@ export const getPlans = async (req: Request, res: Response) => {
     const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
 
+    const { status: statusQuery } = req.query;
+
     const plans = await prisma.auditPlan.findMany({
-      where: { tenantId },
+      where: { 
+        tenantId,
+        ...(statusQuery ? { status: String(statusQuery) } : {})
+      },
       include: {
         _count: {
           select: { missions: true, versions: true }

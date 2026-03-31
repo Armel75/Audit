@@ -6,16 +6,62 @@ import {
   buildReportHTML,
   generatePDF
 } from '../services/report.service';
+import { isMissionReady, validateMissionStart } from '../services/mission.service';
 
 import { DocumentService } from '../services/document.service';
 // ==========================================
 // AUDIT MISSION
 // ==========================================
 
-// ✅ AJOUT helper (non intrusif)
-const canTransitionWorkflow = (current: string, next: string) => {
-  return missionWorkflow[current]?.includes(next);
-};
+// export const getMissions = async (req: Request, res: Response) => {
+//   try {
+//     const tenantId = req.user?.tenantId;
+//     if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
+
+//     const page = parseInt(req.query.page as string) || 1;
+//     const limit = parseInt(req.query.limit as string) || 10;    
+//     const skip = (page - 1) * limit;
+
+//     const [missions, total] = await Promise.all([
+//       prisma.auditMission.findMany({
+//         where: { tenantId },
+//         include: {
+//           leader: {
+//             select: { id: true, firstName: true, lastName: true, email: true }
+//           },
+//           plan: {
+//             select: { id: true, year: true, title: true }
+//           },
+//           auditType: {
+//             select: { id: true, name: true }
+//           },
+//           _count: {
+//             select: { findings: true, documents: true, members: true, scopes: true }
+//           }
+//         },
+//         orderBy: { createdAt: 'desc' },
+//         skip,
+//         take: limit
+//       }),
+
+//       prisma.auditMission.count({
+//         where: { tenantId }
+//       })
+//     ]);
+
+//     res.json({
+//       data: missions,
+//       page,
+//       limit,
+//       total,
+//       totalPages: Math.ceil(total / limit)
+//     });
+
+//   } catch (error: any) {
+//     console.error('Error fetching missions:', error);
+//     res.status(500).json({ error: 'Erreur lors de la récupération des missions' });
+//   }
+// };
 
 export const getMissions = async (req: Request, res: Response) => {
   try {
@@ -23,13 +69,26 @@ export const getMissions = async (req: Request, res: Response) => {
     if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
 
     const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-
+    const limit = parseInt(req.query.limit as string) || 10;    
     const skip = (page - 1) * limit;
+
+    // ✅ NOUVEAU : paramètre de filtre
+    const type = req.query.type as string; // 'active' | 'archive'
+
+    // ✅ NOUVEAU : construction dynamique du where
+    const where: any = { tenantId };
+
+    if (type === 'active') {
+      where.status = { not: 'CLOSED' };
+    }
+
+    if (type === 'archive') {
+      where.status = 'CLOSED';
+    }
 
     const [missions, total] = await Promise.all([
       prisma.auditMission.findMany({
-        where: { tenantId },
+        where,
         include: {
           leader: {
             select: { id: true, firstName: true, lastName: true, email: true }
@@ -50,7 +109,7 @@ export const getMissions = async (req: Request, res: Response) => {
       }),
 
       prisma.auditMission.count({
-        where: { tenantId }
+        where
       })
     ]);
 
@@ -67,6 +126,7 @@ export const getMissions = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Erreur lors de la récupération des missions' });
   }
 };
+
 
 export const getMission = async (req: Request, res: Response) => {
   try {
@@ -120,16 +180,29 @@ export const getMission = async (req: Request, res: Response) => {
           },
           orderBy: { createdAt: 'desc' }
         },
+        // programs: {
+        //   select: {
+        //     id: true,
+        //     title: true,
+        //     status: true,
+        //     _count: {
+        //       select: { procedures: true }
+        //     }
+        //   },
+        //   orderBy: { createdAt: 'desc' }
+        // },
         programs: {
-          select: {
-            id: true,
-            title: true,
-            status: true,
+          include: {
+            approvals: {
+              where: {
+                approvalType: 'PROGRAM_APPROVAL'
+              },
+              orderBy: { createdAt: 'desc' }
+            },
             _count: {
               select: { procedures: true }
             }
-          },
-          orderBy: { createdAt: 'desc' }
+          }
         },
         documents: true,
         approvals: {
@@ -147,6 +220,34 @@ export const getMission = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Erreur lors de la récupération de la mission' });
   }
 };
+
+
+export const evaluateMissionReadiness = async (tx: any, missionId: number) => {
+  const mission = await tx.auditMission.findUnique({
+    where: { id: missionId },
+    include: {
+      members: true,
+      scopes: true,
+      programs: true
+    }
+  });
+
+  if (!mission) return;
+
+  const hasMembers = mission.members.length > 0;
+  const hasScopes = mission.scopes.length > 0;
+  //const hasApprovedProgram = mission.programs.some(p => p.status === 'APPROVED');
+  const hasApprovedProgram = mission.programs.some(
+    (p: { status: string }) => p.status === 'APPROVED'
+  );
+
+  if (hasMembers && hasScopes && hasApprovedProgram && mission.status === 'PLANNED') {
+    await tx.auditMission.update({
+      where: { id: missionId },
+      data: { status: 'READY' }
+    });
+  }
+}
 
 export const createMission = async (req: Request, res: Response) => {
   try {
@@ -181,7 +282,16 @@ export const createMission = async (req: Request, res: Response) => {
     const plan = await prisma.auditPlan.findFirst({
       where: { id: parsedPlanId, tenantId }
     });
-    if (!plan) return res.status(404).json({ error: 'Plan d\'audit non trouvé' });
+
+    if (!plan) {
+      return res.status(404).json({ error: "Plan d'audit non trouvé" });
+    }
+
+    if (plan.status !== "VALIDATED") {
+      return res.status(400).json({
+        error: `Le plan doit être validé (status actuel: ${plan.status})`
+      });
+    }
 
     const leader = await prisma.user.findFirst({
       where: { id: parsedLeaderId, tenantId }
@@ -331,29 +441,43 @@ export const updateMissionStatus = async (req: Request, res: Response) => {
 
     if (!mission) return res.status(404).json({ error: 'Mission non trouvée' });
 
-    // 🔴 AJOUT — vérification workflow (non destructif)
-    if (missionWorkflow[mission.status]) {
-      if (!canTransitionWorkflow(mission.status, status)) {
+    // 🔒 WORKFLOW UNIQUE (corrigé)
+    if (!missionWorkflow[mission.status]?.includes(status)) {
+      return res.status(400).json({
+        error: `Transition interdite : ${mission.status} → ${status}`
+      });
+    }
+
+    // 🔴 NOUVEAU — Vérification READY / IN_PROGRESS (sans casser)
+    if (status === 'READY' || status === 'IN_PROGRESS') {
+      const fullMission = await prisma.auditMission.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          scopes: true,
+          members: true,
+          programs: {
+            include: { procedures: true }
+          }
+        }
+      });
+
+      if (!isMissionReady(fullMission)) {
         return res.status(400).json({
-          error: `Transition interdite (workflow): ${mission.status} → ${status}`
+          error: 'Mission non prête : cadrage incomplet'
         });
+      }
+
+      // 🔴 BONUS TOP 1% — uniquement pour IN_PROGRESS
+      if (status === 'IN_PROGRESS') {
+        try {
+          validateMissionStart(fullMission);
+        } catch (err: any) {
+          return res.status(400).json({ error: err.message });
+        }
       }
     }
 
-    // Valid transitions
-    const validTransitions: Record<string, string[]> = {
-      'PLANNED': ['IN_PROGRESS', 'CLOSED'],
-      'IN_PROGRESS': ['IN_REVIEW', 'PLANNED'],
-      'IN_REVIEW': ['VALIDATED', 'IN_PROGRESS'],
-      'VALIDATED': ['CLOSED', 'IN_REVIEW'],
-      'CLOSED': ['PLANNED'] // Reopen
-    };
-
-    if (!validTransitions[mission.status]?.includes(status)) {
-      return res.status(400).json({ error: `Transition de statut invalide de ${mission.status} vers ${status}` });
-    }
-
-    // 🔴 AJOUT — règle métier critique
+    // 🔴 EXISTANT CONSERVÉ
     if (status === 'CLOSED') {
       const pendingRecos = await prisma.recommendation.count({
         where: {
@@ -369,8 +493,8 @@ export const updateMissionStatus = async (req: Request, res: Response) => {
       }
     }
 
-    // 🔴 AJOUT — APPROVAL OBLIGATOIRE
-    if (status === 'VALIDATED' || status === 'CLOSED') {
+    // 🔴 EXISTANT CONSERVÉ (corrigé statuts)
+    if (status === 'APPROVED' || status === 'CLOSED') {
       const approval = await prisma.approval.findFirst({
         where: {
           missionId: parseInt(id),
@@ -380,7 +504,7 @@ export const updateMissionStatus = async (req: Request, res: Response) => {
 
       if (!approval) {
         return res.status(400).json({
-          error: 'Validation requise par le chef audit'
+          error: 'Une approbation valide est requise'
         });
       }
     }
@@ -411,6 +535,7 @@ export const updateMissionStatus = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Erreur lors du changement de statut' });
   }
 };
+
 
 export const deleteMission = async (req: Request, res: Response) => {
   try {
@@ -457,6 +582,20 @@ export const addMissionMember = async (req: Request, res: Response) => {
     const { id } = req.params; // missionId
     const { userId, roleInMission, isLead, notes } = req.body;
 
+    const mission = await prisma.auditMission.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission introuvable' });
+    }
+
+    if (!['PLANNED', 'READY'].includes(mission.status)) {
+      return res.status(400).json({
+        error: 'Cadrage verrouillé : mission déjà démarrée'
+      });
+    }
+
     if (!userId || !roleInMission) {
       return res.status(400).json({ error: 'L\'utilisateur et le rôle sont requis' });
     }
@@ -486,6 +625,8 @@ export const addMissionMember = async (req: Request, res: Response) => {
         assignmentStatus: 'ACTIVE'
       }
     });
+
+    await evaluateMissionReadiness(prisma, parseInt(id));
 
     res.status(201).json(member);
   } catch (error: any) {
@@ -562,6 +703,20 @@ export const addMissionScope = async (req: Request, res: Response) => {
     const { id } = req.params; // missionId
     const { auditableEntityId, scopeRole, notes } = req.body;
 
+    const mission = await prisma.auditMission.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission introuvable' });
+    }
+
+    if (!['PLANNED', 'READY'].includes(mission.status)) {
+      return res.status(400).json({
+        error: 'Cadrage verrouillé : mission déjà démarrée'
+      });
+    }
+
     if (!auditableEntityId) {
       return res.status(400).json({ error: 'L\'entité auditable est requise' });
     }
@@ -589,6 +744,8 @@ export const addMissionScope = async (req: Request, res: Response) => {
       }
     });
 
+    await evaluateMissionReadiness(prisma, parseInt(id));
+    
     res.status(201).json(scope);
   } catch (error: any) {
     console.error('Error adding mission scope:', error);
@@ -775,3 +932,4 @@ export const generateMissionReport = async (req: Request, res: Response) => {
     });
   }
 };
+
