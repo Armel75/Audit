@@ -1,10 +1,46 @@
+// import { WorkflowRules } from './workflow.engine';
+
+// export const missionWorkflow: WorkflowRules = {
+//   PLANNED: ['READY'],
+//   READY: ['IN_PROGRESS'],
+//   IN_PROGRESS: ['UNDER_REVIEW'],
+//   UNDER_REVIEW: ['APPROVED'],
+//   APPROVED: ['CLOSED'],
+//   CLOSED: []
+// };
+
+import { MISSION_STATUS } from '../../constants/missionStatus';
 import { WorkflowRules } from './workflow.engine';
 
 export const missionWorkflow: WorkflowRules = {
-  PLANNED: ['READY'],
-  READY: ['IN_PROGRESS'],
-  IN_PROGRESS: ['UNDER_REVIEW'],
-  UNDER_REVIEW: ['APPROVED'],
-  APPROVED: ['CLOSED'],
-  CLOSED: []
+  [MISSION_STATUS.PLANNED]: [
+    MISSION_STATUS.READY,
+    MISSION_STATUS.CANCELLED
+  ],
+
+  [MISSION_STATUS.READY]: [
+    MISSION_STATUS.IN_PROGRESS,
+    MISSION_STATUS.PLANNED,      // 🔁 retour arrière
+    MISSION_STATUS.CANCELLED
+  ],
+
+  [MISSION_STATUS.IN_PROGRESS]: [
+    MISSION_STATUS.UNDER_REVIEW,
+    MISSION_STATUS.READY,        // 🔁 retour cadrage
+    MISSION_STATUS.CANCELLED
+  ],
+
+  [MISSION_STATUS.UNDER_REVIEW]: [
+    MISSION_STATUS.APPROVED,
+    MISSION_STATUS.IN_PROGRESS,  // 🔁 correction
+    MISSION_STATUS.CANCELLED
+  ],
+
+  [MISSION_STATUS.APPROVED]: [
+    MISSION_STATUS.CLOSED
+  ],
+
+  [MISSION_STATUS.CLOSED]: [],
+
+  [MISSION_STATUS.CANCELLED]: []
 };

@@ -25,8 +25,14 @@ interface MissionMember {
 interface MissionScope {
   id: number;
   scopeRole: string | null;
-  notes: string | null;
+  status: string;
+  criticality: string | null;
   createdAt: string;
+  addedBy?: { id: number; firstName: string; lastName: string } | null;
+  removedBy?: { id: number; firstName: string; lastName: string } | null;
+  removedAt?: string | null;
+  removalReason?: string | null;
+  notes?: string | null;
   auditableEntity: { id: number; name: string; code: string; entityType: string };
 }
 interface MissionStatusHistory {
@@ -59,6 +65,11 @@ interface Mission {
     id: number;
     title: string;
     status: string;
+    programType?: string;
+    objective?: string;
+    scopeDescription?: string;
+    plannedStartDate?: string;
+    plannedEndDate?: string;
     _count: { procedures: number };
   }>;
   documents: Array<{
@@ -83,21 +94,80 @@ const findingStatusConfig = {
   REJECTED: { label: 'Rejeté', color: 'bg-red-100 text-red-800' },
 };
 
+const programStatusConfig: Record<string, string> = {
+  DRAFT: 'Brouillon',
+  PENDING_APPROVAL: 'En attente',
+  APPROVED: 'Approuvé',
+  VALIDATED: 'Validé',
+  REJECTED: 'Rejeté',
+  CANCELLED: 'Annulé',
+  CLOSED: 'Clôturé',
+};
+
 const missionStatusConfig: Record<string, { label: string; color: string }> = {
   PLANNED: { label: 'Planifiée', color: 'bg-slate-100 text-slate-800' },
   READY: { label: 'Prête', color: 'bg-yellow-100 text-yellow-800' },
   IN_PROGRESS: { label: 'En cours', color: 'bg-blue-100 text-blue-800' },
   UNDER_REVIEW: { label: 'En revue', color: 'bg-purple-100 text-purple-800' },
   APPROVED: { label: 'Approuvée', color: 'bg-emerald-100 text-emerald-800' },
+  CANCELLED: {
+    label: 'Annulée',
+    color: 'bg-red-100 text-red-800'
+  },
   CLOSED: { label: 'Clôturée', color: 'bg-slate-800 text-white' },
 };
 
-const missionTransitions: Record<string, { label: string; next: string }> = {
-  PLANNED: { label: 'Finaliser cadrage', next: 'READY' },
-  READY: { label: 'Lancer la mission', next: 'IN_PROGRESS' },
-  IN_PROGRESS: { label: 'Soumettre en revue', next: 'UNDER_REVIEW' },
-  UNDER_REVIEW: { label: 'Approuver mission', next: 'APPROVED' },
-  APPROVED: { label: 'Clôturer mission', next: 'CLOSED' },
+const getCriticalityLabel = (criticality: string | null): string => {
+  const labels: Record<string, string> = {
+    'LOW': 'Faible',
+    'MEDIUM': 'Moyenne',
+    'HIGH': 'Élevée',
+    'CRITICAL': 'Critique'
+  };
+  return criticality ? labels[criticality] || criticality : '';
+};
+
+// const missionTransitions: Record<string, { label: string; next: string }> = {
+//   PLANNED: { label: 'Finaliser cadrage', next: 'READY' },
+//   READY: { label: 'Lancer la mission', next: 'IN_PROGRESS' },
+//   IN_PROGRESS: { label: 'Soumettre en revue', next: 'UNDER_REVIEW' },
+//   UNDER_REVIEW: { label: 'Approuver mission', next: 'APPROVED' },
+//   APPROVED: { label: 'Clôturer mission', next: 'CLOSED' },
+// };
+
+const missionTransitions: Record<
+  string,
+  { label: string; next: string }[]
+> = {
+  PLANNED: [
+    { label: 'Finaliser cadrage', next: 'READY' },
+    { label: 'Annuler la mission', next: 'CANCELLED' }
+  ],
+
+  READY: [
+    { label: 'Lancer la mission', next: 'IN_PROGRESS' },
+    { label: 'Revenir au cadrage', next: 'PLANNED' },
+    { label: 'Annuler la mission', next: 'CANCELLED' }
+  ],
+
+  IN_PROGRESS: [
+    { label: 'Soumettre en revue', next: 'UNDER_REVIEW' },
+    { label: 'Revenir au cadrage', next: 'READY' },
+    { label: 'Annuler la mission', next: 'CANCELLED' }
+  ],
+
+  UNDER_REVIEW: [
+    { label: 'Approuver mission', next: 'APPROVED' },
+    { label: 'Reprendre corrections', next: 'IN_PROGRESS' },
+    { label: 'Annuler la mission', next: 'CANCELLED' }
+  ],
+
+  APPROVED: [
+    { label: 'Clôturer mission', next: 'CLOSED' }
+  ],
+
+  CLOSED: [],
+  CANCELLED: []
 };
 
 export default function MissionDetails() {
@@ -108,7 +178,7 @@ export default function MissionDetails() {
   //const [activeTab, setActiveTab] = useState<'details' | 'members' | 'scopes' | 'programs' | 'history'>('details');
   const [activeTab, setActiveTab] = useState<
     'details' | 'members' | 'scopes' | 'programs' | 'history' | 'recommendations'
-  >('details');
+  >('members');
   // Modals state
   const [isFindingModalOpen, setIsFindingModalOpen] = useState(false);
   //const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -121,10 +191,14 @@ export default function MissionDetails() {
   // Forms state
   const [statusForm, setStatusForm] = useState({ status: '', reason: '' });
   const [memberForm, setMemberForm] = useState({ userId: '', roleInMission: '', isLead: false, notes: '' });
-  const [scopeForm, setScopeForm] = useState({ auditableEntityId: '', scopeRole: '', notes: '' });
+  const [scopeForm, setScopeForm] = useState({ auditableEntityId: '', scopeRole: '', criticality: '', notes: '' });
+  const [editingScope, setEditingScope] = useState<MissionScope | null>(null);
   const [historyForm, setHistoryForm] = useState({ reason: '' });
-  const [programForm, setProgramForm] = useState({ title: '', objective: '', scopeDescription: '', methodology: '', auditCriteria: '', samplingApproach: '' });
+  const [programForm, setProgramForm] = useState({ code: '', title: '', programType: '', objective: '', scopeDescription: '', plannedStartDate: '', plannedEndDate: '' });
   const [editingHistory, setEditingHistory] = useState<MissionStatusHistory | null>(null);
+  const [isEditProgramModalOpen, setIsEditProgramModalOpen] = useState(false);
+  const [editingProgramId, setEditingProgramId] = useState<number | null>(null);
+  const [editProgramForm, setEditProgramForm] = useState({ title: '', programType: '', objective: '', scopeDescription: '', plannedStartDate: '', plannedEndDate: '' });
   // Data for selects
   const [users, setUsers] = useState<any[]>([]);
   const [entities, setEntities] = useState<any[]>([]);
@@ -133,6 +207,7 @@ export default function MissionDetails() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [isRecommendationModalOpen, setIsRecommendationModalOpen] = useState(false);
   const [selectedFindingId, setSelectedFindingId] = useState<number | null>(null);
+  const [selectedAction, setSelectedAction] = useState<any>(null);
   const API_BASE = import.meta.env.VITE_API_URL;
 
   const fetchMission = () => {
@@ -177,6 +252,7 @@ export default function MissionDetails() {
       })
       .catch(console.error);
   }, [id]);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -201,6 +277,7 @@ export default function MissionDetails() {
       setUploading(false);
     }
   };
+
   // const handleStatusChange = async (e: React.FormEvent) => {
   // e.preventDefault();
   // try {
@@ -220,6 +297,8 @@ export default function MissionDetails() {
   // console.error('Failed to change status', error);
   // }
   // };
+
+
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -240,6 +319,7 @@ export default function MissionDetails() {
       console.error('Failed to add member', error);
     }
   };
+
   const handleRemoveMember = async (memberId: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir retirer ce membre ?')) return;
     try {
@@ -256,26 +336,34 @@ export default function MissionDetails() {
       console.error('Failed to remove member', error);
     }
   };
+
   const handleAddScope = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await apiFetch(`${API_BASE}/missions/${id}/scopes`, {
-        method: 'POST',
+      const url = editingScope
+        ? `${API_BASE}/missions/scopes/${editingScope.id}`
+        : `${API_BASE}/missions/${id}/scopes`;
+      const method = editingScope ? 'PUT' : 'POST';
+
+      const response = await apiFetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scopeForm),
       });
       if (response.ok) {
         setIsScopeModalOpen(false);
-        setScopeForm({ auditableEntityId: '', scopeRole: '', notes: '' });
+        setScopeForm({ auditableEntityId: '', scopeRole: '', criticality: '', notes: '' });
+        setEditingScope(null);
         fetchMission();
       } else {
         const err = await response.json();
-        alert(err.error || 'Erreur lors de l\'ajout au périmètre');
+        alert(err.error || 'Erreur lors de la sauvegarde du périmètre');
       }
     } catch (error) {
-      console.error('Failed to add scope', error);
+      console.error('Failed to save scope', error);
     }
   };
+
   const handleCreateProgram = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -286,7 +374,7 @@ export default function MissionDetails() {
       });
       if (response.ok) {
         setIsProgramModalOpen(false);
-        setProgramForm({ title: '', objective: '', scopeDescription: '', methodology: '', auditCriteria: '', samplingApproach: '' });
+        setProgramForm({ code: '', title: '', programType: '', objective: '', scopeDescription: '', plannedStartDate: '', plannedEndDate: '' });
         fetchMission();
       } else {
         const err = await response.json();
@@ -294,6 +382,29 @@ export default function MissionDetails() {
       }
     } catch (error) {
       console.error('Failed to create program', error);
+    }
+  };
+
+  const handleUpdateProgram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProgramId) return;
+    try {
+      const response = await apiFetch(`${API_BASE}/programs/${editingProgramId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editProgramForm),
+      });
+      if (response.ok) {
+        setIsEditProgramModalOpen(false);
+        setEditingProgramId(null);
+        setEditProgramForm({ title: '', programType: '', objective: '', scopeDescription: '', plannedStartDate: '', plannedEndDate: '' });
+        fetchMission();
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Erreur lors de la modification du programme');
+      }
+    } catch (error) {
+      console.error('Failed to update program', error);
     }
   };
 
@@ -346,21 +457,26 @@ export default function MissionDetails() {
     }
   };
 
-  const handleRemoveScope = async (scopeId: number) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir retirer cette entité du périmètre ?')) return;
-    try {
-      const response = await apiFetch(`${API_BASE}/missions/scopes/${scopeId}`, {
-        method: 'DELETE'
-      });
-      if (response.ok) {
-        fetchMission();
-      } else {
-        const err = await response.json();
-        alert(err.error || 'Erreur lors du retrait du périmètre');
-      }
-    } catch (error) {
-      console.error('Failed to remove scope', error);
-    }
+  const handleOpenAddScopeModal = () => {
+    setEditingScope(null);
+    setScopeForm({
+      auditableEntityId: '',
+      scopeRole: '',
+      criticality: '',
+      notes: ''
+    });
+    setIsScopeModalOpen(true);
+  };
+
+  const handleEditScope = (scope: MissionScope) => {
+    setEditingScope(scope);
+    setScopeForm({
+      auditableEntityId: scope.auditableEntity.id.toString(),
+      scopeRole: scope.scopeRole || '',
+      criticality: scope.criticality || '',
+      notes: scope.notes || ''
+    });
+    setIsScopeModalOpen(true);
   };
 
   const handleUpdateHistory = async (e: React.FormEvent) => {
@@ -401,6 +517,44 @@ export default function MissionDetails() {
     }
   };
 
+  const handleDeleteDocument = async (docId: number) => {
+    if (!window.confirm('Supprimer ce document ?')) return;
+
+    try {
+      const res = await apiFetch(`${API_BASE}/documents/${docId}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Erreur suppression');
+        return;
+      }
+
+      fetchMission(); // refresh
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRemoveScope = async (scopeId: number) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir retirer cette entité du périmètre ?')) return;
+    try {
+      const response = await apiFetch(`${API_BASE}/missions/${id}/scopes/${scopeId}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        fetchMission();
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Erreur lors du retrait du périmètre');
+      }
+    } catch (error) {
+      console.error('Failed to remove scope', error);
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-slate-500 flex flex-col items-center justify-center min-h-[400px]">Chargement des détails de la mission...</div>;
   }
@@ -426,7 +580,8 @@ export default function MissionDetails() {
     mission.scopes.length > 0 &&
     mission.members.length > 0 &&
     mission.programs?.some(p => p.status === 'APPROVED');
-  const currentAction = missionTransitions[mission.status];
+  //const currentAction = missionTransitions[mission.status];
+  const currentActions = missionTransitions[mission.status] || [];
   const canCreateFinding = mission.status === 'IN_PROGRESS';
   const canViewReport = ['UNDER_REVIEW', 'APPROVED', 'CLOSED'].includes(mission.status);
   const canEditCadrage = ['PLANNED', 'READY'].includes(mission.status);
@@ -453,6 +608,11 @@ export default function MissionDetails() {
   };
 
   const isActionAllowed = (nextStatus: string) => {
+    
+    if (nextStatus === 'CANCELLED') {
+      return true;
+    }
+
     // 🔒 PHASE 2 — cadrage obligatoire
     if (nextStatus === 'READY') {
       return (
@@ -499,6 +659,33 @@ export default function MissionDetails() {
     }
   };
 
+  const handleDownload = async (docId: number, fileName: string) => {
+    try {
+      const res = await apiFetch(`${API_BASE}/documents/download/${docId}`);
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Erreur téléchargement');
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(url);
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const canRequestApproval =
   mission.status === 'UNDER_REVIEW' &&
   !mission.approvals?.some(a => a.decision === 'APPROVED');
@@ -507,8 +694,9 @@ export default function MissionDetails() {
     <div className="space-y-8 max-w-7xl mx-auto pb-12 bg-slate-50 px-6 lg:px-0 min-h-screen">
       {/* Header */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-        <Link to="/missions" className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 mb-6 transition-all duration-200 hover:-translate-x-px">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Retour aux missions
+        <Link to="/missions" className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800">
+          <ArrowLeft className="h-4 w-4" />
+          <span>Retour aux missions</span>
         </Link>
         <div className="sm:flex sm:items-start sm:justify-between">
           <div>
@@ -521,68 +709,35 @@ export default function MissionDetails() {
               <span className="inline-flex items-center text-slate-400">•</span>
               <span className="font-medium">Chef de mission :</span> {mission.leader.firstName} {mission.leader.lastName}
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-6 text-sm text-slate-600">
+              {mission.startDate && (
+                <span className="flex items-center">
+                  <span className="font-medium mr-2">Début :</span>
+                  {new Date(mission.startDate).toLocaleDateString('fr-FR')}
+                </span>
+              )}
+              {mission.endDate && (
+                <span className="flex items-center">
+                  <span className="font-medium mr-2">Fin :</span>
+                  {new Date(mission.endDate).toLocaleDateString('fr-FR')}
+                </span>
+              )}
+              {!mission.startDate && !mission.endDate && (
+                <span className="text-slate-400 italic">Pas de dates définies</span>
+              )}
+            </div>
           </div>
-          {/* <div className="mt-4 sm:mt-0 flex items-center space-x-3">
-            <button
-              onClick={() => {
-                setStatusForm({ status: mission.status, reason: '' });
-                setIsStatusModalOpen(true);
-              }}
-              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-80 ${statusConf.color}`}
-            >
-              Statut : {statusConf.label}
-            </button>
-            {canViewReport ? (
-              <Link
-                to={`/missions/${id}/report`}
-                className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-md"
-              >
-                Voir le rapport
-              </Link>
-            ) : (
-              <button
-                disabled
-                title="Disponible après lancement et revue"
-                className="inline-flex items-center px-4 py-2 border border-slate-200 text-slate-400 rounded-md cursor-not-allowed"
-              >
-                Voir le rapport
-              </button>
-            )}
-          </div> */}
           <div className="mt-6 sm:mt-0 flex items-center gap-x-3">
             {/* Badge statut (lecture seule) */}
             <span className={`inline-flex items-center px-4 py-1.5 rounded-3xl text-sm font-semibold shadow-sm ring-1 ring-offset-2 ring-slate-100 ${statusConf.color} transition-all duration-200`}>
               {statusConf.label}
             </span>
             {/* Action contextuelle */}
-            {currentAction && (
+            {/* {currentAction && (
               <button
                 onClick={() => {
                   setIsActionModalOpen(true);
                 }}
-                // onClick={async () => {
-                // try {
-                // const res = await apiFetch(`${API_BASE}/missions/${id}/status`, {
-                // method: 'PATCH',
-                // headers: { 'Content-Type': 'application/json' },
-                // body: JSON.stringify({
-                // status: currentAction.next,
-                // reason: `Transition via UI: ${currentAction.label}`
-                // }),
-                // });
-                // if (!res.ok) {
-                // const err = await res.json();
-                // alert(err.error);
-                // return;
-                // }
-                // fetchMission();
-                // } catch (err) {
-                // console.error(err);
-                // }
-                // }}
-                // disabled={
-                // mission.status === 'READY' && !canStartMission
-                // }
                 disabled={
                   !isActionAllowed(currentAction.next)
                 }
@@ -594,7 +749,26 @@ export default function MissionDetails() {
               >
                 {currentAction.label}
               </button>
-            )}
+            )} */}
+            {currentActions.map((action, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  setSelectedAction(action);
+                  setIsActionModalOpen(true);
+                }}
+                disabled={!isActionAllowed(action.next)}
+                className={`inline-flex items-center px-6 py-3 rounded-3xl text-sm font-semibold text-white shadow-lg transition-all duration-200
+                  ${
+                    action.next === 'CANCELLED'
+                      ? 'bg-red-600 hover:bg-red-700'
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  }
+                `}
+              >
+                {action.label}
+              </button>
+            ))}
             {/* Rapport */}
             {canViewReport ? (
               <Link
@@ -618,16 +792,6 @@ export default function MissionDetails() {
       {/* Tabs */}
       <div className="border-b border-slate-200 bg-white rounded-3xl shadow-sm px-6">
         <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('details')}
-            className={`${activeTab === 'details'
-              ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-              } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Détails & Constats
-          </button>
           <button
             onClick={() => setActiveTab('members')}
             className={`${activeTab === 'members'
@@ -659,14 +823,14 @@ export default function MissionDetails() {
             Programmes ({mission.programs?.length || 0})
           </button>
           <button
-            onClick={() => setActiveTab('history')}
-            className={`${activeTab === 'history'
+            onClick={() => setActiveTab('details')}
+            className={`${activeTab === 'details'
               ? 'border-indigo-500 text-indigo-600'
               : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
               } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
-            <Clock className="w-4 h-4 mr-2" />
-            Historique
+            <FileText className="w-4 h-4 mr-2" />
+            Détails & Constats
           </button>
           <button
             onClick={() => setActiveTab('recommendations')}
@@ -676,6 +840,16 @@ export default function MissionDetails() {
               } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
             Recommandations ({recommendations.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`${activeTab === 'history'
+              ? 'border-indigo-500 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
+          >
+            <Clock className="w-4 h-4 mr-2" />
+            Historique
           </button>
         </nav>
       </div>
@@ -804,7 +978,11 @@ export default function MissionDetails() {
                             </div>
                           </div>
                           <div className="ml-6 flex-shrink-0">
-                            <Link to={`/findings/${finding.id}`} className="p-3 text-slate-300 group-hover:text-indigo-500 transition-colors rounded-2xl hover:bg-white shadow-sm">
+                            <Link
+                              to={`/findings/${finding.id}`}
+                              className="px-4 py-3 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors rounded-2xl hover:bg-white shadow-sm inline-flex items-center gap-2"
+                            >
+                              <span>Voir détails</span>
                               <ChevronRight className="w-5 h-5" />
                             </Link>
                           </div>
@@ -833,16 +1011,37 @@ export default function MissionDetails() {
                 <ul className="divide-y divide-slate-100 mb-8">
                   {mission.documents.map(doc => (
                     <li key={doc.id} className="py-4 flex items-center justify-between group">
-                      <div className="flex items-center min-w-0">
-                        <Paperclip className="h-4 w-4 text-slate-400 mr-3 flex-shrink-0 group-hover:text-indigo-400 transition-colors" />
-                        <a href={`${API_BASE}/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-slate-700 hover:text-indigo-600 truncate transition-colors">
-                          {doc.originalName}
-                        </a>
-                      </div>
-                      <span className="text-xs text-slate-400 ml-4 flex-shrink-0 font-medium">
+                    <div className="flex items-center min-w-0">
+                      <Paperclip className="h-4 w-4 text-slate-400 mr-3" />
+                      {/* <a
+                        href={`${API_BASE}/documents/download/${doc.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-medium text-slate-700 hover:text-indigo-600 truncate"
+                      >
+                        {doc.originalName}
+                      </a> */}
+                      <button
+                        onClick={() => handleDownload(doc.id, doc.originalName)}
+                        className="text-sm font-medium text-slate-700 hover:text-indigo-600 truncate"
+                      >
+                        {doc.originalName}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-400">
                         {(doc.sizeBytes / 1024).toFixed(1)} KB
                       </span>
-                    </li>
+
+                      <button
+                        onClick={() => handleDeleteDocument(doc.id)}
+                        className="text-red-500 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </li>
                   ))}
                 </ul>
               )}
@@ -981,19 +1180,23 @@ export default function MissionDetails() {
             ) : (
               mission.members.map(member => (
                 <li key={member.id} className="px-8 py-6 flex items-center justify-between group hover:bg-slate-50 transition-all duration-200">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-base font-semibold text-slate-900 flex items-center">
                       {member.user.firstName} {member.user.lastName}
                       {member.isLead && <span className="ml-3 px-3 py-0.5 rounded-3xl text-xs font-medium bg-indigo-100 text-indigo-700">Lead</span>}
                     </p>
                     <p className="text-sm text-slate-500 mt-px">{member.user.email} • Rôle: {member.roleInMission}</p>
-                    {member.notes && <p className="text-xs text-slate-400 mt-3">Note: {member.notes}</p>}
+                    {member.notes && (
+                      <p className="text-sm text-slate-600 mt-2 italic">Notes: {member.notes}</p>
+                    )}
                   </div>
                   <button
                     onClick={() => handleRemoveMember(member.id)}
-                    className="text-red-500 hover:text-red-600 p-3 transition-colors rounded-2xl hover:bg-red-50"
+                    disabled={!canEditCadrage}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none"
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Retirer de la mission
                   </button>
                 </li>
               ))
@@ -1010,7 +1213,7 @@ export default function MissionDetails() {
             </div>
             <div className="mt-4 sm:mt-0">
               <button
-                onClick={() => setIsScopeModalOpen(true)}
+                onClick={handleOpenAddScopeModal}
                 disabled={!canEditCadrage}
                 className={`inline-flex items-center justify-center rounded-3xl px-6 py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${canEditCadrage
                   ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-xl'
@@ -1028,19 +1231,44 @@ export default function MissionDetails() {
             ) : (
               mission.scopes.map(scope => (
                 <li key={scope.id} className="px-8 py-6 flex items-center justify-between group hover:bg-slate-50 transition-all duration-200">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-base font-semibold text-slate-900">
                       {scope.auditableEntity.name} <span className="text-slate-400 font-normal">({scope.auditableEntity.code})</span>
                     </p>
-                    <p className="text-sm text-slate-500">Type: {scope.auditableEntity.entityType} {scope.scopeRole ? `• Rôle: ${scope.scopeRole}` : ''}</p>
-                    {scope.notes && <p className="text-xs text-slate-400 mt-3">Note: {scope.notes}</p>}
+                    <p className="text-sm text-slate-500">
+                      Type: {scope.auditableEntity.entityType}
+                      {scope.scopeRole ? ` • Rôle: ${scope.scopeRole}` : ''}
+                      {scope.criticality ? ` • Criticité: ${getCriticalityLabel(scope.criticality)}` : ''}
+                    </p>
+                    {scope.notes && (
+                      <p className="text-sm text-slate-600 mt-1 italic">
+                        "{scope.notes}"
+                      </p>
+                    )}
+                    {scope.addedBy && (
+                      <p className="text-xs text-slate-400 mt-1">
+                        Ajouté par {scope.addedBy.firstName} {scope.addedBy.lastName}
+                      </p>
+                    )}
                   </div>
-                  <button
-                    onClick={() => handleRemoveScope(scope.id)}
-                    className="text-red-500 hover:text-red-600 p-3 transition-colors rounded-2xl hover:bg-red-50"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditScope(scope)}
+                      disabled={!canEditCadrage}
+                      className="inline-flex items-center px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Modifier
+                    </button>
+                    <button
+                      onClick={() => handleRemoveScope(scope.id)}
+                      disabled={!canEditCadrage}
+                      className="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Retirer du périmètre
+                    </button>
+                  </div>
                 </li>
               ))
             )}
@@ -1087,7 +1315,7 @@ export default function MissionDetails() {
                     </Link>
                     <div className="flex items-center mt-3 space-x-6 text-sm text-slate-500">
                       <span className="inline-flex items-center px-4 py-1 rounded-3xl text-xs font-medium bg-slate-100 text-slate-700 transition-all group-hover:bg-slate-200">
-                        {program.status}
+                        {programStatusConfig[program.status] ?? program.status}
                       </span>
                       <span className="font-medium">{program._count.procedures} procédure(s)</span>
                     </div>
@@ -1102,10 +1330,31 @@ export default function MissionDetails() {
                         Demander validation
                       </button>
                     )}
+                    {canEditCadrage && (
+                      <button
+                        onClick={() => {
+                          setEditingProgramId(program.id);
+                          setEditProgramForm({
+                            title: program.title ?? '',
+                            programType: program.programType ?? '',
+                            objective: program.objective ?? '',
+                            scopeDescription: program.scopeDescription ?? '',
+                            plannedStartDate: program.plannedStartDate ? program.plannedStartDate.slice(0, 10) : '',
+                            plannedEndDate: program.plannedEndDate ? program.plannedEndDate.slice(0, 10) : '',
+                          });
+                          setIsEditProgramModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 text-sm px-4 py-2.5 rounded-3xl border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-medium transition-all duration-200 active:scale-95"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        Modifier
+                      </button>
+                    )}
                     <Link
                       to={`/programs/${program.id}`}
-                      className="p-3 text-slate-300 group-hover:text-indigo-500 transition-colors rounded-2xl hover:bg-white shadow-sm"
+                      className="px-4 py-3 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors rounded-2xl hover:bg-white shadow-sm inline-flex items-center gap-2"
                     >
+                      <span>Voir détails</span>
                       <ChevronRight className="w-5 h-5" />
                     </Link>
                   </div>
@@ -1142,7 +1391,12 @@ export default function MissionDetails() {
                               {history.changedBy && ` par ${history.changedBy.firstName} ${history.changedBy.lastName}`}
                             </p>
                             {history.reason && (
-                              <p className="mt-2 text-sm text-slate-600 italic">"{history.reason}"</p>
+                              <p className="mt-2 text-sm text-slate-600 italic">"{
+                                history.reason.replace(
+                                  /Transition automatique vers (\w+)/,
+                                  (_, s) => `Transition automatique vers ${missionStatusConfig[s]?.label ?? s}`
+                                )
+                              }"</p>
                             )}
                           </div>
                           <div className="whitespace-nowrap text-right text-sm text-slate-500 flex flex-col items-end gap-3">
@@ -1285,11 +1539,11 @@ export default function MissionDetails() {
           </div>
         </div>
       )} */}
-      {isActionModalOpen && currentAction && (
+      {isActionModalOpen && selectedAction && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
             <h3 className="text-xl font-semibold mb-2 text-slate-900">
-              {currentAction.label}
+              {selectedAction?.label}
             </h3>
             <p className="text-sm text-slate-500 mb-6">
               Cette action va changer le statut de la mission.
@@ -1314,7 +1568,7 @@ export default function MissionDetails() {
                     alert('Le commentaire est obligatoire');
                     return;
                   }
-                  await handleQuickStatusChange(currentAction.next);
+                  await handleQuickStatusChange(selectedAction?.next);
                   setActionReason('');
                   setIsActionModalOpen(false);
                 }}
@@ -1331,68 +1585,90 @@ export default function MissionDetails() {
         <div className="fixed inset-0 z-[9999] overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsMemberModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-3xl bg-white px-8 pt-8 pb-8 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
-              <h3 className="text-xl font-semibold leading-6 text-slate-900 mb-6">Ajouter un membre</h3>
-              <form onSubmit={handleAddMember} className="space-y-8">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Utilisateur *</label>
-                  <select
-                    value={memberForm.userId}
-                    onChange={(e) => setMemberForm({ ...memberForm, userId: e.target.value })}
-                    className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                    required
-                  >
-                    <option value="">Sélectionner un utilisateur</option>
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
-                    ))}
-                  </select>
+            <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+              <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-6 border-b border-indigo-200">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-indigo-600 text-white">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-900">Ajouter un membre</h3>
+                    <p className="text-sm text-slate-600 mt-1">Affectez rapidement un collaborateur avec son rôle et des notes utiles.</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Rôle dans la mission *</label>
-                  <input
-                    type="text"
-                    value={memberForm.roleInMission}
-                    onChange={(e) => setMemberForm({ ...memberForm, roleInMission: e.target.value })}
-                    className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                    placeholder="Ex: Auditeur IT, Expert métier..."
-                    required
-                  />
+              </div>
+
+              <form onSubmit={handleAddMember} className="px-8 py-6 space-y-6">
+                <div className="grid gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Utilisateur *</label>
+                    <select
+                      value={memberForm.userId}
+                      onChange={(e) => setMemberForm({ ...memberForm, userId: e.target.value })}
+                      className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                      required
+                    >
+                      <option value="">Sélectionner un utilisateur</option>
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
+                      ))}
+                    </select>
+                    <p className="mt-2 text-xs text-slate-500">Sélectionnez l'utilisateur à ajouter à la mission.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Rôle dans la mission *</label>
+                    <input
+                      type="text"
+                      value={memberForm.roleInMission}
+                      onChange={(e) => setMemberForm({ ...memberForm, roleInMission: e.target.value })}
+                      className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                      placeholder="Ex: Auditeur IT, Expert métier..."
+                      required
+                    />
+                    <p className="mt-2 text-xs text-slate-500">Exemple : Auditeur IT, Expert métier, Responsable qualité.</p>
+                  </div>
+
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4">
+                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-900">
+                      <input
+                        id="isLead"
+                        type="checkbox"
+                        checked={memberForm.isLead}
+                        onChange={(e) => setMemberForm({ ...memberForm, isLead: e.target.checked })}
+                        className="h-5 w-5 rounded-2xl border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all"
+                      />
+                      <span>Est un lead (co-responsable)</span>
+                    </label>
+                    <p className="mt-2 text-xs text-slate-500">Cochez si ce membre est responsable de la mission avec vous.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Notes</label>
+                    <textarea
+                      rows={4}
+                      value={memberForm.notes}
+                      onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
+                      className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 resize-y"
+                      placeholder="Précisez des informations utiles : disponibilité, rôle précis, contraintes..."
+                    />
+                    <p className="mt-2 text-xs text-slate-500">Cette note est visible uniquement dans le contexte de la mission.</p>
+                  </div>
                 </div>
-                <div className="flex items-center">
-                  <input
-                    id="isLead"
-                    type="checkbox"
-                    checked={memberForm.isLead}
-                    onChange={(e) => setMemberForm({ ...memberForm, isLead: e.target.checked })}
-                    className="h-5 w-5 rounded-2xl border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all"
-                  />
-                  <label htmlFor="isLead" className="ml-3 block text-sm text-slate-900">
-                    Est un lead (co-responsable)
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
-                  <textarea
-                    rows={3}
-                    value={memberForm.notes}
-                    onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
-                    className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                  />
-                </div>
-                <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-4">
-                  <button
-                    type="submit"
-                    className="inline-flex w-full justify-center rounded-3xl border border-transparent bg-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 sm:col-start-2 sm:text-sm transition-all duration-200 active:scale-[0.97]"
-                  >
-                    Ajouter
-                  </button>
+
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     onClick={() => setIsMemberModalOpen(false)}
-                    className="mt-3 inline-flex w-full justify-center rounded-3xl border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-700 shadow-sm hover:bg-slate-50 sm:col-start-1 sm:mt-0 sm:text-sm transition-all duration-200"
+                    className="inline-flex w-full justify-center rounded-3xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all duration-200 sm:w-auto"
                   >
                     Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="inline-flex w-full justify-center rounded-3xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-all duration-200 active:scale-[0.97] sm:w-auto"
+                  >
+                    Ajouter
                   </button>
                 </div>
               </form>
@@ -1405,55 +1681,126 @@ export default function MissionDetails() {
         <div className="fixed inset-0 z-[9999] overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsScopeModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-3xl bg-white px-8 pt-8 pb-8 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
-              <h3 className="text-xl font-semibold leading-6 text-slate-900 mb-6">Ajouter au périmètre</h3>
-              <form onSubmit={handleAddScope} className="space-y-8">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Entité auditable *</label>
-                  <select
-                    value={scopeForm.auditableEntityId}
-                    onChange={(e) => setScopeForm({ ...scopeForm, auditableEntityId: e.target.value })}
-                    className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                    required
-                  >
-                    <option value="">Sélectionner une entité</option>
-                    {entities.map(e => (
-                      <option key={e.id} value={e.id}>{e.name} ({e.code})</option>
-                    ))}
-                  </select>
+            <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 px-8 py-6 border-b border-emerald-200">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full">
+                    <Target className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-900">{editingScope ? 'Modifier le périmètre' : 'Ajouter au périmètre'}</h3>
+                    <p className="text-sm text-slate-600 mt-1">{editingScope ? 'Modifier les détails de cette entité dans le périmètre' : 'Définir une nouvelle entité dans le périmètre d\'audit'}</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Rôle dans le périmètre</label>
-                  <input
-                    type="text"
-                    value={scopeForm.scopeRole}
-                    onChange={(e) => setScopeForm({ ...scopeForm, scopeRole: e.target.value })}
-                    className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                    placeholder="Ex: Entité principale, Entité support..."
-                  />
+              </div>
+
+              <form onSubmit={handleAddScope} className="px-8 py-6">
+                {/* Section principale */}
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Entité auditable */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                        Entité auditable <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={scopeForm.auditableEntityId}
+                        onChange={(e) => setScopeForm({ ...scopeForm, auditableEntityId: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300"
+                        required
+                      >
+                        <option value="">Sélectionner une entité à auditer</option>
+                        {entities.map(e => (
+                          <option key={e.id} value={e.id}>
+                            {e.name} ({e.code}) - {e.entityType}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-slate-500 mt-2">Choisissez l'entité qui sera incluse dans le périmètre d'audit</p>
+                    </div>
+
+                    {/* Rôle dans le périmètre */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                        Rôle dans le périmètre
+                      </label>
+                      <input
+                        type="text"
+                        value={scopeForm.scopeRole}
+                        onChange={(e) => setScopeForm({ ...scopeForm, scopeRole: e.target.value })}
+                        placeholder="Ex: Entité principale, Support, Interface..."
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300"
+                      />
+                      <p className="text-xs text-slate-500 mt-2">Précisez le rôle de cette entité dans l'audit</p>
+                    </div>
+
+                    {/* Criticité */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                        Niveau de criticité
+                      </label>
+                      <select
+                        value={scopeForm.criticality}
+                        onChange={(e) => setScopeForm({ ...scopeForm, criticality: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300"
+                      >
+                        <option value="">Sélectionner un niveau</option>
+                        <option value="LOW">🟢 Faible - Impact limité</option>
+                        <option value="MEDIUM">🟡 Moyen - Impact modéré</option>
+                        <option value="HIGH">🟠 Élevé - Impact significatif</option>
+                        <option value="CRITICAL">🔴 Critique - Impact majeur</option>
+                      </select>
+                      <p className="text-xs text-slate-500 mt-2">Évaluez l'importance de cette entité</p>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Notes
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={scopeForm.notes}
+                      onChange={(e) => setScopeForm({ ...scopeForm, notes: e.target.value })}
+                      placeholder="Informations complémentaires sur cette entité dans le périmètre..."
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300 resize-y"
+                    />
+                    <p className="text-xs text-slate-500 mt-2">Ajoutez des notes spécifiques à cette entité dans le périmètre</p>
+                  </div>
+
+                  {/* Section informative */}
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-1 bg-emerald-100 rounded-full flex-shrink-0">
+                        <Target className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-emerald-900 mb-1">À propos du périmètre</h4>
+                        <p className="text-sm text-emerald-700">
+                          Le périmètre définit les entités qui seront auditées. Chaque entité peut avoir un rôle spécifique
+                          et un niveau de criticité qui influencera la planification et l'exécution de l'audit.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
-                  <textarea
-                    rows={3}
-                    value={scopeForm.notes}
-                    onChange={(e) => setScopeForm({ ...scopeForm, notes: e.target.value })}
-                    className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                  />
-                </div>
-                <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-4">
-                  <button
-                    type="submit"
-                    className="inline-flex w-full justify-center rounded-3xl border border-transparent bg-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 sm:col-start-2 sm:text-sm transition-all duration-200 active:scale-[0.97]"
-                  >
-                    Ajouter
-                  </button>
+
+                {/* Actions */}
+                <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     onClick={() => setIsScopeModalOpen(false)}
-                    className="mt-3 inline-flex w-full justify-center rounded-3xl border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-700 shadow-sm hover:bg-slate-50 sm:col-start-1 sm:mt-0 sm:text-sm transition-all duration-200"
+                    className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
                   >
                     Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:from-emerald-600 hover:to-emerald-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {editingScope ? 'Modifier le périmètre' : 'Ajouter au périmètre'}
                   </button>
                 </div>
               </form>
@@ -1504,70 +1851,165 @@ export default function MissionDetails() {
         <div className="fixed inset-0 z-[9999] overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsProgramModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-3xl bg-white px-8 pt-8 pb-8 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
-              <h3 className="text-xl font-semibold leading-6 text-slate-900 mb-6">Nouveau programme d'audit</h3>
-              <form onSubmit={handleCreateProgram} className="space-y-8">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Titre *</label>
-                  <input
-                    type="text"
-                    required
-                    value={programForm.title}
-                    onChange={(e) => setProgramForm({ ...programForm, title: e.target.value })}
-                    className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Objectif</label>
-                  <textarea
-                    rows={3}
-                    value={programForm.objective}
-                    onChange={(e) => setProgramForm({ ...programForm, objective: e.target.value })}
-                    className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Périmètre (Scope)</label>
-                  <textarea
-                    rows={3}
-                    value={programForm.scopeDescription}
-                    onChange={(e) => setProgramForm({ ...programForm, scopeDescription: e.target.value })}
-                    className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Méthodologie</label>
-                    <textarea
-                      rows={3}
-                      value={programForm.methodology}
-                      onChange={(e) => setProgramForm({ ...programForm, methodology: e.target.value })}
-                      className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                    />
+            <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+
+              {/* Header */}
+              <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-6 border-b border-indigo-200">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full">
+                    <FileText className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Critères d'audit</label>
-                    <textarea
-                      rows={3}
-                      value={programForm.auditCriteria}
-                      onChange={(e) => setProgramForm({ ...programForm, auditCriteria: e.target.value })}
-                      className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
-                    />
+                    <h3 className="text-2xl font-bold text-slate-900">Nouveau programme d'audit</h3>
+                    <p className="text-sm text-slate-600 mt-1">Définir un programme structuré pour cette mission</p>
                   </div>
                 </div>
-                <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-4">
-                  <button
-                    type="submit"
-                    className="inline-flex w-full justify-center rounded-3xl border border-transparent bg-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 sm:col-start-2 sm:text-sm transition-all duration-200 active:scale-[0.97]"
-                  >
-                    Créer
-                  </button>
+              </div>
+
+              <form onSubmit={handleCreateProgram} className="px-8 py-6">
+                <div className="space-y-6">
+
+                  {/* Code + Type */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                        Code <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: PROG-2026-001"
+                        value={programForm.code}
+                        onChange={(e) => setProgramForm({ ...programForm, code: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      />
+                      <p className="text-xs text-slate-500 mt-2">Identifiant unique du programme dans le tenant</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                        Type de programme <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        value={programForm.programType}
+                        onChange={(e) => setProgramForm({ ...programForm, programType: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      >
+                        <option value="">Sélectionner un type</option>
+                        <option value="COMPLIANCE">✅ Conformité</option>
+                        <option value="ITGC">🖥️ Contrôles IT généraux (ITGC)</option>
+                        <option value="FINANCIAL">💰 Financier</option>
+                        <option value="OPERATIONAL">⚙️ Opérationnel</option>
+                      </select>
+                      <p className="text-xs text-slate-500 mt-2">Détermine la nature des procédures d'audit</p>
+                    </div>
+                  </div>
+
+                  {/* Titre */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Titre <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Programme d'audit des contrôles financiers 2026"
+                      value={programForm.title}
+                      onChange={(e) => setProgramForm({ ...programForm, title: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                    />
+                    <p className="text-xs text-slate-500 mt-2">Nom clair et descriptif du programme</p>
+                  </div>
+
+                  {/* Objectif */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Objectif
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Décrivez l'objectif principal de ce programme d'audit..."
+                      value={programForm.objective}
+                      onChange={(e) => setProgramForm({ ...programForm, objective: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                    />
+                    <p className="text-xs text-slate-500 mt-2">Ce que ce programme cherche à évaluer ou vérifier</p>
+                  </div>
+
+                  {/* Périmètre */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Périmètre (Scope)
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Décrivez les entités, processus ou systèmes couverts par ce programme..."
+                      value={programForm.scopeDescription}
+                      onChange={(e) => setProgramForm({ ...programForm, scopeDescription: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                    />
+                    <p className="text-xs text-slate-500 mt-2">Définissez les limites et l'étendue de l'audit</p>
+                  </div>
+
+                  {/* Dates */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                        Date de début planifiée
+                      </label>
+                      <input
+                        type="date"
+                        value={programForm.plannedStartDate}
+                        onChange={(e) => setProgramForm({ ...programForm, plannedStartDate: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      />
+                      <p className="text-xs text-slate-500 mt-2">Début prévu de l'exécution du programme</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                        Date de fin planifiée
+                      </label>
+                      <input
+                        type="date"
+                        value={programForm.plannedEndDate}
+                        onChange={(e) => setProgramForm({ ...programForm, plannedEndDate: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      />
+                      <p className="text-xs text-slate-500 mt-2">Fin prévue de l'exécution du programme</p>
+                    </div>
+                  </div>
+
+                  {/* Info box */}
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-1 bg-indigo-100 rounded-full flex-shrink-0">
+                        <FileText className="w-4 h-4 text-indigo-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-indigo-900 mb-1">À propos du programme d'audit</h4>
+                        <p className="text-sm text-indigo-700">
+                          Un programme d'audit regroupe les procédures à exécuter pour cette mission.
+                          Il sera versionné automatiquement à sa création et pourra être soumis à validation avant l'exécution.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     onClick={() => setIsProgramModalOpen(false)}
-                    className="mt-3 inline-flex w-full justify-center rounded-3xl border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-700 shadow-sm hover:bg-slate-50 sm:col-start-1 sm:mt-0 sm:text-sm transition-all duration-200"
+                    className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
                   >
                     Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:from-indigo-600 hover:to-indigo-700 active:scale-[0.98]"
+                  >
+                    Créer le programme
                   </button>
                 </div>
               </form>
@@ -1575,6 +2017,132 @@ export default function MissionDetails() {
           </div>
         </div>
       )}
+
+      {/* Modal : Modifier un programme d'audit */}
+      {isEditProgramModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsEditProgramModalOpen(false)} />
+          <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-6 border-b border-indigo-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full">
+                  <Edit2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900">Modifier le programme d'audit</h3>
+                  <p className="text-sm text-slate-600 mt-1">Mettez à jour les informations du programme</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateProgram} className="px-8 py-6">
+              <div className="space-y-6">
+
+                {/* Titre + Type */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Titre <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editProgramForm.title}
+                      onChange={(e) => setEditProgramForm({ ...editProgramForm, title: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                    />
+                    <p className="text-xs text-slate-500 mt-2">Nom clair et descriptif du programme</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Type de programme <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      required
+                      value={editProgramForm.programType}
+                      onChange={(e) => setEditProgramForm({ ...editProgramForm, programType: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                    >
+                      <option value="">Sélectionner un type</option>
+                      <option value="COMPLIANCE">✅ Conformité</option>
+                      <option value="ITGC">🖥️ Contrôles IT généraux (ITGC)</option>
+                      <option value="FINANCIAL">💰 Financier</option>
+                      <option value="OPERATIONAL">⚙️ Opérationnel</option>
+                    </select>
+                    <p className="text-xs text-slate-500 mt-2">Détermine la nature des procédures d'audit</p>
+                  </div>
+                </div>
+
+                {/* Objectif */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">Objectif</label>
+                  <textarea
+                    rows={3}
+                    value={editProgramForm.objective}
+                    onChange={(e) => setEditProgramForm({ ...editProgramForm, objective: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                  />
+                  <p className="text-xs text-slate-500 mt-2">Ce que ce programme cherche à évaluer ou vérifier</p>
+                </div>
+
+                {/* Périmètre */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">Périmètre (Scope)</label>
+                  <textarea
+                    rows={3}
+                    value={editProgramForm.scopeDescription}
+                    onChange={(e) => setEditProgramForm({ ...editProgramForm, scopeDescription: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                  />
+                  <p className="text-xs text-slate-500 mt-2">Définissez les limites et l'étendue de l'audit</p>
+                </div>
+
+                {/* Dates */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Date de début planifiée</label>
+                    <input
+                      type="date"
+                      value={editProgramForm.plannedStartDate}
+                      onChange={(e) => setEditProgramForm({ ...editProgramForm, plannedStartDate: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Date de fin planifiée</label>
+                    <input
+                      type="date"
+                      value={editProgramForm.plannedEndDate}
+                      onChange={(e) => setEditProgramForm({ ...editProgramForm, plannedEndDate: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProgramModalOpen(false)}
+                  className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:from-indigo-600 hover:to-indigo-700 active:scale-[0.98]"
+                >
+                  Enregistrer les modifications
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {isRecommendationModalOpen && selectedFindingId && (
         <RecommendationFormModal
           isOpen={isRecommendationModalOpen}

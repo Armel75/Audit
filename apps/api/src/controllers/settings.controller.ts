@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
 
 // ================= DEPARTMENTS =================
 export const getDepartments = async (req: Request, res: Response) => {
@@ -302,7 +302,7 @@ export const createUserDepartment = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Département invalide ou hors tenant" });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
 
       // 🔥 Gestion PRIMARY
       if (isPrimary === true) {
@@ -364,7 +364,7 @@ export const updateUserDepartment = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Affectation introuvable" });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
 
       // 🔥 Gestion PRIMARY
       if (isPrimary === true) {
@@ -431,7 +431,7 @@ export const deleteUserDepartment = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Affectation introuvable" });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
 
       // 🔥 SOFT DELETE
       await tx.userDepartment.update({
@@ -574,7 +574,7 @@ export const assignDepartmentToUser = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Département introuvable" });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
 
       if (isPrimary === true) {
         await tx.userDepartment.updateMany({
@@ -620,7 +620,7 @@ export const setPrimaryDepartment = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Affectation introuvable" });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
 
       // reset anciens primary
       await tx.userDepartment.updateMany({
@@ -663,7 +663,7 @@ export const removeDepartmentFromUser = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Affectation introuvable" });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
 
       // soft delete
       await tx.userDepartment.update({

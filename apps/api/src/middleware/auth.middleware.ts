@@ -83,20 +83,6 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 // Alias for existing routes
 export const requireAuth = authenticateToken;
 
-// export const requirePermission = (requiredPermission: string) => {
-//   return (req: Request, res: Response, next: NextFunction) => {
-//     const user = req.user;
-
-//     if (!user || !user.permissions || !user.permissions.includes(requiredPermission)) {
-//       return res.status(403).json({
-//         error: `Forbidden: Requires ${requiredPermission} permission`
-//       });
-//     }
-
-//     next();
-//   };
-// };
-
 export const requirePermission = (requiredPermission: string) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = req.user;
@@ -113,6 +99,29 @@ export const requirePermission = (requiredPermission: string) => {
     if (!hasPermission) {
       return res.status(403).json({
         error: `Forbidden: Requires ${requiredPermission}`
+      });
+    }
+
+    next();
+  };
+};
+
+export const requireAnyPermission = (requiredPermissions: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user;
+
+    if (!user || !Array.isArray(user.permissions)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const normalizedPermissions = user.permissions.map((permission) => permission.toLowerCase());
+    const hasPermission = requiredPermissions.some((permission) =>
+      normalizedPermissions.includes(permission.toLowerCase())
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({
+        error: `Forbidden: Requires one of ${requiredPermissions.join(', ')}`
       });
     }
 

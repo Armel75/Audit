@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
 
 // ================= GET ALL =================
 export const getAuditableEntities = async (req: Request, res: Response) => {
@@ -254,7 +254,7 @@ export const deleteAuditableEntity = async (req: Request, res: Response) => {
 
     // 🔒 Vérifier dépendances métier
     const [missions, risks, processes] = await Promise.all([
-      prisma.auditMissionScope.count({ where: { auditableEntityId: id } }),
+      prisma.auditMissionScope.count({ where: { auditableEntityId: id, status: 'IN_SCOPE' } }),
       prisma.risk.count({ where: { auditableEntityId: id } }),
       prisma.businessProcess.count({ where: { auditableEntityId: id } })
     ]);

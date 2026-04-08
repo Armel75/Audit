@@ -208,12 +208,25 @@ export const deleteRole = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
 
-    const role = await prisma.role.findUnique({ where: { id } });
+    const role = await prisma.role.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { users: true }
+        }
+      }
+    });
 
     if (!role) return res.status(404).json({ error: 'Introuvable' });
 
     if (role.name === 'SUPER_ADMIN') {
       return res.status(403).json({ error: 'Interdit' });
+    }
+
+    if (role._count.users > 0) {
+      return res.status(409).json({
+        error: 'Ce rôle est encore assigné à un ou plusieurs utilisateurs'
+      });
     }
 
     await prisma.role.delete({ where: { id } });

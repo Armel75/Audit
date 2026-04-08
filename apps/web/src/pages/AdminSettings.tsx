@@ -21,6 +21,9 @@ export default function AdminSettings() {
   // UI States
   const [selectedRole, setSelectedRole] = useState<any | null>(null);
   const [rolePermissions, setRolePermissions] = useState<number[]>([]);
+  const [roleSearch, setRoleSearch] = useState('');
+  const [isEditingRole, setIsEditingRole] = useState(false);
+  const [roleForm, setRoleForm] = useState<any>({ name: '' });
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [userForm, setUserForm] = useState<any>({});
   const [isEditingTenant, setIsEditingTenant] = useState(false);
@@ -28,7 +31,38 @@ export default function AdminSettings() {
   const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_URL;
 
-  const fetchData = async () => {
+  const syncSelectedRole = (rolesData: any[], preferredRoleId?: number) => {
+    const targetRoleId = preferredRoleId ?? selectedRole?.id;
+
+    if (!targetRoleId) return;
+
+    const updatedRole = rolesData.find((role) => role.id === targetRoleId);
+
+    if (!updatedRole) {
+      setSelectedRole(null);
+      setRolePermissions([]);
+      return;
+    }
+
+    setSelectedRole(updatedRole);
+    setRolePermissions(updatedRole.permissions.map((rp: any) => rp.permissionId));
+  };
+
+  const readErrorMessage = async (res: Response, fallback: string) => {
+    try {
+      const data = await res.json();
+      return data.error || data.message || fallback;
+    } catch {
+      try {
+        const text = await res.text();
+        return text || fallback;
+      } catch {
+        return fallback;
+      }
+    }
+  };
+
+  const fetchData = async (preferredRoleId?: number) => {
     try {
       const [tenantsRes, usersRes, rolesRes, permsRes, rTokensRes, pTokensRes] = await Promise.all([
         apiFetch(`${API_BASE}/admin/tenants`),
@@ -41,7 +75,9 @@ export default function AdminSettings() {
 
       setTenants(await tenantsRes.json());
       setUsers(await usersRes.json());
-      setRoles(await rolesRes.json());
+      const rolesData = await rolesRes.json();
+      setRoles(rolesData);
+      syncSelectedRole(rolesData, preferredRoleId);
       setPermissions(await permsRes.json());
       setRefreshTokens(await rTokensRes.json());
       setResetTokens(await pTokensRes.json());
@@ -162,6 +198,80 @@ export default function AdminSettings() {
     setRolePermissions(role.permissions.map((rp: any) => rp.permissionId));
   };
 
+  const resetRoleForm = () => {
+    setIsEditingRole(false);
+    setRoleForm({ name: '' });
+  };
+
+  const startRoleCreate = () => {
+    resetRoleForm();
+  };
+
+  const startRoleEdit = (role: any) => {
+    setIsEditingRole(true);
+    setRoleForm({
+      id: role.id,
+      name: role.name
+    });
+  };
+
+  const handleRoleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const method = isEditingRole ? 'PUT' : 'POST';
+      const url = isEditingRole
+        ? `${API_BASE}/admin/roles/${roleForm.id}`
+        : `${API_BASE}/admin/roles`;
+
+      const res = await apiFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: roleForm.name?.trim() })
+      });
+
+      if (!res.ok) {
+        throw new Error(await readErrorMessage(res, 'Erreur lors de l\'enregistrement du rôle'));
+      }
+
+      const savedRole = await res.json();
+
+      showMessage(isEditingRole ? 'Rôle mis à jour' : 'Rôle créé');
+      resetRoleForm();
+      await fetchData(savedRole.id);
+    } catch (err: any) {
+      showMessage(err.message, true);
+    }
+  };
+
+  const handleRoleDelete = async (role: any) => {
+    if (!confirm(`Supprimer le rôle "${role.name}" ?`)) return;
+
+    try {
+      const res = await apiFetch(`${API_BASE}/admin/roles/${role.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        throw new Error(await readErrorMessage(res, 'Erreur lors de la suppression du rôle'));
+      }
+
+      if (selectedRole?.id === role.id) {
+        setSelectedRole(null);
+        setRolePermissions([]);
+      }
+
+      if (roleForm.id === role.id) {
+        resetRoleForm();
+      }
+
+      showMessage('Rôle supprimé');
+      await fetchData();
+    } catch (err: any) {
+      showMessage(err.message, true);
+    }
+  };
+
   const togglePermission = (permId: number) => {
     setRolePermissions(prev => 
       prev.includes(permId) ? prev.filter(id => id !== permId) : [...prev, permId]
@@ -206,6 +316,18 @@ export default function AdminSettings() {
       showMessage(err.message, true);
     }
   };
+
+  const normalizedRoleSearch = roleSearch.trim().toLowerCase();
+  const roleUserCounts = users.reduce((acc: Record<number, number>, user: any) => {
+    if (typeof user.roleId === 'number') {
+      acc[user.roleId] = (acc[user.roleId] || 0) + 1;
+    }
+
+    return acc;
+  }, {});
+  const filteredRoles = roles.filter((role) =>
+    role.name.toLowerCase().includes(normalizedRoleSearch)
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -446,30 +568,123 @@ export default function AdminSettings() {
 
         {/* ROLES & PERMISSIONS TAB */}
         {activeTab === 'roles' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 min-h-[500px]">
-            <div className="border-r border-slate-200 bg-slate-50 p-4">
+          <div className="min-h-[500px]">
+            <div className="border-b border-slate-200 p-6 bg-slate-50/60">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Gestion des roles</h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Creez, renommez et supprimez les roles sans modifier le panneau actuel des permissions.
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2">
+                    {filteredRoles.length} role{filteredRoles.length > 1 ? 's' : ''} affiche{filteredRoles.length > 1 ? 's' : ''} sur {roles.length}
+                  </p>
+                </div>
+                <button
+                  onClick={startRoleCreate}
+                  className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
+                >
+                  + Nouveau role
+                </button>
+              </div>
+
+              <form onSubmit={handleRoleSubmit} className="mt-6 bg-white p-4 rounded-xl border border-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-4 items-end">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-slate-700">
+                      Nom du role
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={roleForm.name || ''}
+                      onChange={e => setRoleForm({ ...roleForm, name: e.target.value })}
+                      placeholder="Ex: Auditeur Senior"
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    {isEditingRole && (
+                      <button
+                        type="button"
+                        onClick={resetRoleForm}
+                        className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+                      >
+                        Annuler
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800"
+                    >
+                      {isEditingRole ? 'Mettre a jour' : 'Creer le role'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              <div className="mt-4">
+                <input
+                  type="search"
+                  value={roleSearch}
+                  onChange={e => setRoleSearch(e.target.value)}
+                  placeholder="Rechercher un role..."
+                  className="w-full md:max-w-md px-3 py-2 border rounded-lg bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 min-h-[500px]">
+              <div className="border-r border-slate-200 bg-slate-50 p-4">
               <h3 className="font-semibold text-slate-900 mb-4">Rôles existants</h3>
               <div className="space-y-2">
-                {roles.map(r => (
+                {filteredRoles.length === 0 && (
+                  <div className="bg-white border border-dashed border-slate-300 rounded-xl px-4 py-6 text-sm text-slate-500">
+                    Aucun role ne correspond a cette recherche.
+                  </div>
+                )}
+                {filteredRoles.map(r => (
                   <button 
                     key={r.id} 
                     onClick={() => handleRoleSelect(r)}
                     className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${selectedRole?.id === r.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-700 hover:border-indigo-300'}`}
                   >
-                    {r.name}
+                    <div className="flex items-center justify-between gap-3">
+                      <span>{r.name}</span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${selectedRole?.id === r.id ? 'bg-indigo-500/70 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        {roleUserCounts[r.id] || 0} user{(roleUserCounts[r.id] || 0) > 1 ? 's' : ''}
+                      </span>
+                    </div>
                   </button>
                 ))}
               </div>
             </div>
-            <div className="md:col-span-2 p-6">
-              {selectedRole ? (
-                <>
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-semibold text-slate-900">Permissions pour : <span className="text-indigo-600">{selectedRole.name}</span></h3>
-                    <button onClick={saveRolePermissions} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
-                      Enregistrer les permissions
-                    </button>
-                  </div>
+              <div className="md:col-span-2 p-6">
+                {selectedRole ? (
+                  <>
+                    <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <h3 className="text-lg font-semibold text-slate-900">Permissions pour : <span className="text-indigo-600">{selectedRole.name}</span></h3>
+                        <button
+                          type="button"
+                          onClick={() => startRoleEdit(selectedRole)}
+                          className="text-indigo-600 hover:underline text-sm"
+                        >
+                          Editer le role
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRoleDelete(selectedRole)}
+                          disabled={selectedRole.name === 'SUPER_ADMIN'}
+                          className={`text-sm hover:underline ${selectedRole.name === 'SUPER_ADMIN' ? 'text-slate-400 cursor-not-allowed' : 'text-red-600'}`}
+                        >
+                          Supprimer le role
+                        </button>
+                      </div>
+                      <button onClick={saveRolePermissions} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
+                        Enregistrer les permissions
+                      </button>
+                    </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {permissions.map(p => (
                       <label key={p.id} className="flex items-start gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
@@ -492,7 +707,8 @@ export default function AdminSettings() {
                   <Shield className="w-12 h-12 mb-4 opacity-20" />
                   <p>Sélectionnez un rôle pour gérer ses permissions</p>
                 </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}

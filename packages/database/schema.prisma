@@ -41,6 +41,11 @@ model Tenant {
   auditPrograms               AuditProgram[]
   auditProcedures             AuditProcedure[]
 
+  auditProgramVersions        AuditProgramVersion[]
+  auditProgramStatusHistory   AuditProgramStatusHistory[]
+  auditProgramScopes          AuditProgramScope[]
+  auditCriteria               AuditCriteria[]
+
   findings                    Finding[]
   findingStatusHistory        FindingStatusHistory[]
 
@@ -88,8 +93,11 @@ model User {
   missionMemberships           AuditMissionMember[]
 
   auditProgramsPrepared        AuditProgram[]                 @relation("AuditProgramPreparedBy")
-  auditProgramsApproved        AuditProgram[]                 @relation("AuditProgramApprovedBy")
   proceduresPerformed          AuditProcedure[]               @relation("ProcedurePerformedBy")
+  assignedProcedures           AuditProcedure[] @relation("ProcedureAssignedTo")
+  reviewedProcedures           AuditProcedure[] @relation("ProcedureReviewedBy")
+  createdAuditProgramVersions  AuditProgramVersion[]
+  auditProgramStatusChanges    AuditProgramStatusHistory[]
 
   authoredFindings             Finding[]                      @relation("FindingAuthor")
   validatedFindings            Finding[]                      @relation("FindingValidator")
@@ -99,7 +107,9 @@ model User {
 
   recoComments                 RecommendationComment[]
   findingComments              FindingComment[]
-
+  missionScopesAdded           AuditMissionScope[]            @relation("MissionScopeAddedBy")
+  missionScopesRemoved         AuditMissionScope[]            @relation("MissionScopeRemovedBy")
+  
   uploadedDocuments            Document[]                     @relation("DocumentUploadedBy")
   collectedEvidences           Evidence[]                     @relation("EvidenceCollectedBy")
 
@@ -255,6 +265,7 @@ model PriorityLevel {
   level       Int
 
   recos       Recommendation[]
+  procedures  AuditProcedure[]
 
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -392,6 +403,7 @@ model AuditableEntity {
   isActive          Boolean            @default(true)
 
   missionScopes     AuditMissionScope[]
+  auditProgramScopes AuditProgramScope[]
   businessProcesses BusinessProcess[]
   risks             Risk[]
 
@@ -421,7 +433,9 @@ model BusinessProcess {
 
   controls          Control[]
   risks             Risk[]
+  auditProgramScopes AuditProgramScope[]
   findings          Finding[]
+  procedures        AuditProcedure[]
 
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
@@ -453,6 +467,7 @@ model Control {
 
   findings          Finding[]
   riskLinks         RiskControl[]
+  procedures        AuditProcedure[]
 
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
@@ -484,7 +499,9 @@ model Risk {
   isActive           Boolean           @default(true)
 
   findings           Finding[]
+  auditProgramScopes AuditProgramScope[]
   controlLinks       RiskControl[]
+  procedures         AuditProcedure[]
 
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
@@ -613,7 +630,6 @@ model AuditMission {
   members          AuditMissionMember[]
   scopes           AuditMissionScope[]
   programs         AuditProgram[]
-  procedures       AuditProcedure[]
   findings         Finding[]
   documents        Document[]
   evidences        Evidence[]
@@ -663,87 +679,287 @@ model AuditMissionScope {
   auditableEntityId Int
   auditableEntity   AuditableEntity @relation(fields: [auditableEntityId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
-  scopeRole         String?         @db.VarChar(100)
-  notes             String?         @db.VarChar(4000)
-  createdAt         DateTime        @default(now())
+  removedById Int?
+  removedBy   User? @relation("MissionScopeRemovedBy", fields: [removedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
-  @@unique([missionId, auditableEntityId])
-  @@index([tenantId, auditableEntityId])
+  scopeRole         String?         @db.VarChar(100)
+  status            String          @default("IN_SCOPE") @db.VarChar(50)
+  criticality       String?         @db.VarChar(50)
+
+  // 🔥 Traçabilité
+  addedById         Int?
+  addedBy User? @relation("MissionScopeAddedBy", fields: [addedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  removedAt         DateTime?
+  removalReason     String?         @db.VarChar(4000)
+  
+  notes             String?         @db.VarChar(4000)
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @default(now()) @updatedAt
+
+  // 🔥 Sécurité multi-tenant
+  @@unique([tenantId, missionId, auditableEntityId])
+
+  // 🔥 Perf
+  @@index([tenantId, missionId])
+  @@index([auditableEntityId])
+  @@index([status])
 }
 
 model AuditProgram {
   id               Int              @id @default(autoincrement())
+
+  // 🔐 Multi-tenant
   tenantId         Int
   tenant           Tenant           @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
+  // 🔗 Contexte mission
   missionId        Int
   mission          AuditMission     @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
-  versionNumber    Int              @default(1)
+  // 🧠 Métadonnées
+  code             String           @db.VarChar(255)
   title            String           @db.VarChar(4000)
+  programType      String           @db.VarChar(100) // COMPLIANCE, ITGC, FINANCIAL, OPERATIONAL
+
+  // 📌 Contenu
   objective        String?          @db.VarChar(4000)
   scopeDescription String?          @db.VarChar(4000)
-  methodology      String?          @db.VarChar(4000)
-  auditCriteria    String?          @db.VarChar(4000)
-  samplingApproach String?          @db.VarChar(4000)
 
+  // 📅 Planning
+  plannedStartDate DateTime?
+  plannedEndDate   DateTime?
+
+  // 📊 Pilotage
+  progressPercent  Int              @default(0)
   status           String           @default("DRAFT") @db.VarChar(100)
 
+  // 🔒 Gouvernance (verrouillage)
+  isLocked         Boolean          @default(false)
+  lockedAt         DateTime?
+
+  // � Acteurs
   preparedById     Int?
   preparedBy       User?            @relation("AuditProgramPreparedBy", fields: [preparedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
-  approvedById     Int?
-  approvedBy       User?            @relation("AuditProgramApprovedBy", fields: [approvedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
-
-  approvedAt       DateTime?
-
+  // 🔗 Relations métier
   procedures       AuditProcedure[]
   approvals        Approval[]
+  criteria         AuditCriteria[]
+  notifications    Notification[]
+
+  // 🔗 Scope avancé
+  scopes           AuditProgramScope[]
+
+  // 🔄 Versioning
+  versions         AuditProgramVersion[]
+
+  // 🧾 Historique
+  statusHistory    AuditProgramStatusHistory[]
 
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  @@unique([missionId, versionNumber])
+  @@unique([tenantId, code])
   @@index([tenantId, status])
+  @@index([missionId])
+  @@index([tenantId, missionId])
+}
+
+model AuditProgramVersion {
+  id            Int      @id @default(autoincrement())
+
+  tenantId      Int
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  programId     Int
+  program       AuditProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  versionNumber Int
+  label         String?  @db.VarChar(255)
+
+  // 📸 Snapshot JSON (clé du top 1%)
+  snapshot      String   @db.VarChar(4000)
+
+  changeSummary String?  @db.VarChar(4000)
+
+  createdById   Int?
+  createdBy     User?    @relation(fields: [createdById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  approvals     Approval[]
+  procedures    AuditProcedure[]
+
+  createdAt     DateTime @default(now())
+
+  @@unique([programId, versionNumber])
+  @@index([tenantId, programId])
+}
+
+model AuditProgramStatusHistory {
+  id             Int      @id @default(autoincrement())
+
+  tenantId       Int
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  programId      Int
+  program        AuditProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  previousStatus String?  @db.VarChar(100)
+  newStatus      String   @db.VarChar(100)
+  reason         String?  @db.VarChar(4000)
+
+  changedById    Int?
+  changedBy      User?    @relation(fields: [changedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  changedAt      DateTime @default(now())
+
+  @@index([tenantId, programId, changedAt])
+}
+
+model AuditProgramScope {
+  id                Int @id @default(autoincrement())
+
+  tenantId          Int
+  tenant            Tenant @relation(fields: [tenantId], references: [id])
+
+  programId         Int
+  program           AuditProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  // 🔗 Liens métier
+  auditableEntityId Int?
+  auditableEntity   AuditableEntity? @relation(fields: [auditableEntityId], references: [id])
+
+  businessProcessId Int?
+  businessProcess   BusinessProcess? @relation(fields: [businessProcessId], references: [id])
+
+  riskId            Int?
+  risk              Risk? @relation(fields: [riskId], references: [id])
+
+  // 📊 Paramétrage audit
+  coverageLevel     String? @db.VarChar(100) // FULL, PARTIAL, SAMPLE
+  priority          String? @db.VarChar(100)
+
+  createdAt         DateTime @default(now())
+
+  @@index([tenantId, programId])
+  @@index([auditableEntityId])
+  @@index([businessProcessId])
+  @@index([riskId])
+}
+
+model AuditCriteria {
+  id          Int      @id @default(autoincrement())
+
+  tenantId    Int
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  programId   Int
+  program     AuditProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  name        String   @db.VarChar(255)
+  description String?  @db.VarChar(4000)
+  source      String?  @db.VarChar(255) // ISO, COBIT, etc.
+
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, programId])
 }
 
 model AuditProcedure {
-  id               Int            @id @default(autoincrement())
+  id               Int      @id @default(autoincrement())
+
+  // 🔐 Multi-tenant
   tenantId         Int
-  tenant           Tenant         @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
+  // 🔗 Programme (source unique)
   programId        Int
-  program          AuditProgram   @relation(fields: [programId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  program          AuditProgram @relation(fields: [programId], references: [id], onUpdate: NoAction, onDelete: Cascade)
 
-  missionId        Int
-  mission          AuditMission   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  programVersionId Int
+  programVersion   AuditProgramVersion @relation(fields: [programVersionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
-  sequenceNo       Int            @default(1)
-  title            String         @db.VarChar(4000)
-  procedureType    String?        @db.VarChar(100)
-  description      String?        @db.VarChar(4000)
-  expectedEvidence String?        @db.VarChar(4000)
-  status           String         @default("PENDING") @db.VarChar(100)
+  // 🔢 Organisation
+  sequenceNo       Int
+  code             String?  @db.VarChar(255)
+
+  // 🧠 Définition
+  title            String   @db.VarChar(4000)
+  description      String?  @db.VarChar(4000)
+  procedureType    String?  @db.VarChar(100)
   dueDate          DateTime?
+  
+  priorityId Int?
+  priority   PriorityLevel? @relation(fields: [priorityId], references: [id], onUpdate: NoAction, onDelete: SetNull)
 
-  performedById    Int?
-  performedBy      User?          @relation("ProcedurePerformedBy", fields: [performedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  // 🎯 Lien métier (CRITIQUE)
+  controlId        Int?
+  control          Control? @relation(fields: [controlId], references: [id])
 
+  riskId           Int?
+  risk             Risk?    @relation(fields: [riskId], references: [id])
+
+  businessProcessId Int?
+  businessProcess  BusinessProcess? @relation(fields: [businessProcessId], references: [id])
+
+  // 📋 Attendu
+  expectedEvidence String?  @db.VarChar(4000)
+
+  // ⚙️ Exécution
+  status           String   @default("PLANNED") @db.VarChar(100)
+
+  plannedAt        DateTime?
+  startedAt        DateTime?
   completedAt      DateTime?
 
+  // 👤 Acteurs
+  assignedToId     Int?
+  assignedTo       User?   @relation("ProcedureAssignedTo", fields: [assignedToId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  performedById    Int?
+  performedBy      User?   @relation("ProcedurePerformedBy", fields: [performedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  // 🔍 Review (TOP 1%)
+  reviewedById     Int?
+  reviewedBy       User?   @relation("ProcedureReviewedBy", fields: [reviewedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  reviewStatus     String? @db.VarChar(100) // APPROVED / REJECTED
+  reviewComment    String? @db.VarChar(4000)
+  reviewedAt       DateTime?
+
+  // 📊 Résultat (CRITIQUE)
+  result           String? @db.VarChar(100) // OK / NOK / PARTIAL
+  issueDetected    Boolean @default(false)
+  severity         String? @db.VarChar(100)
+
+  // 🔁 Rework cycle
+  reworkCount      Int     @default(0)
+
+  // 📎 Evidence
   evidences        Evidence[]
+  findings         Finding[]
+  documents Document[]
 
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  // 🧾 Snapshot (ULTRA IMPORTANT)
+  snapshot         String? @db.VarChar(4000)
 
-  @@index([tenantId, missionId])
-  @@index([programId, sequenceNo])
+  // 🧠 Audit trail
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tenantId, programId])
+  @@index([controlId])
+  @@index([riskId])
+  @@index([businessProcessId])
+  @@index([status])
+  @@unique([programId, sequenceNo])
 }
 
 model Finding {
   id                  Int                       @id @default(autoincrement())
-  tenantId            Int?
-  tenant              Tenant?                   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  tenantId            Int
+  tenant              Tenant                    @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   title               String                    @db.VarChar(4000)
   description         String                    @db.VarChar(4000)
@@ -756,6 +972,9 @@ model Finding {
 
   residualRiskLevelId Int?
   residualRiskLevel   RiskLevel?                @relation("FindingResidualRiskLevel", fields: [residualRiskLevelId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  procedureId Int?
+  procedure   AuditProcedure? @relation(fields: [procedureId], references: [id])
 
   process             String?                   @db.VarChar(4000)
   cause               String?                   @db.VarChar(4000)
@@ -799,6 +1018,7 @@ model Finding {
   @@index([riskId])
   @@index([businessProcessId])
   @@index([controlId])
+  @@index([procedureId])
 }
 
 model FindingComment {
@@ -839,8 +1059,8 @@ model FindingStatusHistory {
 
 model Recommendation {
   id                 Int                         @id @default(autoincrement())
-  tenantId           Int?
-  tenant             Tenant?                     @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  tenantId           Int
+  tenant             Tenant                      @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   title              String                      @db.VarChar(4000)
   actionPlan         String                      @db.VarChar(4000)
@@ -983,6 +1203,7 @@ model MissionStatusHistory {
   previousStatus String?      @db.VarChar(100)
   newStatus      String       @db.VarChar(100)
   reason         String?      @db.VarChar(4000)
+  actionType     String?      @db.VarChar(500)
 
   changedById    Int?
   changedBy      User?        @relation("MissionStatusChangedBy", fields: [changedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
@@ -995,8 +1216,8 @@ model MissionStatusHistory {
 // ================= GESTION DOCUMENTAIRE & PREUVES =================
 model Document {
   id               Int              @id @default(autoincrement())
-  tenantId         Int?
-  tenant           Tenant?          @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  tenantId         Int
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   originalName     String           @db.VarChar(4000)
   mimeType         String           @db.VarChar(255)
@@ -1014,6 +1235,9 @@ model Document {
   recommendationId Int?
   recommendation   Recommendation?  @relation(fields: [recommendationId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
+  procedureId Int?
+  procedure   AuditProcedure? @relation(fields: [procedureId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
   uploadedById     Int
   uploadedBy       User             @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
@@ -1026,6 +1250,7 @@ model Document {
   @@index([missionId])
   @@index([findingId])
   @@index([recommendationId])
+  @@index([procedureId])
 }
 
 model Evidence {
@@ -1099,8 +1324,11 @@ model Approval {
   recommendationId Int?
   recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
-  auditProgramId   Int?
-  auditProgram     AuditProgram?   @relation(fields: [auditProgramId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  auditProgramVersionId Int?
+  auditProgramVersion   AuditProgramVersion? @relation(fields: [auditProgramVersionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  auditProgramId    Int?
+  auditProgram      AuditProgram?        @relation(fields: [auditProgramId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
@@ -1138,6 +1366,9 @@ model Notification {
   recommendationId Int?
   recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
+  auditProgramId Int?
+  auditProgram   AuditProgram? @relation(fields: [auditProgramId], references: [id])
+
   createdAt        DateTime        @default(now())
 
   @@index([tenantId, recipientUserId, status])
@@ -1147,8 +1378,8 @@ model Notification {
 // ================= TRAÇABILITÉ =================
 model AuditLog {
   id          Int      @id @default(autoincrement())
-  tenantId    Int?
-  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  tenantId    Int
+  tenant      Tenant  @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   action      String   @db.VarChar(4000)
   entityName  String?  @db.VarChar(255)

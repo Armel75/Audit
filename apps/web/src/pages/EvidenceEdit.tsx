@@ -1,6 +1,24 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  FileSearch,
+  Type,
+  AlignLeft,
+  Tag,
+  Database,
+  Calendar,
+  ShieldAlert,
+  AlertTriangle,
+  Loader2,
+  CheckCircle2,
+} from 'lucide-react';
+
+const inputCls =
+  'w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 hover:border-slate-300 outline-none';
+
+const labelCls = 'block text-sm font-semibold text-slate-900 mb-2';
 
 export default function EvidenceEdit() {
   const { id } = useParams();
@@ -16,6 +34,7 @@ export default function EvidenceEdit() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [saved, setSaved] = useState(false);
   const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -47,6 +66,8 @@ export default function EvidenceEdit() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError(null);
+    setSaved(false);
 
     try {
       const res = await apiFetch(`${API_BASE}/evidences/${id}`, {
@@ -76,43 +97,202 @@ export default function EvidenceEdit() {
     }
   };
 
-  if (loading) return <div className="p-6">Chargement...</div>;
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6 flex items-center justify-center min-h-[300px]">
+        <div className="flex flex-col items-center gap-3 text-slate-400">
+          <Loader2 className="w-8 h-8 animate-spin" />
+          <p className="text-sm font-medium">Chargement de l'evidence...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-2xl mx-auto bg-white p-6 rounded shadow">
-
-      <button onClick={() => navigate(-1)} className="mb-4 text-indigo-600">
-        ← Retour
+    <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6 pb-16">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Retour
       </button>
 
-      <h1 className="text-lg font-semibold mb-4">Modifier Evidence</h1>
+      <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
 
-      {error && <div className="bg-red-100 p-2 mb-3">{error}</div>}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-
-        <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border p-2 rounded" />
-
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full border p-2 rounded" />
-
-        <input value={evidenceType} onChange={(e) => setEvidenceType(e.target.value)} className="w-full border p-2 rounded" />
-
-        <input value={source} onChange={(e) => setSource(e.target.value)} className="w-full border p-2 rounded" />
-
-        <input type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} className="w-full border p-2 rounded" />
-
-        <label className="flex gap-2">
-          <input type="checkbox" checked={isSensitive} onChange={(e) => setIsSensitive(e.target.checked)} />
-          Sensible
-        </label>
-
-        <div className="flex justify-end">
-          <button className="bg-indigo-600 text-white px-4 py-2 rounded">
-            {submitting ? '...' : 'Mettre à jour'}
-          </button>
+        {/* Header */}
+        <div className="bg-gradient-to-r from-teal-50 to-cyan-100 px-8 py-7 border-b border-teal-200">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl shadow-md">
+              <FileSearch className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Modifier l'evidence</h1>
+              <p className="text-sm text-slate-500 mt-1">
+                Mettez a jour les informations de cet element probant.
+              </p>
+            </div>
+          </div>
         </div>
 
-      </form>
+        <form onSubmit={handleSubmit} className="px-8 py-8 space-y-8">
+
+          {/* Error banner */}
+          {error && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Success banner */}
+          {saved && (
+            <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm">
+              <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+              Evidence mise a jour avec succes.
+            </div>
+          )}
+
+          {/* Section 1 : Identification */}
+          <section>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-5">Identification</h2>
+            <div className="space-y-5">
+
+              <div>
+                <label className={labelCls}>
+                  <Type className="inline w-3.5 h-3.5 mr-1 text-slate-400" />
+                  Titre <span className="text-red-500">*</span>
+                </label>
+                <input
+                  required
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className={inputCls}
+                />
+                <p className="text-xs text-slate-400 mt-1">Intitule de l'element probant</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className={labelCls}>
+                    <Tag className="inline w-3.5 h-3.5 mr-1 text-slate-400" />
+                    Type de preuve <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={evidenceType}
+                    onChange={(e) => setEvidenceType(e.target.value)}
+                    className={inputCls}
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Nature de l'element probant</p>
+                </div>
+
+                <div>
+                  <label className={labelCls}>
+                    <Database className="inline w-3.5 h-3.5 mr-1 text-slate-400" />
+                    Source
+                  </label>
+                  <input
+                    type="text"
+                    value={source}
+                    onChange={(e) => setSource(e.target.value)}
+                    className={inputCls}
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Origine de l'evidence</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="border-t border-slate-100" />
+
+          {/* Section 2 : Details */}
+          <section>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-5">Details</h2>
+            <div className="space-y-5">
+
+              <div>
+                <label className={labelCls}>
+                  <AlignLeft className="inline w-3.5 h-3.5 mr-1 text-slate-400" />
+                  Description
+                </label>
+                <textarea
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className={`${inputCls} resize-y`}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className={labelCls}>
+                    <Calendar className="inline w-3.5 h-3.5 mr-1 text-slate-400" />
+                    Date de collecte
+                  </label>
+                  <input
+                    type="date"
+                    value={collectionDate}
+                    onChange={(e) => setCollectionDate(e.target.value)}
+                    className={inputCls}
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Quand l'evidence a-t-elle ete obtenue ?</p>
+                </div>
+
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={isSensitive}
+                        onChange={(e) => setIsSensitive(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-teal-500 transition-colors duration-200" />
+                      <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+                        <ShieldAlert className="w-4 h-4 text-slate-400" />
+                        Donnee sensible
+                      </p>
+                      <p className="text-xs text-slate-400">Acces restreint aux auditeurs autorises</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Footer */}
+          <div className="border-t border-slate-100 pt-6 flex items-center justify-between">
+            <p className="text-xs text-slate-400">
+              Les champs marques <span className="text-red-500">*</span> sont obligatoires
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 shadow-sm hover:border-slate-300 hover:text-slate-800 transition-all duration-200"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {submitting ? 'Mise a jour...' : 'Enregistrer les modifications'}
+              </button>
+            </div>
+          </div>
+
+        </form>
+      </div>
     </div>
   );
 }

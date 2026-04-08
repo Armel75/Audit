@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import * as evidenceController from '../controllers/evidence.controller';
-import { requireAuth, requirePermission } from '../middleware/auth.middleware';
+import { requireAuth, requireAnyPermission, requirePermission } from '../middleware/auth.middleware';
 
 const router = Router();
 
 router.use(requireAuth);
 
-router.get('/', evidenceController.getEvidences);
-router.post('/', evidenceController.createEvidence);
-router.put('/:id', evidenceController.updateEvidence);
-router.delete('/:id', evidenceController.deleteEvidence);
+router.get('/', requirePermission('evidence:read'), evidenceController.getEvidences);
+router.post('/', requirePermission('evidence:create'), evidenceController.createEvidence);
+router.put('/:id', requireAnyPermission(['evidence:update', 'evidence:create']), evidenceController.updateEvidence);
+router.delete('/:id', requireAnyPermission(['evidence:delete', 'evidence:create']), evidenceController.deleteEvidence);
 
 export default router;

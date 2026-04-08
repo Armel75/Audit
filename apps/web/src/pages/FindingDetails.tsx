@@ -3,12 +3,20 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, MessageSquare, Paperclip, User, Calendar, ShieldAlert, CheckCircle, XCircle, Upload, Plus, Target, Briefcase, FileText, Clock } from 'lucide-react';
 import RecommendationFormModal from '../components/RecommendationFormModal';
 import { apiFetch } from '../lib/api';
+import { getRecommendationStatusMeta, RecommendationStatus } from '../utils/status';
+
+const findingStatusLabels: Record<string, string> = {
+  DRAFT: 'Brouillon',
+  SUBMITTED: 'Soumis',
+  CONFIRMED: 'Confirmé',
+  REJECTED: 'Rejeté',
+};
 
 interface Recommendation {
   id: number;
   title: string;
   actionPlan: string;
-  status: string;
+  status: RecommendationStatus;
   targetDate: string | null;
   priority: { name: string; color: string } | null;
   department: { name: string } | null;
@@ -220,8 +228,12 @@ export default function FindingDetails() {
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header */}
       <div>
-        <Link to={`/missions/${finding.mission.id}`} className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 mb-4">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Retour à la mission ({finding.mission.title})
+        <Link
+          to={`/missions/${finding.mission.id}`}
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Retour aux détails de la mission</span>
         </Link>
         <div className="sm:flex sm:items-center sm:justify-between">
           <div>
@@ -269,7 +281,7 @@ export default function FindingDetails() {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
-                            approvalType: 'FINDING_VALIDATION',
+                            approvalType: 'FINDING_APPROVAL',
                             findingId: finding.id
                           })
                         });
@@ -405,9 +417,9 @@ export default function FindingDetails() {
 
                 <button
                   onClick={() => navigate(`/evidences/create?findingId=${finding.id}`)}
-                  className="text-sm text-indigo-600 hover:text-indigo-900 font-medium"
+                  className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1 rounded"
                 >
-                  + Ajouter
+                  + Ajouter une preuve
                 </button>
               </div>
             </div>
@@ -438,23 +450,25 @@ export default function FindingDetails() {
                 <CheckCircle className="w-5 h-5 mr-2 text-slate-400" />
                 Approbations ({finding.approvals?.length || 0})
               </h3>
-              <button 
-                className="text-sm text-indigo-600 hover:text-indigo-900 font-medium"
-                onClick={async () => {
-                  await apiFetch(`${API_BASE}/approvals`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      approvalType: 'FINDING_VALIDATION',
-                      findingId: finding.id
-                    })
-                  });
+              {!finding.approvals?.some(a => a.decision === 'PENDING' || a.decision === 'APPROVED') && (
+                <button 
+                  className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1 rounded"
+                  onClick={async () => {
+                    await apiFetch(`${API_BASE}/approvals`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        approvalType: 'FINDING_APPROVAL',
+                        findingId: finding.id
+                      })
+                    });
 
-                  fetchFinding();
-                }}
+                    fetchFinding();
+                  }}
                 >
-                + Demander une approbation
-              </button>
+                  + Demander une approbation
+                </button>
+              )}
             </div>
             {finding.approvals && finding.approvals.length > 0 ? (
               <ul className="divide-y divide-slate-100">
@@ -532,7 +546,7 @@ export default function FindingDetails() {
                 </li>
               ) : (
                 finding.recos.map((reco) => {
-                  const statusConf = recoStatusConfig[reco.status] || recoStatusConfig.PENDING;
+                  const statusConf = getRecommendationStatusMeta(reco.status);
                   return (
                     <li key={reco.id} className="hover:bg-slate-50 transition-colors">
                       <div className="px-6 py-4">
@@ -540,7 +554,7 @@ export default function FindingDetails() {
                           <Link to={`/recommendations/${reco.id}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-900">
                             {reco.title}
                           </Link>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConf.color}`}>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConf.class}`}>
                             {statusConf.label}
                           </span>
                         </div>
@@ -642,7 +656,7 @@ export default function FindingDetails() {
                     <li key={history.id} className="py-3">
                       <div className="flex justify-between">
                         <span className="text-sm font-medium text-slate-900">
-                          {history.previousStatus ? `${history.previousStatus} → ` : ''}{history.newStatus}
+                          {history.previousStatus ? `${findingStatusLabels[history.previousStatus] ?? history.previousStatus} → ` : ''}{findingStatusLabels[history.newStatus] ?? history.newStatus}
                         </span>
                         <span className="text-xs text-slate-500">
                           {new Date(history.changedAt).toLocaleString()}

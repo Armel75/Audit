@@ -1,4 +1,4 @@
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
 import { DashboardPeriod, DGDashboardData } from '../types/dashboard.types';
 import { SimpleCache } from '../shared/cache/simple.cache';
 import { DashboardSnapshotService } from './dashboard.snapshot.service';
@@ -132,16 +132,21 @@ export class DashboardService {
     });
 
     const deptMap = new Map(
-      departments.map((d) => [d.id, d.name])
+      departments.map((d: { id: number; name: string }) => [d.id, d.name])
     );
 
-    const topRiskDepartments = recosByDept.map((r) => ({
-      department:
-        r.departmentId === null
-          ? 'Non assigné'
-          : deptMap.get(r.departmentId) || 'Inconnu',
-      count: r._count.id,
-    }));
+    const topRiskDepartments: Array<{ department: string; count: number }> = recosByDept.map((r) => {
+      let departmentName: string;
+      if (r.departmentId === null) {
+        departmentName = 'Non assigné';
+      } else {
+        departmentName = (deptMap.get(r.departmentId) || 'Inconnu') as string;
+      }
+      return {
+        department: departmentName,
+        count: r._count.id,
+      };
+    });
 
     // 📊 Trend (optimisé)
     const findingsByMonth = await prisma.finding.groupBy({

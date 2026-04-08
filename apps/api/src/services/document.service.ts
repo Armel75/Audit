@@ -1,34 +1,72 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { STORAGE_PATH } from '../config/storage';
 
 export class DocumentService {
-  static async saveFileLocally(tenantId: number, buffer: Buffer, originalName: string, mimeType: string) {
-    //const storagePath = path.join(process.cwd(), '../../.storage', tenantId.toString());
-    const storagePath = path.resolve(process.cwd(), 'storage', tenantId.toString());
-    if (!fs.existsSync(storagePath)) {
-      fs.mkdirSync(storagePath, { recursive: true });
+  static async saveFileLocally(
+    tenantId: number,
+    buffer: Buffer,
+    originalName: string,
+    mimeType: string
+  ) {
+
+    const BASE_STORAGE = STORAGE_PATH;
+
+    if (!BASE_STORAGE) {
+      throw new Error('STORAGE_PATH non défini');
     }
 
-    const fileHash = crypto.createHash('sha256').update(buffer).digest('hex');
-    const fileName = `${Date.now()}-${originalName}`;
-    const filePath = path.join(storagePath, fileName);
+    // 📁 isolation tenant
+    const tenantDir = path.join(BASE_STORAGE, tenantId.toString());
 
-    fs.writeFileSync(filePath, buffer);
+    if (!fs.existsSync(tenantDir)) {
+      fs.mkdirSync(tenantDir, { recursive: true });
+    }
+
+    // 🔐 hash fichier
+    const fileHash = crypto.createHash('sha256').update(buffer).digest('hex');
+
+    // 🔒 sécurisation nom fichier
+    const ext = path.extname(originalName);
+    const safeBaseName = path
+      .basename(originalName, ext)
+      .replace(/[^a-zA-Z0-9-_]/g, '_');
+
+    const fileName = `${Date.now()}-${fileHash.slice(0, 12)}-${safeBaseName}${ext}`;
+
+    const fullPath = path.join(tenantDir, fileName);
+
+    fs.writeFileSync(fullPath, buffer);
 
     return {
       originalName,
       mimeType,
       sizeBytes: buffer.length,
-      storagePath: filePath,
+
+      // 🔥 IMPORTANT → RELATIF
+      storagePath: path.join(tenantId.toString(), fileName),
+
       fileHash
     };
   }
 
+  static getFullPath(storagePath: string) {
+    const normalizedPath = path
+      .normalize(storagePath)
+      .replace(/^(\.\.(\/|\\|$))+/, '');
+
+    return path.join(STORAGE_PATH, normalizedPath);
+  }
+
+
   static getFileStream(storagePath: string) {
-    if (!fs.existsSync(storagePath)) {
+    const fullPath = this.getFullPath(storagePath);
+
+    if (!fs.existsSync(fullPath)) {
       throw new Error('File not found');
     }
-    return fs.createReadStream(storagePath);
+
+    return fs.createReadStream(fullPath);
   }
 }

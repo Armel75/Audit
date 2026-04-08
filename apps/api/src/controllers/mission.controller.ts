@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
-import prisma from '@audit/database';
-import { missionWorkflow } from '../services/workflow/mission.workflow';
+import type { Prisma } from '@prisma/client';
+
+const prisma = require('@audit/database').default;
+import * as missionService from '../services/mission.service';
+
 import {
   getMissionReportData,
   buildReportHTML,
   generatePDF
 } from '../services/report.service';
-import { isMissionReady, validateMissionStart } from '../services/mission.service';
 
 import { DocumentService } from '../services/document.service';
 // ==========================================
@@ -159,8 +161,15 @@ export const getMission = async (req: Request, res: Response) => {
           include: {
             auditableEntity: {
               select: { id: true, name: true, code: true, entityType: true }
+            },
+            addedBy: {
+              select: { id: true, firstName: true, lastName: true }
+            },
+            removedBy: {
+              select: { id: true, firstName: true, lastName: true }
             }
           },
+          where: { status: 'IN_SCOPE' }, // Only show active scopes
           orderBy: { createdAt: 'desc' }
         },
         statusHistory: {
@@ -235,7 +244,7 @@ export const evaluateMissionReadiness = async (tx: any, missionId: number) => {
   if (!mission) return;
 
   const hasMembers = mission.members.length > 0;
-  const hasScopes = mission.scopes.length > 0;
+  const hasScopes = mission.scopes.filter((s: { status: string }) => s.status === 'IN_SCOPE').length > 0;
   //const hasApprovedProgram = mission.programs.some(p => p.status === 'APPROVED');
   const hasApprovedProgram = mission.programs.some(
     (p: { status: string }) => p.status === 'APPROVED'
@@ -274,9 +283,17 @@ export const createMission = async (req: Request, res: Response) => {
     const parsedPlanId = Number(planId);
     const parsedLeaderId = Number(leaderId);
     const parsedAuditTypeId = auditTypeId ? Number(auditTypeId) : null;
+    const parsedStartDate = startDate ? new Date(startDate) : null;
+    const parsedEndDate = endDate ? new Date(endDate) : null;
 
     if (!title || !description || !parsedPlanId || !parsedLeaderId) {
       return res.status(400).json({ error: 'Titre, description, plan et chef de mission sont requis' });
+    }
+
+    if (parsedStartDate && parsedEndDate && parsedEndDate < parsedStartDate) {
+      return res.status(400).json({
+        error: 'La date de fin de mission doit etre posterieure a la date de debut'
+      });
     }
 
     const plan = await prisma.auditPlan.findFirst({
@@ -298,7 +315,7 @@ export const createMission = async (req: Request, res: Response) => {
     });
     if (!leader) return res.status(404).json({ error: 'Chef de mission non trouvé' });
 
-    const mission = await prisma.$transaction(async (tx) => {
+    const mission = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newMission = await tx.auditMission.create({
         data: {
           tenantId,
@@ -307,8 +324,8 @@ export const createMission = async (req: Request, res: Response) => {
           objective,
           scopeDescription,
           methodology,
-          startDate: startDate ? new Date(startDate) : null,
-          endDate: endDate ? new Date(endDate) : null,
+          startDate: parsedStartDate,
+          endDate: parsedEndDate,
           status: 'PLANNED',
           planId: parsedPlanId,
           auditTypeId: parsedAuditTypeId,
@@ -360,7 +377,8 @@ export const createMission = async (req: Request, res: Response) => {
             data: newIds.map(id => ({
               tenantId,
               missionId: newMission.id,
-              auditableEntityId: id
+              auditableEntityId: id,
+              addedById: userId
             }))
           });
         }
@@ -395,11 +413,20 @@ export const updateMission = async (req: Request, res: Response) => {
       leaderId
     } = req.body;
 
+    const parsedStartDate = startDate ? new Date(startDate) : null;
+    const parsedEndDate = endDate ? new Date(endDate) : null;
+
     const existing = await prisma.auditMission.findFirst({
       where: { id: parseInt(id), tenantId }
     });
 
     if (!existing) return res.status(404).json({ error: 'Mission non trouvée' });
+
+    if (parsedStartDate && parsedEndDate && parsedEndDate < parsedStartDate) {
+      return res.status(400).json({
+        error: 'La date de fin de mission doit etre posterieure a la date de debut'
+      });
+    }
 
     const updated = await prisma.auditMission.update({
       where: { id: parseInt(id) },
@@ -409,8 +436,8 @@ export const updateMission = async (req: Request, res: Response) => {
         objective,
         scopeDescription,
         methodology,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
         planId: planId ? parseInt(planId) : undefined,
         auditTypeId: auditTypeId ? parseInt(auditTypeId) : null,
         leaderId: leaderId ? parseInt(leaderId) : undefined
@@ -424,115 +451,39 @@ export const updateMission = async (req: Request, res: Response) => {
   }
 };
 
+
 export const updateMissionStatus = async (req: Request, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const userId = req.user?.id;
-    if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
+    const user = req.user;
+
+    if (!tenantId || !user) {
+      return res.status(401).json({ error: 'Non autorisé' });
+    }
 
     const { id } = req.params;
     const { status, reason } = req.body;
 
-    if (!status) return res.status(400).json({ error: 'Le nouveau statut est requis' });
-
-    const mission = await prisma.auditMission.findFirst({
-      where: { id: parseInt(id), tenantId }
-    });
-
-    if (!mission) return res.status(404).json({ error: 'Mission non trouvée' });
-
-    // 🔒 WORKFLOW UNIQUE (corrigé)
-    if (!missionWorkflow[mission.status]?.includes(status)) {
-      return res.status(400).json({
-        error: `Transition interdite : ${mission.status} → ${status}`
-      });
+    if (!status) {
+      return res.status(400).json({ error: 'Le nouveau statut est requis' });
     }
 
-    // 🔴 NOUVEAU — Vérification READY / IN_PROGRESS (sans casser)
-    if (status === 'READY' || status === 'IN_PROGRESS') {
-      const fullMission = await prisma.auditMission.findUnique({
-        where: { id: parseInt(id) },
-        include: {
-          scopes: true,
-          members: true,
-          programs: {
-            include: { procedures: true }
-          }
-        }
-      });
-
-      if (!isMissionReady(fullMission)) {
-        return res.status(400).json({
-          error: 'Mission non prête : cadrage incomplet'
-        });
-      }
-
-      // 🔴 BONUS TOP 1% — uniquement pour IN_PROGRESS
-      if (status === 'IN_PROGRESS') {
-        try {
-          validateMissionStart(fullMission);
-        } catch (err: any) {
-          return res.status(400).json({ error: err.message });
-        }
-      }
-    }
-
-    // 🔴 EXISTANT CONSERVÉ
-    if (status === 'CLOSED') {
-      const pendingRecos = await prisma.recommendation.count({
-        where: {
-          finding: { missionId: parseInt(id) },
-          status: { not: 'VALIDATED' }
-        }
-      });
-
-      if (pendingRecos > 0) {
-        return res.status(400).json({
-          error: 'Impossible de clôturer : recommandations non validées'
-        });
-      }
-    }
-
-    // 🔴 EXISTANT CONSERVÉ (corrigé statuts)
-    if (status === 'APPROVED' || status === 'CLOSED') {
-      const approval = await prisma.approval.findFirst({
-        where: {
-          missionId: parseInt(id),
-          decision: 'APPROVED'
-        }
-      });
-
-      if (!approval) {
-        return res.status(400).json({
-          error: 'Une approbation valide est requise'
-        });
-      }
-    }
-
-    const updated = await prisma.$transaction(async (tx) => {
-      const updatedMission = await tx.auditMission.update({
-        where: { id: parseInt(id) },
-        data: { status }
-      });
-
-      await tx.missionStatusHistory.create({
-        data: {
-          tenantId,
-          missionId: parseInt(id),
-          previousStatus: mission.status,
-          newStatus: status,
-          reason: reason || 'Changement de statut',
-          changedById: userId
-        }
-      });
-
-      return updatedMission;
-    });
+    const updated = await missionService.updateMissionStatus(
+      parseInt(id),
+      status,
+      user,
+      reason
+    );
 
     res.json(updated);
+
   } catch (error: any) {
     console.error('Error updating mission status:', error);
-    res.status(500).json({ error: 'Erreur lors du changement de statut' });
+
+    // 🔥 IMPORTANT — renvoyer erreurs métier propres
+    res.status(400).json({
+      error: error.message || 'Erreur lors du changement de statut'
+    });
   }
 };
 
@@ -698,10 +649,11 @@ export const removeMissionMember = async (req: Request, res: Response) => {
 export const addMissionScope = async (req: Request, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
+    const userId = req.user?.id;
+    if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
 
     const { id } = req.params; // missionId
-    const { auditableEntityId, scopeRole, notes } = req.body;
+    const { auditableEntityId, scopeRole, criticality } = req.body;
 
     const mission = await prisma.auditMission.findUnique({
       where: { id: parseInt(id) }
@@ -721,12 +673,13 @@ export const addMissionScope = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'L\'entité auditable est requise' });
     }
 
-    // Check if already exists
+    // Check if already exists (active scope)
     const existing = await prisma.auditMissionScope.findFirst({
       where: {
         missionId: parseInt(id),
         auditableEntityId: parseInt(auditableEntityId),
-        tenantId
+        tenantId,
+        status: 'IN_SCOPE' // Only check active scopes
       }
     });
 
@@ -740,7 +693,8 @@ export const addMissionScope = async (req: Request, res: Response) => {
         missionId: parseInt(id),
         auditableEntityId: parseInt(auditableEntityId),
         scopeRole,
-        notes
+        criticality,
+        addedById: userId
       }
     });
 
@@ -753,21 +707,89 @@ export const addMissionScope = async (req: Request, res: Response) => {
   }
 };
 
+export const updateMissionScope = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const userId = req.user?.id;
+    if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
+
+    const { scopeId } = req.params;
+    const { auditableEntityId, scopeRole, criticality, notes } = req.body;
+
+    const existingScope = await prisma.auditMissionScope.findFirst({
+      where: { id: parseInt(scopeId), tenantId, status: 'IN_SCOPE' },
+      include: { mission: true }
+    });
+
+    if (!existingScope) {
+      return res.status(404).json({ error: 'Périmètre actif non trouvé' });
+    }
+
+    if (!['PLANNED', 'READY'].includes(existingScope.mission.status)) {
+      return res.status(400).json({ error: 'Cadrage verrouillé : mission déjà démarrée' });
+    }
+
+    if (!auditableEntityId) {
+      return res.status(400).json({ error: 'L\'entité auditable est requise' });
+    }
+
+    const duplicate = await prisma.auditMissionScope.findFirst({
+      where: {
+        missionId: existingScope.missionId,
+        auditableEntityId: parseInt(auditableEntityId),
+        tenantId,
+        status: 'IN_SCOPE',
+        NOT: { id: parseInt(scopeId) }
+      }
+    });
+
+    if (duplicate) {
+      return res.status(400).json({ error: 'Cette entité est déjà dans le périmètre de la mission' });
+    }
+
+    const updatedScope = await prisma.auditMissionScope.update({
+      where: { id: parseInt(scopeId) },
+      data: {
+        auditableEntityId: parseInt(auditableEntityId),
+        scopeRole,
+        criticality,
+        notes
+      }
+    });
+
+    await evaluateMissionReadiness(prisma, existingScope.missionId);
+
+    res.json(updatedScope);
+  } catch (error: any) {
+    console.error('Error updating mission scope:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du périmètre' });
+  }
+};
+
 export const removeMissionScope = async (req: Request, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
+    const userId = req.user?.id;
+    if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
 
     const { scopeId } = req.params;
+    const { removalReason } = req.body;
 
     const existing = await prisma.auditMissionScope.findFirst({
-      where: { id: parseInt(scopeId), tenantId }
+      where: { id: parseInt(scopeId), tenantId, status: 'IN_SCOPE' }
     });
 
-    if (!existing) return res.status(404).json({ error: 'Périmètre non trouvé' });
+    if (!existing) return res.status(404).json({ error: 'Périmètre actif non trouvé' });
 
-    await prisma.auditMissionScope.delete({
-      where: { id: parseInt(scopeId) }
+    // Soft delete: update status and removal info
+    await prisma.auditMissionScope.update({
+      where: { id: parseInt(scopeId) },
+      data: {
+        status: 'REMOVED',
+        removedById: userId,
+        removedAt: new Date(),
+        removalReason: removalReason || null
+      }
     });
 
     res.json({ message: 'Entité retirée du périmètre avec succès' });

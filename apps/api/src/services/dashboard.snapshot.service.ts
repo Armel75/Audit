@@ -1,9 +1,7 @@
 
-import prismaRaw from '@audit/database';
-import type { PrismaClient } from '@prisma/client';
 import { DashboardService } from './dashboard.service';
 
-const prisma = prismaRaw as unknown as PrismaClient;
+const prisma = require('@audit/database').default;
 
 export class DashboardSnapshotService {
   static async generate(tenantId: number, year?: number, month?: number) {
@@ -12,7 +10,7 @@ export class DashboardSnapshotService {
       month,
     });
 
-    await (prisma as any).dashboardSnapshot.create({
+    await prisma.dashboardSnapshot.create({
       data: {
         tenantId,
         year,
@@ -23,7 +21,7 @@ export class DashboardSnapshotService {
   }
 
   static async getLatest(tenantId: number, year?: number, month?: number) {
-    const snapshot = await (prisma as any).dashboardSnapshot.findFirst({
+    const snapshot = await prisma.dashboardSnapshot.findFirst({
       where: { tenantId, year, month },
       orderBy: { createdAt: 'desc' },
     });

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth, requirePermission } from '../middleware/auth.middleware';
+import { requireAuth, requireAnyPermission, requirePermission } from '../middleware/auth.middleware';
 import {
   getAuditPrograms,
   getAuditProgramById,
@@ -16,15 +16,15 @@ const router = Router();
 router.use(requireAuth);
 
 // Audit Programs
-router.get('/', getAuditPrograms);
-router.get('/:id', getAuditProgramById);
-router.post('/', createAuditProgram);
-router.put('/:id', updateAuditProgram);
-router.delete('/:id', deleteAuditProgram);
+router.get('/', requirePermission('audit_program:read'), getAuditPrograms);
+router.get('/:id', requirePermission('audit_program:read'), getAuditProgramById);
+router.post('/', requirePermission('audit_program:create'), createAuditProgram);
+router.put('/:id', requirePermission('audit_program:update'), updateAuditProgram);
+router.delete('/:id', requireAnyPermission(['audit_program:delete', 'audit_program:update']), deleteAuditProgram);
 
 // Audit Procedures
-router.post('/:programId/procedures', createAuditProcedure);
-router.put('/procedures/:procedureId', updateAuditProcedure);
-router.delete('/procedures/:procedureId', deleteAuditProcedure);
+router.post('/:programId/procedures', requirePermission('audit_procedure:create'), createAuditProcedure);
+router.put('/procedures/:procedureId', requirePermission('audit_procedure:update'), updateAuditProcedure);
+router.delete('/procedures/:procedureId', requireAnyPermission(['audit_procedure:delete', 'audit_procedure:update']), deleteAuditProcedure);
 
 export default router;

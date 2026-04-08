@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
 import { AuthService } from '../services/auth.service';
 import { forgotPassword } from '../controllers/auth.controller';
 
 const router = Router();
 
-const ACCESS_TOKEN_EXPIRES_IN = '15m'; // Short-lived JWT
+const ACCESS_TOKEN_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '1h') as jwt.SignOptions['expiresIn'];
 const REFRESH_TOKEN_EXPIRES_DAYS = 7; // Long-lived refresh token
 //const RESET_TOKEN_EXPIRES_HOURS = 1; // Limited-lifetime reset token
 

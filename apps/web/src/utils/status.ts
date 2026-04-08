@@ -10,6 +10,7 @@ export const MISSION_STATUSES = [
   'UNDER_REVIEW',
   'APPROVED',
   'CLOSED',
+  'CANCELLED',
 ] as const;
 
 export type MissionStatus = typeof MISSION_STATUSES[number];
@@ -37,6 +38,10 @@ export const missionStatusMap: Record<
   APPROVED: {
     label: 'Approuvée',
     class: 'bg-green-100 text-green-700',
+  },
+  CANCELLED: {
+    label: 'Annulée',
+    class: 'bg-red-100 text-red-700',
   },
   CLOSED: {
     label: 'Clôturée',
@@ -160,7 +165,12 @@ export const auditPlanStatusMap: Record<
 // =====================================================
 
 export function getMissionStatusMeta(status: MissionStatus) {
-  return missionStatusMap[status];
+  return (
+    missionStatusMap[status] || {
+      label: status,
+      class: 'bg-gray-100 text-gray-700',
+    }
+  );
 }
 
 export function getRecommendationStatusMeta(status: RecommendationStatus) {

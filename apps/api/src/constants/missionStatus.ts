@@ -1,0 +1,12 @@
+export const MISSION_STATUS = {
+  PLANNED: 'PLANNED',
+  READY: 'READY',
+  IN_PROGRESS: 'IN_PROGRESS',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  APPROVED: 'APPROVED',
+  CLOSED: 'CLOSED',
+  CANCELLED: 'CANCELLED'
+} as const;
+
+export type MissionStatus =
+  typeof MISSION_STATUS[keyof typeof MISSION_STATUS];

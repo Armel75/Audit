@@ -1,22 +1,22 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth.middleware';
+import { requireAuth, requireAnyPermission, requirePermission } from '../middleware/auth.middleware';
 import * as recommendationController from '../controllers/recommendation.controller';
 import { getMissionRecommendations } from '../controllers/recommendation.controller';
 
 const router = Router();
 router.use(requireAuth);
 
-router.get('/', recommendationController.getRecommendations);
+router.get('/', requirePermission('recommendation:read'), recommendationController.getRecommendations);
 
 // ✅ IMPORTANT : avant /:id
-router.get('/mission/:missionId', getMissionRecommendations);
+router.get('/mission/:missionId', requirePermission('recommendation:read'), getMissionRecommendations);
 
-router.get('/:id', recommendationController.getRecommendation);
+router.get('/:id', requirePermission('recommendation:read'), recommendationController.getRecommendation);
 
-router.post('/', recommendationController.createRecommendation);
-router.put('/:id', recommendationController.updateRecommendation);
-router.patch('/:id/status', recommendationController.updateRecommendationStatus);
-router.post('/:id/comments', recommendationController.addRecommendationComment);
-router.post('/:id/follow-ups', recommendationController.addRecommendationFollowUp);
+router.post('/', requirePermission('recommendation:create'), recommendationController.createRecommendation);
+router.put('/:id', requirePermission('recommendation:update'), recommendationController.updateRecommendation);
+router.patch('/:id/status', requireAnyPermission(['recommendation:update', 'recommendation:validate']), recommendationController.updateRecommendationStatus);
+router.post('/:id/comments', requireAnyPermission(['recommendation:comment', 'recommendation:update']), recommendationController.addRecommendationComment);
+router.post('/:id/follow-ups', requireAnyPermission(['recommendation:follow_up', 'recommendation:update']), recommendationController.addRecommendationFollowUp);
 
 export default router;

@@ -1,30 +1,36 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  Settings as SettingsIcon, 
-  LogOut, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  Settings as SettingsIcon,
+  LogOut,
+  Menu,
   X,
   ShieldAlert,
   User,
   Database,
   Calendar,
   Archive,
-  Sun, 
-  Moon
+  Sun,
+  Moon,
+  CheckCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { CheckCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+
+type NavItem = {
+  path: string;
+  icon: typeof LayoutDashboard;
+  label: string;
+  requiredPermissions?: string[];
+};
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { resolvedTheme, toggleTheme } = useTheme();
-  // Sidebar collapse
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleLogout = () => {
@@ -32,41 +38,48 @@ export default function Layout() {
     navigate('/login');
   };
 
-  const navItems = [
+  const userPermissions = user?.permissions || [];
+  const hasAnyPermission = (requiredPermissions?: string[]) => {
+    if (!requiredPermissions?.length) {
+      return true;
+    }
+
+    return requiredPermissions.some((permission) => userPermissions.includes(permission));
+  };
+
+  const navItems: NavItem[] = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
     { path: '/dashboard-dg', icon: LayoutDashboard, label: 'Tableau de bord DG' },
-    { path: '/plans', icon: Calendar, label: 'Plans d\'audit' },
-    { path: '/missions', icon: Briefcase, label: 'Missions' },
-    { path: '/missions/archive', icon: Archive, label: 'Archives missions' },
-    { path: '/approvals', icon: CheckCircle, label: 'Approbations' },
-    { path: '/referential', icon: Database, label: 'Référentiel' },
-    { path: '/settings', icon: SettingsIcon, label: 'Paramètres' },
-    { path: '/admin', icon: ShieldAlert, label: 'Administration' },
+    { path: '/plans', icon: Calendar, label: "Plans d'audit", requiredPermissions: ['audit_plan:read'] },
+    { path: '/missions', icon: Briefcase, label: 'Missions', requiredPermissions: ['audit_mission:read'] },
+    { path: '/missions/archive', icon: Archive, label: 'Archives missions', requiredPermissions: ['audit_mission:read'] },
+    { path: '/approvals', icon: CheckCircle, label: 'Approbations', requiredPermissions: ['audit_plan:approve', 'audit_program:approve', 'finding:validate', 'recommendation:validate'] },
+    { path: '/referential', icon: Database, label: 'Referentiel', requiredPermissions: ['department:read', 'risk:read', 'control:read', 'business_process:read'] },
+    { path: '/settings', icon: SettingsIcon, label: 'Parametres', requiredPermissions: ['settings:read', 'department:read'] },
+    { path: '/admin', icon: ShieldAlert, label: 'Administration', requiredPermissions: ['admin:access', 'tenant:read', 'user:read', 'role:read', 'permission:read', 'token:read'] },
   ];
+
+  const visibleNavItems = navItems.filter((item) => hasAnyPermission(item.requiredPermissions));
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans">
-      {/* Mobile Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
-      <aside 
+      <aside
         className={`fixed inset-y-0 left-0 z-50 ${
           isCollapsed ? 'w-20' : 'w-64'
         } bg-slate-950 text-slate-300 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex lg:flex-col ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Header dynamique */}
         <div className={`flex items-center border-b border-slate-800/60 ${
           isCollapsed ? 'h-12 justify-center px-2' : 'h-16 px-4'
         }`}>
-          {/* Toggle */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="text-slate-400 hover:text-white"
@@ -86,9 +99,8 @@ export default function Layout() {
           )}
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 px-2 py-6 space-y-1 overflow-y-auto">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -97,8 +109,8 @@ export default function Layout() {
                 `flex items-center ${
                   isCollapsed ? 'justify-center' : 'gap-3'
                 } px-3 py-2.5 rounded-lg font-medium transition-colors ${
-                  isActive 
-                    ? 'bg-emerald-500/10 text-emerald-400' 
+                  isActive
+                    ? 'bg-emerald-500/10 text-emerald-400'
                     : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
                 }`
               }
@@ -109,7 +121,6 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* Footer */}
         <div className="p-3 border-t border-slate-800/60">
           {!isCollapsed && (
             <div className="flex items-center gap-3 px-3 py-2 mb-4">
@@ -140,27 +151,24 @@ export default function Layout() {
               ) : (
                 <Moon className="w-5 h-5" />
               )}
-              {!isCollapsed && 'Thème'}
+              {!isCollapsed && 'Theme'}
             </button>
           </div>
 
-          {/* Logout rouge foncé */}
           <button
             onClick={handleLogout}
             className={`flex items-center ${
               isCollapsed ? 'justify-center' : 'gap-3'
-            } px-3 py-2.5 w-full rounded-lg font-medium transition-colors 
+            } px-3 py-2.5 w-full rounded-lg font-medium transition-colors
             bg-red-700 text-white hover:bg-red-800`}
           >
             <LogOut className="w-5 h-5" />
-            {!isCollapsed && 'Déconnexion'}
+            {!isCollapsed && 'Deconnexion'}
           </button>
         </div>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile header */}
         <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:hidden z-30">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center border border-emerald-100">
@@ -170,14 +178,7 @@ export default function Layout() {
               SISAR
             </span>
           </div>
-          {/* <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 -mr-2 text-slate-500 hover:bg-slate-100 rounded-lg"
-          >
-            <Menu className="w-6 h-6" />
-          </button> */}
           <div className="flex items-center gap-2">
-            {/* Toggle Theme */}
             <button
               onClick={toggleTheme}
               className="p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
@@ -189,7 +190,6 @@ export default function Layout() {
               )}
             </button>
 
-            {/* Menu */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="p-2 -mr-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
@@ -199,7 +199,6 @@ export default function Layout() {
           </div>
         </header>
 
-        {/* Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
             <Outlet />

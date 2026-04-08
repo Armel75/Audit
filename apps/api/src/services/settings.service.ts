@@ -1,4 +1,4 @@
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
 
 export class SettingsService {
   // --- Departments ---

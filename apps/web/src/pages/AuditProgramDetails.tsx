@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, Trash2, CheckCircle, Clock, FileText, Target, List } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, CheckCircle, Clock, FileText, Target, List, User, Flag, Paperclip } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 interface Procedure {
   id: number;
   sequenceNo: number;
+  code: string | null;
   title: string;
   procedureType: string | null;
   description: string | null;
@@ -13,8 +14,11 @@ interface Procedure {
   status: string;
   dueDate: string | null;
   performedBy: { firstName: string; lastName: string } | null;
+  assignedTo: { id: number; firstName: string; lastName: string } | null;
+  priority: { id: number; name: string; level: number } | null;
   actualResult: string | null;
   conclusion: string | null;
+  documents: { id: number; originalName: string; sizeBytes: number; mimeType: string }[];
 }
 
 interface Approval {
@@ -24,19 +28,22 @@ interface Approval {
 
 interface Program {
   id: number;
+  code: string;
   title: string;
+  programType: string;
   objective: string | null;
   scopeDescription: string | null;
-  methodology: string | null;
-  auditCriteria: string | null;
-  samplingApproach: string | null;
+  plannedStartDate: string | null;
+  plannedEndDate: string | null;
+  progressPercent: number;
+  isLocked: boolean;
   status: string;
   mission: { id: number; title: string; status: string };
   preparedBy: { firstName: string; lastName: string } | null;
-  reviewedBy: { firstName: string; lastName: string } | null;
-  approvedBy: { firstName: string; lastName: string } | null;
   procedures: Procedure[];
-  approvals?: Approval[]; // ✅ AJOUT
+  approvals?: Approval[];
+  criteria?: { id: number; name: string; description: string | null; source: string | null }[];
+  versions?: { id: number; versionNumber: number; label: string | null; createdAt: string }[];
 }
 
 export default function AuditProgramDetails() {
@@ -66,6 +73,9 @@ export default function AuditProgramDetails() {
   const hasPendingApproval = !!pendingApproval;
 
   const [approving, setApproving] = useState(false);
+  const [isEditProgramModalOpen, setIsEditProgramModalOpen] = useState(false);
+  const [isEditProcedureModalOpen, setIsEditProcedureModalOpen] = useState(false);
+  const [editProgramForm, setEditProgramForm] = useState({ title: '', programType: '', objective: '', scopeDescription: '', plannedStartDate: '', plannedEndDate: '' });
 
   const fetchProgram = () => {
     apiFetch(`${API_BASE}/programs/${id}`)
@@ -106,7 +116,7 @@ export default function AuditProgramDetails() {
     setProcEvidence(proc.expectedEvidence || '');
     setProcDueDate(proc.dueDate ? new Date(proc.dueDate).toISOString().split('T')[0] : '');
     setProcSequence(proc.sequenceNo);
-    //setIsProcedureModalOpen(true);
+    setIsEditProcedureModalOpen(true);
   };
 
   const handleSaveProcedure = async (e: React.FormEvent) => {
@@ -134,8 +144,8 @@ export default function AuditProgramDetails() {
       });
 
       if (!res.ok) throw new Error('Erreur lors de l\'enregistrement de la procédure');
-      
-      //setIsProcedureModalOpen(false);
+
+      setIsEditProcedureModalOpen(false);
       fetchProgram();
     } catch (err: any) {
       alert(err.message);
@@ -200,6 +210,48 @@ export default function AuditProgramDetails() {
   //   }
   // };
 
+    const handleUpdateProgram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await apiFetch(`${API_BASE}/programs/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editProgramForm),
+      });
+      if (response.ok) {
+        setIsEditProgramModalOpen(false);
+        fetchProgram();
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Erreur lors de la modification du programme');
+      }
+    } catch (error) {
+      console.error('Failed to update program', error);
+    }
+  };
+
+    const handleDownloadDocument = async (docId: number, fileName: string) => {
+    try {
+      const res = await apiFetch(`${API_BASE}/documents/download/${docId}`);
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Erreur téléchargement');
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
     const approveProgram = async () => {
       if (!pendingApproval) return;
 
@@ -228,17 +280,44 @@ export default function AuditProgramDetails() {
       }
     };
 
-    
+
+  const canEdit = !['APPROVED'].includes(program.status) && ['PLANNED', 'READY'].includes(program.mission?.status ?? '');
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       <div>
-        <Link to={`/missions/${program.mission.id}`} className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 mb-4">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Retour à la mission ({program.mission.title})
+        <Link
+          to={`/missions/${program.mission.id}`}
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Retour aux details de la mission</span>
         </Link>
         <div className="sm:flex sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{program.title}</h1>
             <div className="flex gap-2 mt-4 sm:mt-0">
+
+              {/* MODIFIER LE PROGRAMME */}
+              <button
+                onClick={() => {
+                  setEditProgramForm({
+                    title: program.title,
+                    programType: program.programType,
+                    objective: program.objective ?? '',
+                    scopeDescription: program.scopeDescription ?? '',
+                    plannedStartDate: program.plannedStartDate ? program.plannedStartDate.slice(0, 10) : '',
+                    plannedEndDate: program.plannedEndDate ? program.plannedEndDate.slice(0, 10) : '',
+                  });
+                  setIsEditProgramModalOpen(true);
+                }}
+                disabled={!canEdit}
+                title={!canEdit ? 'Modification impossible : programme approuvé ou mission en cours' : undefined}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-slate-200 text-slate-700 rounded-md hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <Edit className="w-4 h-4" />
+                Modifier le programme
+              </button>
 
               {/* DEMANDER VALIDATION */}
               {program.status === 'DRAFT' && !hasPendingApproval && (
@@ -297,6 +376,12 @@ export default function AuditProgramDetails() {
             </h3>
             
             <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                  {program.programType}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">{program.code}</span>
+              </div>
               <div>
                 <h4 className="text-sm font-medium text-slate-900 mb-2">Objectif</h4>
                 <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100 whitespace-pre-wrap">
@@ -309,20 +394,36 @@ export default function AuditProgramDetails() {
                   {program.scopeDescription || <span className="italic text-slate-400">Non renseigné</span>}
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="text-sm font-medium text-slate-900 mb-2">Méthodologie</h4>
-                  <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100 whitespace-pre-wrap">
-                    {program.methodology || <span className="italic text-slate-400">Non renseignée</span>}
-                  </p>
+              {(program.plannedStartDate || program.plannedEndDate) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-900 mb-2">Début planifié</h4>
+                    <p className="text-sm text-slate-600">
+                      {program.plannedStartDate ? new Date(program.plannedStartDate).toLocaleDateString() : <span className="italic text-slate-400">Non défini</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-900 mb-2">Fin planifiée</h4>
+                    <p className="text-sm text-slate-600">
+                      {program.plannedEndDate ? new Date(program.plannedEndDate).toLocaleDateString() : <span className="italic text-slate-400">Non définie</span>}
+                    </p>
+                  </div>
                 </div>
+              )}
+              {program.criteria && program.criteria.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-slate-900 mb-2">Critères d'audit</h4>
-                  <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100 whitespace-pre-wrap">
-                    {program.auditCriteria || <span className="italic text-slate-400">Non renseignés</span>}
-                  </p>
+                  <ul className="space-y-2">
+                    {program.criteria.map(c => (
+                      <li key={c.id} className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100">
+                        <span className="font-medium">{c.name}</span>
+                        {c.source && <span className="ml-2 text-xs text-slate-400">({c.source})</span>}
+                        {c.description && <p className="mt-1 text-slate-500">{c.description}</p>}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -335,7 +436,9 @@ export default function AuditProgramDetails() {
               <button
                 // onClick={openNewProcedureModal}
                 onClick={() => navigate(`/programs/${program.id}/procedures/new`)}
-                className="mt-3 sm:mt-0 inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
+                disabled={!canEdit}
+                title={!canEdit ? 'Modification impossible : programme approuvé ou mission en cours' : undefined}
+                className="mt-3 sm:mt-0 inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-40 disabled:pointer-events-none"
               >
                 <Plus className="-ml-1 mr-2 h-4 w-4" />
                 Nouvelle procédure
@@ -392,15 +495,65 @@ export default function AuditProgramDetails() {
                                 <span className="text-slate-600">{proc.performedBy.firstName} {proc.performedBy.lastName}</span>
                               </div>
                             )}
+                            {proc.assignedTo && (
+                              <div className="flex items-center gap-1">
+                                <User className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="font-medium text-slate-700">Assigné à: </span>
+                                <span className="text-slate-600">{proc.assignedTo.firstName} {proc.assignedTo.lastName}</span>
+                              </div>
+                            )}
+                            {proc.priority && (
+                              <div className="flex items-center gap-1">
+                                <Flag className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="font-medium text-slate-700">Priorité: </span>
+                                <span className="text-slate-600">{proc.priority.name}</span>
+                              </div>
+                            )}
                           </div>
+
+                          <div className="mt-2 pt-2 border-t border-slate-100">
+                              <p className="text-xs font-medium text-slate-500 mb-2 flex items-center gap-1">
+                                <Paperclip className="w-3.5 h-3.5" />
+                                Pièces jointes ({proc.documents?.length || 0})
+                              </p>
+                              {proc.documents && proc.documents.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {proc.documents.map(doc => (
+                                    <button
+                                      key={doc.id}
+                                      onClick={() => handleDownloadDocument(doc.id, doc.originalName)}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200 transition-colors"
+                                      title={`Télécharger ${doc.originalName}`}
+                                    >
+                                      <FileText className="w-3.5 h-3.5" />
+                                      {doc.originalName}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-400 italic">Aucune pièce jointe</p>
+                              )}
+                            </div>
                         </div>
                       </div>
                       <div className="ml-4 flex space-x-2">
-                        <button onClick={() => openEditProcedureModal(proc)} className="text-slate-400 hover:text-indigo-600">
-                          <Edit className="w-4 h-4" />
+                        <button
+                          onClick={() => openEditProcedureModal(proc)}
+                          disabled={!canEdit}
+                          title={!canEdit ? 'Modification impossible : programme approuvé ou mission en cours' : undefined}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          Modifier
                         </button>
-                        <button onClick={() => handleDeleteProcedure(proc.id)} className="text-slate-400 hover:text-red-600">
-                          <Trash2 className="w-4 h-4" />
+                        <button
+                          onClick={() => handleDeleteProcedure(proc.id)}
+                          disabled={!canEdit}
+                          title={!canEdit ? 'Modification impossible : programme approuvé ou mission en courses' : undefined}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Supprimer
                         </button>
                       </div>
                     </div>
@@ -423,22 +576,286 @@ export default function AuditProgramDetails() {
                   </Link>
                 </dd>
               </div>
-              {program.reviewedBy && (
+              <div>
+                <dt className="text-slate-500">Code</dt>
+                <dd className="font-mono text-slate-800">{program.code}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Type</dt>
+                <dd className="font-medium text-slate-900">{program.programType}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Avancée</dt>
+                <dd className="font-medium text-slate-900">{program.progressPercent}%</dd>
+              </div>
+              {program.isLocked && (
                 <div>
-                  <dt className="text-slate-500">Revu par</dt>
-                  <dd className="font-medium text-slate-900">{program.reviewedBy.firstName} {program.reviewedBy.lastName}</dd>
+                  <dt className="text-slate-500">Statut verrou</dt>
+                  <dd className="text-amber-600 font-medium">Verrouillé</dd>
                 </div>
               )}
-              {program.approvedBy && (
+              {program.preparedBy && (
                 <div>
-                  <dt className="text-slate-500">Approuvé par</dt>
-                  <dd className="font-medium text-slate-900">{program.approvedBy.firstName} {program.approvedBy.lastName}</dd>
+                  <dt className="text-slate-500">Préparé par</dt>
+                  <dd className="font-medium text-slate-900">{program.preparedBy.firstName} {program.preparedBy.lastName}</dd>
+                </div>
+              )}
+              {program.versions && program.versions.length > 0 && (
+                <div>
+                  <dt className="text-slate-500">Version actuelle</dt>
+                  <dd className="font-medium text-slate-900">v{program.versions[0].versionNumber}{program.versions[0].label ? ` — ${program.versions[0].label}` : ''}</dd>
                 </div>
               )}
             </dl>
           </div>
         </div>
       </div>
+
+      {/* Modal : Modifier le programme d'audit */}
+      {isEditProgramModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsEditProgramModalOpen(false)} />
+          <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-6 border-b border-indigo-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full">
+                  <Edit className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900">Modifier le programme d'audit</h3>
+                  <p className="text-sm text-slate-600 mt-1">Mettez à jour les informations du programme</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateProgram} className="px-8 py-6">
+              <div className="space-y-6">
+
+                {/* Titre + Type */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Titre <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editProgramForm.title}
+                      onChange={(e) => setEditProgramForm({ ...editProgramForm, title: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                    />
+                    <p className="text-xs text-slate-500 mt-2">Nom clair et descriptif du programme</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Type de programme <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      required
+                      value={editProgramForm.programType}
+                      onChange={(e) => setEditProgramForm({ ...editProgramForm, programType: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                    >
+                      <option value="">Sélectionner un type</option>
+                      <option value="COMPLIANCE">✅ Conformité</option>
+                      <option value="ITGC">🖥️ Contrôles IT généraux (ITGC)</option>
+                      <option value="FINANCIAL">💰 Financier</option>
+                      <option value="OPERATIONAL">⚙️ Opérationnel</option>
+                    </select>
+                    <p className="text-xs text-slate-500 mt-2">Détermine la nature des procédures d'audit</p>
+                  </div>
+                </div>
+
+                {/* Objectif */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">Objectif</label>
+                  <textarea
+                    rows={3}
+                    value={editProgramForm.objective}
+                    onChange={(e) => setEditProgramForm({ ...editProgramForm, objective: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                  />
+                  <p className="text-xs text-slate-500 mt-2">Ce que ce programme cherche à évaluer ou vérifier</p>
+                </div>
+
+                {/* Périmètre */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">Périmètre (Scope)</label>
+                  <textarea
+                    rows={3}
+                    value={editProgramForm.scopeDescription}
+                    onChange={(e) => setEditProgramForm({ ...editProgramForm, scopeDescription: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                  />
+                  <p className="text-xs text-slate-500 mt-2">Définissez les limites et l'étendue de l'audit</p>
+                </div>
+
+                {/* Dates */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Date de début planifiée</label>
+                    <input
+                      type="date"
+                      value={editProgramForm.plannedStartDate}
+                      onChange={(e) => setEditProgramForm({ ...editProgramForm, plannedStartDate: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Date de fin planifiée</label>
+                    <input
+                      type="date"
+                      value={editProgramForm.plannedEndDate}
+                      onChange={(e) => setEditProgramForm({ ...editProgramForm, plannedEndDate: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProgramModalOpen(false)}
+                  className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:from-indigo-600 hover:to-indigo-700 active:scale-[0.98]"
+                >
+                  Enregistrer les modifications
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isEditProcedureModalOpen && editingProcedure && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsEditProcedureModalOpen(false)} />
+          <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-6 border-b border-indigo-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full">
+                  <Edit className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900">Modifier la procédure</h3>
+                  <p className="text-sm text-slate-600 mt-1">{editingProcedure.title}</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveProcedure} className="px-8 py-6">
+              <div className="space-y-5">
+
+                {/* N° ordre + Titre */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">N° Ordre</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={procSequence}
+                      onChange={(e) => setProcSequence(e.target.value ? Number(e.target.value) : '')}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none"
+                    />
+                  </div>
+                  <div className="sm:col-span-3">
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Titre <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      required
+                      value={procTitle}
+                      onChange={(e) => setProcTitle(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">Description</label>
+                  <textarea
+                    rows={3}
+                    value={procDesc}
+                    onChange={(e) => setProcDesc(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none resize-y"
+                  />
+                </div>
+
+                {/* Type + Preuve */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Type de procédure</label>
+                    <select
+                      value={procType}
+                      onChange={(e) => setProcType(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none"
+                    >
+                      <option value="">-- Sélectionner --</option>
+                      <option value="INTERVIEW">Entretien</option>
+                      <option value="OBSERVATION">Observation</option>
+                      <option value="INSPECTION">Inspection documentaire</option>
+                      <option value="REPERFORMANCE">Re-exécution</option>
+                      <option value="ANALYTICAL">Procédure analytique</option>
+                      <option value="CONFIRMATION">Confirmation externe</option>
+                      <option value="OTHER">Autre</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Preuve attendue</label>
+                    <input
+                      type="text"
+                      value={procEvidence}
+                      onChange={(e) => setProcEvidence(e.target.value)}
+                      placeholder="ex. Rapport signé, relevé bancaire..."
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Échéance */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">Date d'échéance</label>
+                  <input
+                    type="date"
+                    value={procDueDate}
+                    onChange={(e) => setProcDueDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProcedureModalOpen(false)}
+                  className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingProc}
+                  className="rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:from-indigo-600 hover:to-indigo-700 active:scale-[0.98] disabled:opacity-50"
+                >
+                  {submittingProc ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* {isProcedureModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">

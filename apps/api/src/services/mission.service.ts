@@ -1,6 +1,8 @@
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
 import { canTransition } from './workflow/workflow.engine';
 import { missionWorkflow } from './workflow/mission.workflow';
+import { MISSION_STATUS, MissionStatus } from '../constants/missionStatus';
+import { MISSION_ACTION_TYPE } from '../constants/missionActionType';
 
 // 🔵 NOUVEAU — Vérifie si mission prête (cadrage OK)
 export function isMissionReady(mission: any) {
@@ -43,10 +45,102 @@ export function validateMissionStart(mission: any) {
 }
 
 // 🔵 EXISTANT AMÉLIORÉ SANS CASSER
+// export async function updateMissionStatus(
+//   missionId: number,
+//   newStatus: MissionStatus,
+//   user: any
+// ) {
+//   const mission = await prisma.auditMission.findUnique({
+//     where: { id: missionId },
+//     include: {
+//       findings: true,
+//       scopes: true,
+//       members: true,
+//       programs: {
+//         include: { procedures: true }
+//       }
+//     }
+//   });
+
+//   if (!mission) throw new Error('Mission introuvable');
+
+//   // 🔒 1. Vérifier transition
+//   if (!canTransition(mission.status, newStatus, missionWorkflow)) {
+//     throw new Error(`Transition interdite: ${mission.status} → ${newStatus}`);
+//   }
+
+//   // 🔴 NOUVEAU — gestion CANCELLED
+//   if (newStatus === MISSION_STATUS.CANCELLED) {
+//     // aucune contrainte métier
+//     // mais on peut log ou tracer plus tard
+//   }
+
+//   // 🔴 NOUVEAU — READY / IN_PROGRESS
+//     if (
+//       newStatus === MISSION_STATUS.READY ||
+//       newStatus === MISSION_STATUS.IN_PROGRESS
+//     ){
+//     if (!isMissionReady(mission)) {
+//       throw new Error('Mission non prête : cadrage incomplet');
+//     }
+//   }
+
+//   if (newStatus === MISSION_STATUS.IN_PROGRESS) {
+//     validateMissionStart(mission);
+//   }
+
+//   // 🔒 2. Règles métier EXISTANTES
+
+//   if (newStatus === MISSION_STATUS.UNDER_REVIEW) {
+//     if (mission.findings.length === 0) {
+//       throw new Error('Aucun constat pour cette mission');
+//     }
+//   }
+
+//   if (newStatus === MISSION_STATUS.CLOSED) {
+//     const pendingRecos = await prisma.recommendation.count({
+//       where: {
+//         finding: { missionId },
+//         status: { not: 'VALIDATED' }
+//       }
+//     });
+
+//     if (pendingRecos > 0) {
+//       throw new Error('Recommandations non validées');
+//     }
+//   }
+
+//   // 🔒 3. Rôle
+//   if (newStatus === MISSION_STATUS.APPROVED) {
+//     if (!user.permissions?.includes('MISSION_APPROVE')) {
+//       throw new Error("Permission refusée");
+//     }
+//   }
+//   // 🔒 4. Update + historique
+//   const updated = await prisma.auditMission.update({
+//     where: { id: missionId },
+//     data: { status: newStatus }
+//   });
+
+//   await prisma.missionStatusHistory.create({
+//     data: {
+//       tenantId: mission.tenantId,
+//       missionId,
+//       previousStatus: mission.status,
+//       newStatus,
+//       changedById: user.id
+//     }
+//   });
+
+//   return updated;
+// }
+
+
 export async function updateMissionStatus(
   missionId: number,
-  newStatus: string,
-  user: any
+  newStatus: MissionStatus,
+  user: any,
+  reason?: string
 ) {
   const mission = await prisma.auditMission.findUnique({
     where: { id: missionId },
@@ -62,31 +156,81 @@ export async function updateMissionStatus(
 
   if (!mission) throw new Error('Mission introuvable');
 
-  // 🔒 1. Vérifier transition
+  // 🔒 1. HARD RULES (prioritaires)
+
+  // ❌ interdit d'annuler après validation finale
+  if (
+  newStatus === MISSION_STATUS.CANCELLED &&
+  (
+    mission.status === MISSION_STATUS.APPROVED ||
+    mission.status === MISSION_STATUS.CLOSED
+  )
+  ) {
+    throw new Error('Impossible d’annuler une mission déjà validée ou clôturée');
+  }
+
+  // ❌ aucun retour après APPROVED
+  if (
+    mission.status === MISSION_STATUS.APPROVED &&
+    newStatus !== MISSION_STATUS.CLOSED
+  ) {
+    throw new Error('Aucune modification autorisée après approbation');
+  }
+
+  // ❌ aucun changement après CLOSED
+  if (mission.status === MISSION_STATUS.CLOSED) {
+    throw new Error('Mission clôturée, aucune modification possible');
+  }
+
+  // 🔒 2. WORKFLOW (transition autorisée)
   if (!canTransition(mission.status, newStatus, missionWorkflow)) {
     throw new Error(`Transition interdite: ${mission.status} → ${newStatus}`);
   }
 
-  // 🔴 NOUVEAU — READY / IN_PROGRESS
-  if (newStatus === 'READY' || newStatus === 'IN_PROGRESS') {
+  // 🔴 3. RÈGLE CANCELLED (option sécurité)
+  if (newStatus === MISSION_STATUS.CANCELLED) {
+    if (!user) {
+      throw new Error('Utilisateur requis pour annulation');
+    }
+  }
+
+  // 🔒 RAISON OBLIGATOIRE (CANCEL / REWORK)
+  const isRework =
+    mission.status === MISSION_STATUS.UNDER_REVIEW &&
+    newStatus === MISSION_STATUS.IN_PROGRESS;
+
+  if (
+    (newStatus === MISSION_STATUS.CANCELLED || isRework) &&
+    (!reason || reason.trim().length < 5)
+  ) {
+    throw new Error(
+      'Une raison est obligatoire (minimum 5 caractères) pour cette action'
+    );
+  }
+
+  // 🔴 READY / IN_PROGRESS
+  if (
+    newStatus === MISSION_STATUS.READY ||
+    newStatus === MISSION_STATUS.IN_PROGRESS
+  ) {
     if (!isMissionReady(mission)) {
       throw new Error('Mission non prête : cadrage incomplet');
     }
   }
 
-  if (newStatus === 'IN_PROGRESS') {
+  if (newStatus === MISSION_STATUS.IN_PROGRESS) {
     validateMissionStart(mission);
   }
 
-  // 🔒 2. Règles métier EXISTANTES
+  // 🔒 4. RÈGLES MÉTIER EXISTANTES
 
-  if (newStatus === 'UNDER_REVIEW') {
+  if (newStatus === MISSION_STATUS.UNDER_REVIEW) {
     if (mission.findings.length === 0) {
       throw new Error('Aucun constat pour cette mission');
     }
   }
 
-  if (newStatus === 'CLOSED') {
+  if (newStatus === MISSION_STATUS.CLOSED) {
     const pendingRecos = await prisma.recommendation.count({
       where: {
         finding: { missionId },
@@ -99,22 +243,20 @@ export async function updateMissionStatus(
     }
   }
 
-  // 🔒 3. Rôle
-  // if (newStatus === 'APPROVED') {
-  //   if (user.role.name !== 'CONTROLEUR') {
-  //     throw new Error('Seul le contrôleur peut approuver');
-  //   }
-  // }
-  if (newStatus === 'APPROVED') {
+  // 🔒 5. RÔLES
+  if (newStatus === MISSION_STATUS.APPROVED) {
     if (!user.permissions?.includes('MISSION_APPROVE')) {
       throw new Error("Permission refusée");
     }
   }
-  // 🔒 4. Update + historique
+
+  // 🔒 6. UPDATE + HISTORIQUE
   const updated = await prisma.auditMission.update({
     where: { id: missionId },
     data: { status: newStatus }
   });
+
+  const actionType = getActionType(mission.status as MissionStatus, newStatus);
 
   await prisma.missionStatusHistory.create({
     data: {
@@ -122,9 +264,34 @@ export async function updateMissionStatus(
       missionId,
       previousStatus: mission.status,
       newStatus,
-      changedById: user.id
+      changedById: user.id,
+      // 🔥 OPTION SAFE (si colonnes existent)
+      actionType,
+      reason: reason || null
     }
   });
 
   return updated;
+}
+
+
+function getActionType(
+  from: MissionStatus,
+  to: MissionStatus
+): string {
+  if (to === MISSION_STATUS.CANCELLED) return MISSION_ACTION_TYPE.CANCEL;
+
+  if (from === MISSION_STATUS.UNDER_REVIEW && to === MISSION_STATUS.IN_PROGRESS) {
+    return MISSION_ACTION_TYPE.REWORK;
+  }
+
+  if (to === MISSION_STATUS.IN_PROGRESS) return MISSION_ACTION_TYPE.START;
+
+  if (to === MISSION_STATUS.UNDER_REVIEW) return MISSION_ACTION_TYPE.SUBMIT;
+
+  if (to === MISSION_STATUS.APPROVED) return MISSION_ACTION_TYPE.APPROVE;
+
+  if (to === MISSION_STATUS.CLOSED) return MISSION_ACTION_TYPE.CLOSE;
+
+  return MISSION_ACTION_TYPE.START;
 }

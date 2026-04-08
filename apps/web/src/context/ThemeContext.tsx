@@ -15,14 +15,14 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 const STORAGE_KEY = 'app-theme';
 
 function getSystemTheme(): ResolvedTheme {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined') return 'light';
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    return stored ?? 'dark';
+    return stored ?? 'light';
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {

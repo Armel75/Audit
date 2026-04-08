@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { DashboardService } from '../services/dashboard.service';
-import { requireAuth } from '../middleware/auth.middleware';
+import { requireAnyPermission, requireAuth } from '../middleware/auth.middleware';
 
 const router = Router();
 
-router.get('/dg', requireAuth, async (req, res) => {
+router.get('/dg', requireAuth, requireAnyPermission(['dashboard:read', 'admin:access']), async (req, res) => {
   try {
     const tenantId = (req as any).user.tenantId;
 

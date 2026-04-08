@@ -1,4 +1,6 @@
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
+
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
@@ -193,7 +195,7 @@ export class AuthService {
       .update(token)
       .digest('hex');
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const resetTokenRecord = await tx.passwordResetToken.findFirst({
         where: {
           tokenHash,

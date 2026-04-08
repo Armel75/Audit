@@ -6,6 +6,6 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get('/', requirePermission('can_view_tasks'), auditLogController.getAuditLogs);
+router.get('/', requirePermission('audit_log:read'), auditLogController.getAuditLogs);
 
 export default router;

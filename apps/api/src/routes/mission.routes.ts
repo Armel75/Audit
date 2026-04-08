@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as missionController from '../controllers/mission.controller';
-import { requireAuth, requirePermission } from '../middleware/auth.middleware';
+import { requireAuth, requireAnyPermission, requirePermission } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -8,29 +8,30 @@ const router = Router();
 router.use(requireAuth);
 
 // Audit Mission
-router.get('/', missionController.getMissions);
-router.get('/:id', missionController.getMission);
-router.post('/', missionController.createMission);
-router.put('/:id', missionController.updateMission);
-router.delete('/:id', missionController.deleteMission);
+router.get('/', requirePermission('audit_mission:read'), missionController.getMissions);
+router.get('/:id', requirePermission('audit_mission:read'), missionController.getMission);
+router.post('/', requirePermission('audit_mission:create'), missionController.createMission);
+router.put('/:id', requirePermission('audit_mission:update'), missionController.updateMission);
+router.delete('/:id', requireAnyPermission(['audit_mission:delete', 'audit_mission:update']), missionController.deleteMission);
 
 // Mission Status
-router.patch('/:id/status', missionController.updateMissionStatus);
-router.put('/history/:historyId', missionController.updateMissionStatusHistory);
-router.delete('/history/:historyId', missionController.deleteMissionStatusHistory);
+router.patch('/:id/status', requirePermission('audit_mission:update'), missionController.updateMissionStatus);
+router.put('/history/:historyId', requirePermission('audit_mission:update'), missionController.updateMissionStatusHistory);
+router.delete('/history/:historyId', requirePermission('audit_mission:update'), missionController.deleteMissionStatusHistory);
 
 // Mission Members
-router.post('/:id/members', missionController.addMissionMember);
-router.put('/members/:memberId', missionController.updateMissionMember);
-router.delete('/members/:memberId', missionController.removeMissionMember);
+router.post('/:id/members', requirePermission('audit_mission:assign'), missionController.addMissionMember);
+router.put('/members/:memberId', requirePermission('audit_mission:assign'), missionController.updateMissionMember);
+router.delete('/members/:memberId', requirePermission('audit_mission:assign'), missionController.removeMissionMember);
 
 // Mission Scopes
-router.post('/:id/scopes', missionController.addMissionScope);
-router.delete('/scopes/:scopeId', missionController.removeMissionScope);
+router.post('/:id/scopes', requirePermission('audit_mission:assign'), missionController.addMissionScope);
+router.put('/scopes/:scopeId', requirePermission('audit_mission:assign'), missionController.updateMissionScope);
+router.delete('/scopes/:scopeId', requirePermission('audit_mission:assign'), missionController.removeMissionScope);
 
 // Reports
-router.get('/:id/report', missionController.getMissionReport);
+router.get('/:id/report', requirePermission('audit_mission:read'), missionController.getMissionReport);
 
-router.post('/:id/report/generate', missionController.generateMissionReport);
+router.post('/:id/report/generate', requireAnyPermission(['audit_mission:update', 'document:upload']), missionController.generateMissionReport);
 
 export default router;

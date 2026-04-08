@@ -8,6 +8,7 @@ interface User {
   firstName: string;
   lastName: string;
   role: string;
+  permissions?: string[];
 }
 
 interface AuthContextType {
@@ -21,6 +22,35 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const decodeTokenPermissions = (token: string | null): string[] => {
+  if (!token) return [];
+
+  try {
+    const [, payload] = token.split('.');
+
+    if (!payload) return [];
+
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decodedPayload = atob(normalizedPayload);
+    const parsedPayload = JSON.parse(decodedPayload);
+
+    return Array.isArray(parsedPayload.permissions) ? parsedPayload.permissions : [];
+  } catch {
+    return [];
+  }
+};
+
+const attachPermissionsToUser = (user: User | null, token: string | null): User | null => {
+  if (!user) return null;
+
+  const permissions = user.permissions?.length ? user.permissions : decodeTokenPermissions(token);
+
+  return {
+    ...user,
+    permissions
+  };
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('accessToken'));
@@ -30,16 +60,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (token && storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = attachPermissionsToUser(JSON.parse(storedUser), token);
+      setUser(parsedUser);
+      localStorage.setItem('user', JSON.stringify(parsedUser));
     }
     setIsLoading(false);
   }, [token]);
 
   const login = (newToken: string, newUser: User) => {
+    const normalizedUser = attachPermissionsToUser(newUser, newToken);
     localStorage.setItem('accessToken', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
+    localStorage.setItem('user', JSON.stringify(normalizedUser));
     setToken(newToken);
-    setUser(newUser);
+    setUser(normalizedUser);
   };
   
 const logout = async () => {

@@ -1,4 +1,4 @@
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
 import { DashboardSnapshotService } from '../services/dashboard.snapshot.service';
 
 export async function runDashboardJob() {

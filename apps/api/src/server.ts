@@ -1,19 +1,12 @@
-import express from 'express';
-import cors from 'cors';
+import './config/env'; // DOIT être le premier import : charge dotenv avant tout autre module
 import path from 'path';
 import fs from 'fs';
+import express from 'express';
+import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import dotenv from 'dotenv';
 import { runBootstrap } from './bootstrap';
+import { STORAGE_PATH, ROOT_PATH } from './config/storage';
 
-// Load env from root
-const envPath = path.join(process.cwd(), '.env');
-
-if (!fs.existsSync(envPath)) {
-  console.warn('⚠️ .env not found at:', envPath);
-} else {
-  dotenv.config({ path: envPath });
-}
 
 // Routes
 import authRoutes from './routes/auth.routes';
@@ -35,6 +28,8 @@ import auditLogRoutes from './routes/auditLog.routes';
 import auditableEntityRoutes from './routes/auditableEntity.routes';
 import businessProcessRoutes from './routes/businessProcess.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import { startGlpiUserSyncCron } from './cron/glpiUserSync.cron';
+import { startGlpiTicketSyncCron } from './cron/glpiTicketSync.cron';
 
 console.log('authRoutes:', authRoutes);
 console.log("ENV LOADED:", process.env.JWT_SECRET);
@@ -51,10 +46,10 @@ async function startServer() {
   app.use(cookieParser());
 
   // Ensure local storage directory exists (Simulating /var/sorepco/sisar/storage)
-  const storagePath = path.join(process.cwd(), '../../.storage');
-  if (!fs.existsSync(storagePath)) {
-    fs.mkdirSync(storagePath, { recursive: true });
+  if (!fs.existsSync(STORAGE_PATH)) {
+    fs.mkdirSync(STORAGE_PATH, { recursive: true });
   }
+
 
   // API Routes
   app.use('/api/v1/auth', authRoutes);
@@ -76,13 +71,15 @@ async function startServer() {
   app.use('/api/v1/auditable-entities', auditableEntityRoutes);
   app.use('/api/v1/business-processes', businessProcessRoutes);
   app.use('/api/v1/dashboard', dashboardRoutes);
+  app.use('/storage', express.static(STORAGE_PATH));
 
   app.get('/api/v1/health', (req, res) => {
     res.json({ status: 'ok', service: 'SISAR API', tenant: 'SOREPCO' });
   });
 
   if (process.env.NODE_ENV === 'production') {
-    const distPath = path.join(process.cwd(), '../../apps/web/dist');
+    //const distPath = path.join(process.cwd(), '../../apps/web/dist');
+    const distPath = path.join(ROOT_PATH, 'apps/web/dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
@@ -98,6 +95,8 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[SISAR] Server running on http://localhost:${PORT}`);
+    startGlpiUserSyncCron();
+    startGlpiTicketSyncCron();
   });
 }
 

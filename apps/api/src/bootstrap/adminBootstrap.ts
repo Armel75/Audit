@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
 
 export async function bootstrapAdmin() {
   if (process.env.BOOTSTRAP_ENABLED !== 'true') {
@@ -140,7 +140,7 @@ export async function bootstrapAdmin() {
 
     if (permissions.length > 0) {
       await prisma.rolePermission.createMany({
-        data: permissions.map(p => ({
+        data: permissions.map((p: { id: number }) => ({
           roleId: role.id,
           permissionId: p.id
         }))

@@ -22,14 +22,8 @@ export const getAuditPrograms = async (req: Request, res: Response) => {
         preparedBy: {
           select: { id: true, firstName: true, lastName: true }
         },
-        // reviewedBy: {
-        //   select: { id: true, firstName: true, lastName: true }
-        // },
-        approvedBy: {
-          select: { id: true, firstName: true, lastName: true }
-        },
         _count: {
-          select: { procedures: true }
+          select: { procedures: true, criteria: true, versions: true }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -58,23 +52,39 @@ export const getAuditProgramById = async (req: Request, res: Response) => {
         preparedBy: {
           select: { id: true, firstName: true, lastName: true }
         },
-        // reviewedBy: {
-        //   select: { id: true, firstName: true, lastName: true }
-        // },
-        approvedBy: {
-          select: { id: true, firstName: true, lastName: true }
-        },
         approvals: {
           where: {
             approvalType: 'PROGRAM_APPROVAL'
           },
           orderBy: { createdAt: 'desc' }
         },
+        criteria: {
+          orderBy: { createdAt: 'asc' }
+        },
+        scopes: {
+          include: {
+            auditableEntity: { select: { id: true, name: true, code: true, entityType: true } },
+            businessProcess: { select: { id: true, name: true, code: true } },
+            risk: { select: { id: true, name: true, code: true } }
+          }
+        },
+        versions: {
+          orderBy: { versionNumber: 'desc' },
+          take: 5
+        },
+        statusHistory: {
+          orderBy: { changedAt: 'desc' },
+          take: 10,
+          include: {
+            changedBy: { select: { id: true, firstName: true, lastName: true } }
+          }
+        },
         procedures: {
           include: {
-            performedBy: {
-              select: { id: true, firstName: true, lastName: true }
-            }
+            performedBy: { select: { id: true, firstName: true, lastName: true } },
+            assignedTo:  { select: { id: true, firstName: true, lastName: true } },
+            priority:    { select: { id: true, name: true, level: true } },
+            documents:   { select: { id: true, originalName: true, sizeBytes: true, mimeType: true, createdAt: true } }
           },
           orderBy: { sequenceNo: 'asc' }
         }
@@ -100,16 +110,17 @@ export const createAuditProgram = async (req: Request, res: Response) => {
 
     const {
       missionId,
+      code,
       title,
+      programType,
       objective,
       scopeDescription,
-      methodology,
-      auditCriteria,
-      samplingApproach
+      plannedStartDate,
+      plannedEndDate
     } = req.body;
 
-    if (!missionId || !title) {
-      return res.status(400).json({ error: 'Mission ID and title are required' });
+    if (!missionId || !title || !code || !programType) {
+      return res.status(400).json({ error: 'Mission ID, code, titre et type de programme sont requis' });
     }
 
     // Check if mission exists and belongs to tenant
@@ -128,19 +139,44 @@ export const createAuditProgram = async (req: Request, res: Response) => {
       });
     }
 
-    const program = await prisma.auditProgram.create({
-      data: {
-        tenantId,
-        missionId: Number(missionId),
-        title,
-        objective,
-        scopeDescription,
-        methodology,
-        auditCriteria,
-        samplingApproach,
-        status: 'DRAFT',
-        preparedById: userId
-      }
+    // Vérifier unicité du code dans le tenant
+    const existingCode = await prisma.auditProgram.findFirst({
+      where: { tenantId, code }
+    });
+    if (existingCode) {
+      return res.status(400).json({ error: `Un programme avec le code "${code}" existe déjà` });
+    }
+
+    const program = await prisma.$transaction(async (tx) => {
+      const prog = await tx.auditProgram.create({
+        data: {
+          tenantId,
+          missionId: Number(missionId),
+          code,
+          title,
+          programType,
+          objective,
+          scopeDescription,
+          plannedStartDate: plannedStartDate ? new Date(plannedStartDate) : null,
+          plannedEndDate: plannedEndDate ? new Date(plannedEndDate) : null,
+          status: 'DRAFT',
+          preparedById: userId
+        }
+      });
+
+      // Créer la version initiale (v1)
+      await tx.auditProgramVersion.create({
+        data: {
+          tenantId,
+          programId: prog.id,
+          versionNumber: 1,
+          label: 'Version initiale',
+          snapshot: JSON.stringify({ title: prog.title, status: prog.status, programType: prog.programType }),
+          createdById: userId
+        }
+      });
+
+      return prog;
     });
 
     res.status(201).json(program);
@@ -158,11 +194,12 @@ export const updateAuditProgram = async (req: Request, res: Response) => {
 
     const {
       title,
+      programType,
       objective,
       scopeDescription,
-      methodology,
-      auditCriteria,
-      samplingApproach,
+      plannedStartDate,
+      plannedEndDate,
+      progressPercent,
       status
     } = req.body;
 
@@ -184,11 +221,12 @@ export const updateAuditProgram = async (req: Request, res: Response) => {
       where: { id: Number(id) },
       data: {
         title,
+        programType,
         objective,
         scopeDescription,
-        methodology,
-        auditCriteria,
-        samplingApproach,
+        plannedStartDate: plannedStartDate ? new Date(plannedStartDate) : undefined,
+        plannedEndDate: plannedEndDate ? new Date(plannedEndDate) : undefined,
+        progressPercent: progressPercent !== undefined ? Number(progressPercent) : undefined,
       }
     });
 
@@ -248,6 +286,9 @@ export const createAuditProcedure = async (req: Request, res: Response) => {
       expectedEvidence,
       dueDate,
       performedById,
+      assignedToId,
+      priorityId,
+      code,
       sequenceNo
     } = req.body;
 
@@ -278,6 +319,25 @@ export const createAuditProcedure = async (req: Request, res: Response) => {
       });
     }
 
+    // Résoudre la version active du programme (la plus récente)
+    let programVersion = await prisma.auditProgramVersion.findFirst({
+      where: { programId: Number(programId) },
+      orderBy: { versionNumber: 'desc' }
+    });
+    if (!programVersion) {
+      // Créer automatiquement la version initiale si elle n'existe pas
+      programVersion = await prisma.auditProgramVersion.create({
+        data: {
+          tenantId,
+          programId: Number(programId),
+          versionNumber: 1,
+          label: 'Version initiale',
+          snapshot: JSON.stringify({ title: program.title, status: program.status }),
+          createdById: tenantId
+        }
+      });
+    }
+
     // Determine next sequence number if not provided
     let nextSeq = sequenceNo;
     if (!nextSeq) {
@@ -292,15 +352,18 @@ export const createAuditProcedure = async (req: Request, res: Response) => {
       data: {
         tenantId,
         programId: Number(programId),
-        missionId: program.missionId,
+        programVersionId: programVersion.id,
         sequenceNo: nextSeq,
+        code: code || null,
         title,
-        procedureType,
-        description,
-        expectedEvidence,
+        procedureType: procedureType || null,
+        description: description || null,
+        expectedEvidence: expectedEvidence || null,
         dueDate: dueDate ? new Date(dueDate) : null,
         performedById: performedById ? Number(performedById) : null,
-        status: 'PENDING'
+        assignedToId:  assignedToId  ? Number(assignedToId)  : null,
+        priorityId:    priorityId    ? Number(priorityId)    : null,
+        status: 'PLANNED'
       }
     });
 
@@ -324,8 +387,16 @@ export const updateAuditProcedure = async (req: Request, res: Response) => {
       expectedEvidence,
       dueDate,
       performedById,
+      assignedToId,
+      priorityId,
+      code,
       sequenceNo,
       status,
+      result,
+      issueDetected,
+      severity,
+      reviewStatus,
+      reviewComment,
     } = req.body;
 
     const procedure = await prisma.auditProcedure.findFirst({
@@ -336,11 +407,16 @@ export const updateAuditProcedure = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Audit procedure not found' });
     }
 
+    const program = await prisma.auditProgram.findFirst({
+      where: { id: procedure.programId, tenantId }
+    });
+
+    if (!program) {
+      return res.status(404).json({ error: 'Programme introuvable' });
+    }
+
     const mission = await prisma.auditMission.findFirst({
-      where: { 
-        id: procedure.missionId,
-        tenantId
-      }
+      where: { id: program.missionId, tenantId }
     });
 
     if (!mission) {
@@ -357,13 +433,21 @@ export const updateAuditProcedure = async (req: Request, res: Response) => {
       where: { id: Number(procedureId) },
       data: {
         title,
-        procedureType,
-        description,
-        expectedEvidence,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
-        performedById: performedById ? Number(performedById) : undefined,
+        code:             code             ?? undefined,
+        procedureType:   procedureType    ?? undefined,
+        description:     description      ?? undefined,
+        expectedEvidence:expectedEvidence ?? undefined,
+        dueDate:         dueDate          ? new Date(dueDate) : undefined,
+        performedById:   performedById    ? Number(performedById)  : undefined,
+        assignedToId:    assignedToId     ? Number(assignedToId)   : undefined,
+        priorityId:      priorityId       ? Number(priorityId)     : undefined,
         sequenceNo,
         status,
+        result:          result           ?? undefined,
+        issueDetected:   issueDetected    !== undefined ? Boolean(issueDetected) : undefined,
+        severity:        severity         ?? undefined,
+        reviewStatus:    reviewStatus     ?? undefined,
+        reviewComment:   reviewComment    ?? undefined,
       }
     });
 

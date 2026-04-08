@@ -12,8 +12,9 @@ interface Finding {
   _count: { recos: number };
 }
 
-const findingStatusConfig = {
+const findingStatusConfig: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'Brouillon', color: 'bg-slate-100 text-slate-800' },
+  SUBMITTED: { label: 'Soumis', color: 'bg-blue-100 text-blue-800' },
   CONFIRMED: { label: 'Confirmé', color: 'bg-amber-100 text-amber-800' },
   ADDRESSED: { label: 'Traité', color: 'bg-emerald-100 text-emerald-800' },
   REJECTED: { label: 'Rejeté', color: 'bg-red-100 text-red-800' },
@@ -60,7 +61,7 @@ export default function MissionFindings() {
           </div>
         ) : (
           findings.map(f => {
-            const status = findingStatusConfig[f.status];
+            const status = findingStatusConfig[f.status] ?? { label: f.status, color: 'bg-slate-100 text-slate-800' };
 
             return (
               <div key={f.id} className="p-4 flex justify-between items-center hover:bg-slate-50">

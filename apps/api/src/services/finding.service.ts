@@ -1,4 +1,6 @@
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
+
+import { Prisma } from '@prisma/client';
 import { findingWorkflow } from './workflow/finding.workflow';
 
 const canTransition = (current: string, next: string) => {
@@ -168,7 +170,7 @@ export class FindingService {
       }
     }
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.finding.update({
         where: { id },
         data: { status }

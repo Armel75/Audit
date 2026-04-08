@@ -1,15 +1,7 @@
-import prisma from '@audit/database';
+const prisma = require('@audit/database').default;
 
-// 🔥 EXPORT FIABLE
 export async function seedPermissionsIfEmpty() {
-  const count = await prisma.permission.count();
-
-  if (count > 0) {
-    console.log('[SEED] Permissions déjà présentes → skip');
-    return;
-  }
-
-  console.log('[SEED] Initialisation des permissions...');
+  console.log('[SEED] Synchronisation des permissions...');
 
   for (const perm of permissions) {
     await prisma.permission.upsert({
@@ -19,86 +11,97 @@ export async function seedPermissionsIfEmpty() {
     });
   }
 
-  console.log('[SEED] Permissions créées');
+  console.log('[SEED] Permissions synchronisees');
 }
 
-// ================= DATA =================
 const permissions = [
-
-    //permissions dynamiques par module (comme AWS IAM)
-
-    
   // ================= ADMIN =================
-  { code: 'admin:access', description: 'Accès à l’administration' },
+  { code: 'admin:access', description: 'Acceder a l administration' },
 
   // ================= USERS =================
-  { code: 'user:create', description: 'Créer un utilisateur' },
+  { code: 'user:create', description: 'Creer un utilisateur' },
   { code: 'user:read', description: 'Voir les utilisateurs' },
   { code: 'user:update', description: 'Modifier un utilisateur' },
-  { code: 'user:delete', description: 'Désactiver un utilisateur' },
+  { code: 'user:delete', description: 'Desactiver un utilisateur' },
   { code: 'user:approve', description: 'Valider un utilisateur' },
 
   // ================= TENANTS =================
-  { code: 'tenant:create', description: 'Créer un tenant' },
+  { code: 'tenant:create', description: 'Creer un tenant' },
   { code: 'tenant:read', description: 'Voir les tenants' },
   { code: 'tenant:update', description: 'Modifier un tenant' },
-  { code: 'tenant:delete', description: 'Désactiver un tenant' },
+  { code: 'tenant:delete', description: 'Desactiver un tenant' },
 
   // ================= ROLES =================
-  { code: 'role:create', description: 'Créer un rôle' },
-  { code: 'role:read', description: 'Voir les rôles' },
-  { code: 'role:update', description: 'Modifier un rôle' },
-  { code: 'role:delete', description: 'Supprimer un rôle' },
-  { code: 'role:assign_permissions', description: 'Gérer les permissions d’un rôle' },
+  { code: 'role:create', description: 'Creer un role' },
+  { code: 'role:read', description: 'Voir les roles' },
+  { code: 'role:update', description: 'Modifier un role' },
+  { code: 'role:delete', description: 'Supprimer un role' },
+  { code: 'role:assign_permissions', description: 'Gerer les permissions d un role' },
 
   // ================= PERMISSIONS =================
-  { code: 'permission:create', description: 'Créer une permission' },
+  { code: 'permission:create', description: 'Creer une permission' },
   { code: 'permission:read', description: 'Voir les permissions' },
   { code: 'permission:update', description: 'Modifier une permission' },
   { code: 'permission:delete', description: 'Supprimer une permission' },
 
+  // ================= SETTINGS =================
+  { code: 'settings:read', description: 'Acceder aux parametres' },
+  { code: 'settings:update', description: 'Modifier les parametres' },
+
   // ================= DEPARTMENT =================
-  { code: 'department:create', description: 'Créer un département' },
-  { code: 'department:read', description: 'Voir les départements' },
-  { code: 'department:update', description: 'Modifier un département' },
-  { code: 'department:delete', description: 'Supprimer un département' },
+  { code: 'department:create', description: 'Creer un departement' },
+  { code: 'department:read', description: 'Voir les departements' },
+  { code: 'department:update', description: 'Modifier un departement' },
+  { code: 'department:delete', description: 'Supprimer un departement' },
 
   // ================= AUDIT PLAN =================
-  { code: 'audit_plan:create', description: 'Créer un plan d’audit' },
-  { code: 'audit_plan:read', description: 'Voir les plans d’audit' },
-  { code: 'audit_plan:update', description: 'Modifier un plan d’audit' },
-  { code: 'audit_plan:approve', description: 'Approuver un plan d’audit' },
+  { code: 'audit_plan:create', description: 'Creer un plan d audit' },
+  { code: 'audit_plan:read', description: 'Voir les plans d audit' },
+  { code: 'audit_plan:update', description: 'Modifier un plan d audit' },
+  { code: 'audit_plan:delete', description: 'Supprimer un plan d audit' },
+  { code: 'audit_plan:approve', description: 'Approuver un plan d audit' },
 
   // ================= AUDIT MISSION =================
-  { code: 'audit_mission:create', description: 'Créer une mission' },
+  { code: 'audit_mission:create', description: 'Creer une mission' },
   { code: 'audit_mission:read', description: 'Voir les missions' },
   { code: 'audit_mission:update', description: 'Modifier une mission' },
-  { code: 'audit_mission:assign', description: 'Assigner des membres à une mission' },
+  { code: 'audit_mission:delete', description: 'Supprimer une mission' },
+  { code: 'audit_mission:assign', description: 'Assigner des membres a une mission' },
 
   // ================= AUDIT PROGRAM =================
-  { code: 'audit_program:create', description: 'Créer un programme d’audit' },
+  { code: 'audit_program:create', description: 'Creer un programme d audit' },
   { code: 'audit_program:read', description: 'Voir les programmes' },
   { code: 'audit_program:update', description: 'Modifier un programme' },
+  { code: 'audit_program:delete', description: 'Supprimer un programme' },
   { code: 'audit_program:approve', description: 'Approuver un programme' },
 
   // ================= AUDIT PROCEDURE =================
-  { code: 'audit_procedure:create', description: 'Créer une procédure' },
-  { code: 'audit_procedure:read', description: 'Voir les procédures' },
-  { code: 'audit_procedure:update', description: 'Modifier une procédure' },
-  { code: 'audit_procedure:execute', description: 'Exécuter une procédure' },
+  { code: 'audit_procedure:create', description: 'Creer une procedure' },
+  { code: 'audit_procedure:read', description: 'Voir les procedures' },
+  { code: 'audit_procedure:update', description: 'Modifier une procedure' },
+  { code: 'audit_procedure:delete', description: 'Supprimer une procedure' },
+  { code: 'audit_procedure:execute', description: 'Executer une procedure' },
 
   // ================= FINDINGS =================
-  { code: 'finding:create', description: 'Créer un constat' },
+  { code: 'finding:create', description: 'Creer un constat' },
   { code: 'finding:read', description: 'Voir les constats' },
   { code: 'finding:update', description: 'Modifier un constat' },
+  { code: 'finding:comment', description: 'Commenter un constat' },
   { code: 'finding:validate', description: 'Valider un constat' },
 
   // ================= RECOMMENDATIONS =================
-  { code: 'recommendation:create', description: 'Créer une recommandation' },
+  { code: 'recommendation:create', description: 'Creer une recommandation' },
   { code: 'recommendation:read', description: 'Voir les recommandations' },
   { code: 'recommendation:update', description: 'Modifier une recommandation' },
+  { code: 'recommendation:comment', description: 'Commenter une recommandation' },
+  { code: 'recommendation:follow_up', description: 'Ajouter un suivi a une recommandation' },
   { code: 'recommendation:validate', description: 'Valider une recommandation' },
   { code: 'recommendation:assign', description: 'Assigner une recommandation' },
+
+  // ================= APPROVAL =================
+  { code: 'approval:read', description: 'Voir les approbations' },
+  { code: 'approval:create', description: 'Creer une approbation' },
+  { code: 'approval:decide', description: 'Decider une approbation' },
 
   // ================= DOCUMENT =================
   { code: 'document:upload', description: 'Uploader un document' },
@@ -106,28 +109,52 @@ const permissions = [
   { code: 'document:delete', description: 'Supprimer un document' },
 
   // ================= EVIDENCE =================
-  { code: 'evidence:create', description: 'Créer une preuve' },
+  { code: 'evidence:create', description: 'Creer une preuve' },
   { code: 'evidence:read', description: 'Voir les preuves' },
+  { code: 'evidence:update', description: 'Modifier une preuve' },
+  { code: 'evidence:delete', description: 'Supprimer une preuve' },
 
   // ================= RISK =================
-  { code: 'risk:create', description: 'Créer un risque' },
+  { code: 'risk:create', description: 'Creer un risque' },
   { code: 'risk:read', description: 'Voir les risques' },
   { code: 'risk:update', description: 'Modifier un risque' },
+  { code: 'risk:delete', description: 'Supprimer un risque' },
 
   // ================= CONTROL =================
-  { code: 'control:create', description: 'Créer un contrôle' },
-  { code: 'control:read', description: 'Voir les contrôles' },
-  { code: 'control:update', description: 'Modifier un contrôle' },
+  { code: 'control:create', description: 'Creer un controle' },
+  { code: 'control:read', description: 'Voir les controles' },
+  { code: 'control:update', description: 'Modifier un controle' },
+  { code: 'control:delete', description: 'Supprimer un controle' },
 
   // ================= BUSINESS PROCESS =================
-  { code: 'business_process:create', description: 'Créer un processus métier' },
-  { code: 'business_process:read', description: 'Voir les processus métier' },
-  { code: 'business_process:update', description: 'Modifier un processus métier' },
+  { code: 'business_process:create', description: 'Creer un processus metier' },
+  { code: 'business_process:read', description: 'Voir les processus metier' },
+  { code: 'business_process:update', description: 'Modifier un processus metier' },
+  { code: 'business_process:delete', description: 'Supprimer un processus metier' },
+
+  // ================= AUDITABLE ENTITY =================
+  { code: 'auditable_entity:create', description: 'Creer une entite auditable' },
+  { code: 'auditable_entity:read', description: 'Voir les entites auditables' },
+  { code: 'auditable_entity:update', description: 'Modifier une entite auditable' },
+  { code: 'auditable_entity:delete', description: 'Supprimer une entite auditable' },
+
+  // ================= RISK CONTROL =================
+  { code: 'risk_control:create', description: 'Creer un lien risque controle' },
+  { code: 'risk_control:read', description: 'Voir les liens risque controle' },
+  { code: 'risk_control:update', description: 'Modifier un lien risque controle' },
+  { code: 'risk_control:delete', description: 'Supprimer un lien risque controle' },
+
+  // ================= GLPI =================
+  { code: 'glpi:read', description: 'Voir les donnees GLPI' },
+  { code: 'glpi:manage', description: 'Gerer les liaisons GLPI' },
+
+  // ================= DASHBOARD =================
+  { code: 'dashboard:read', description: 'Voir les tableaux de bord' },
 
   // ================= TOKENS =================
   { code: 'token:read', description: 'Voir les tokens' },
-  { code: 'token:revoke', description: 'Révoquer les tokens' },
+  { code: 'token:revoke', description: 'Revoquer les tokens' },
 
   // ================= AUDIT LOG =================
-  { code: 'audit_log:read', description: 'Voir les logs système' },
+  { code: 'audit_log:read', description: 'Voir les logs systeme' },
 ];

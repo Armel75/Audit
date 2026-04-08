@@ -59,6 +59,14 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
   };
 
   const handleDelete = async (id: string) => {
+    const mission = missions.find(m => m.id === Number(id));
+    
+    // Vérifier que seules les missions "PLANNED" peuvent être supprimées
+    if (mission && mission.status !== 'PLANNED') {
+      alert('Seules les missions "Planifiées" peuvent être supprimées');
+      return;
+    }
+
     if (!confirm('Supprimer cette mission ?')) return;
 
     try {
@@ -145,7 +153,10 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
 
             <tbody>
               {filteredMissions.map((m) => {
-                const statusMeta = getMissionStatusMeta(m.status);
+                const statusMeta = getMissionStatusMeta(m.status) || {
+                  label: m.status,
+                  class: 'bg-gray-100 text-gray-800'
+                };
 
                 return (
                   <tr
@@ -192,27 +203,43 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                           }}
                           className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition text-slate-700 dark:text-slate-200"
                         >
-                          Voir
+                          Voir détails mission
                         </button>
 
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/missions/${m.id}/edit`);
+                            if (m.status === 'PLANNED') {
+                              navigate(`/missions/${m.id}/edit`);
+                            }
                           }}
-                          className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition text-slate-700 dark:text-slate-200"
+                          disabled={m.status !== 'PLANNED'}
+                          title={m.status !== 'PLANNED' ? 'Seules les missions "Planifiées" peuvent être modifiées' : 'Modifier cette mission'}
+                          className={`px-3 py-1.5 rounded-lg border transition text-slate-700 dark:text-slate-200 ${
+                            m.status === 'PLANNED'
+                              ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer'
+                              : 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed'
+                          }`}
                         >
-                          Modifier
+                          Modifier mission
                         </button>
 
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(String(m.id));
+                            if (m.status === 'PLANNED') {
+                              handleDelete(String(m.id));
+                            }
                           }}
-                          className="px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition"
+                          disabled={m.status !== 'PLANNED'}
+                          title={m.status !== 'PLANNED' ? 'Seules les missions "Planifiées" peuvent être supprimées' : 'Supprimer cette mission'}
+                          className={`px-3 py-1.5 rounded-lg border transition ${
+                            m.status === 'PLANNED'
+                              ? 'border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer'
+                              : 'border-red-200 dark:border-red-800 text-red-400 dark:text-red-600 opacity-50 cursor-not-allowed'
+                          }`}
                         >
-                          Supprimer
+                          Supprimer mission
                         </button>
 
                       </div>

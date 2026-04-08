@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Download, Printer, ShieldAlert, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { getRecommendationStatusMeta, RecommendationStatus } from '../utils/status';
 
 interface Reco {
   id: string;
   title: string;
   description: string;
-  status: string;
+  status: RecommendationStatus;
   priority: { name: string; color: string } | null;
   department: { name: string } | null;
   assignee: { firstName: string; lastName: string } | null;
@@ -275,7 +276,7 @@ export default function MissionReport() {
                       ) : (
                         <div className="space-y-4">
                           {finding.recos.map((reco, rIndex) => {
-                            const rStatus = recoStatusConfig[reco.status] || recoStatusConfig.PENDING;
+                            const rStatus = getRecommendationStatusMeta(reco.status);
 
                             return (
                               <div key={reco.id} className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
@@ -283,7 +284,7 @@ export default function MissionReport() {
                                   <h5 className="text-sm font-medium text-slate-900">
                                     {index + 1}.{rIndex + 1} {reco.title}
                                   </h5>
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${rStatus.color} ml-2 flex-shrink-0`}>
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${rStatus.class} ml-2 flex-shrink-0`}>
                                     {rStatus.label}
                                   </span>
                                 </div>

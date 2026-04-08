@@ -43,10 +43,26 @@ export const getRecommendation = async (req: Request, res: Response) => {
     const recommendation = await prisma.recommendation.findFirst({
       where: { id: Number(id), tenantId },
       include: {
-        finding: { select: { id: true, title: true, missionId: true } },
+        finding: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            process: true,
+            impact: true,
+            missionId: true,
+            mission: {
+              select: {
+                id: true,
+                title: true
+              }
+            }
+          }
+        },
         priority: true,
         department: true,
         assigneeUser: { select: { id: true, firstName: true, lastName: true } },
+        assigneeGlpiUser: { select: { id: true, fullName: true, email: true } },
         validatedBy: { select: { id: true, firstName: true, lastName: true } },
         comments: {
           include: { author: { select: { firstName: true, lastName: true } } },
@@ -86,7 +102,17 @@ export const createRecommendation = async (req: Request, res: Response) => {
     const authorId = req.user?.id;
     if (!tenantId || !authorId) return res.status(401).json({ error: 'Non autorisé' });
 
-    const { title, actionPlan, targetDate, priorityId, departmentId, assigneeUserId, findingId } = req.body;
+    const {
+      title,
+      actionPlan,
+      targetDate,
+      priorityId,
+      departmentId,
+      assigneeName,
+      assigneeUserId,
+      assigneeGlpiUserId,
+      findingId
+    } = req.body;
 
     if (!title || !findingId) {
       return res.status(400).json({ error: 'Titre et constat sont requis' });
@@ -101,7 +127,9 @@ export const createRecommendation = async (req: Request, res: Response) => {
           ...(targetDate && { targetDate: new Date(targetDate) }),
           priorityId: priorityId ? Number(priorityId) : null,
           departmentId: departmentId ? Number(departmentId) : null,
+          assigneeName: assigneeName || null,
           assigneeUserId: assigneeUserId ? Number(assigneeUserId) : null,
+          assigneeGlpiUserId: assigneeGlpiUserId ? Number(assigneeGlpiUserId) : null,
           findingId: Number(findingId),
           status: 'DRAFT'
         }
@@ -133,7 +161,18 @@ export const updateRecommendation = async (req: Request, res: Response) => {
     const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
 
-    const { title, actionPlan, targetDate, revisedTargetDate, priorityId, departmentId, assigneeUserId, implementedPercent } = req.body;
+    const {
+      title,
+      actionPlan,
+      targetDate,
+      revisedTargetDate,
+      priorityId,
+      departmentId,
+      assigneeName,
+      assigneeUserId,
+      assigneeGlpiUserId,
+      implementedPercent
+    } = req.body;
 
     // 🔴 AJOUT — récupération + verrouillage
     const existing = await prisma.recommendation.findFirst({
@@ -161,7 +200,9 @@ export const updateRecommendation = async (req: Request, res: Response) => {
         revisedTargetDate: revisedTargetDate ? new Date(revisedTargetDate) : null,
         priorityId: priorityId ? Number(priorityId) : null,
         departmentId: departmentId ? Number(departmentId) : null,
+        assigneeName: assigneeName || null,
         assigneeUserId: assigneeUserId ? Number(assigneeUserId) : null,
+        assigneeGlpiUserId: assigneeGlpiUserId ? Number(assigneeGlpiUserId) : null,
         implementedPercent: implementedPercent ? Number(implementedPercent) : undefined,
       }
     });

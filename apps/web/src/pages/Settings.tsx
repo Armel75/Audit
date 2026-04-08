@@ -265,9 +265,6 @@ export default function Settings() {
                     <button onClick={() => handleEdit(item, isComposite)} className="text-indigo-600 hover:text-indigo-900">
                       <Edit2 className="w-4 h-4 inline" />
                     </button>
-                    {/* <button onClick={() => handleDelete(id, endpoint, isComposite)} className="text-red-600 hover:text-red-900">
-                      <Trash2 className="w-4 h-4 inline" />
-                    </button> */}
                     {endpoint === 'audit-types' ? (
                       <button
                         onClick={() => handleToggleActive(item, endpoint)}

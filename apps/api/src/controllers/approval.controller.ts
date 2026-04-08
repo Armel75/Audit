@@ -20,7 +20,18 @@ export const getApprovals = async (req: Request, res: Response) => {
     const approvals = await prisma.approval.findMany({
       where,
       include: {
-        approver: { select: { id: true, firstName: true, lastName: true } }
+        approver:    { select: { id: true, firstName: true, lastName: true } },
+        requestedBy: { select: { id: true, firstName: true, lastName: true } },
+        mission:     { select: { id: true, title: true, status: true } },
+        auditProgram: {
+          select: {
+            id: true, title: true, code: true, status: true,
+            mission: { select: { id: true, title: true } }
+          }
+        },
+        finding:        { select: { id: true, title: true, status: true } },
+        recommendation: { select: { id: true, title: true, status: true } },
+        plan:           { select: { id: true, year: true, title: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -115,20 +126,37 @@ export const createApproval = async (req: Request, res: Response) => {
       }
     }
 
-    const approval = await prisma.approval.create({
-      data: {
-        tenantId,
-        approvalType,
-        level,
-        comments,
-        requestedById: userId,
-        decision: 'PENDING',
-        planId,
-        missionId,
-        findingId,
-        recommendationId,
-        auditProgramId
+    // Résoudre la version du programme si applicable
+    let auditProgramVersionId: number | undefined = undefined;
+    if (auditProgramId) {
+      const latestVersion = await prisma.auditProgramVersion.findFirst({
+        where: { programId: auditProgramId },
+        orderBy: { versionNumber: 'desc' }
+      });
+      if (latestVersion) {
+        auditProgramVersionId = latestVersion.id;
       }
+    }
+
+    const approvalData = {
+      tenantId,
+      approvalType,
+      level,
+      comments,
+      requestedById: userId,
+      decision: 'PENDING',
+      planId,
+      missionId,
+      findingId,
+      recommendationId,
+      auditProgramId,
+      auditProgramVersionId
+    };
+
+    // auditProgramVersionId est Int? dans le schéma (nullable) — cast transitoire
+    // jusqu'à la prochaine exécution de prisma generate.
+    const approval = await prisma.approval.create({
+      data: approvalData as any
     });
 
     res.status(201).json(approval);
@@ -228,9 +256,7 @@ export const decideApproval = async (req: Request, res: Response) => {
           await tx.auditProgram.update({
             where: { id: approval.auditProgramId },
             data: {
-              status: 'APPROVED',
-              approvedById: userId,
-              approvedAt: new Date()
+              status: 'APPROVED'
             }
           });
 

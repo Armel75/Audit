@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import prisma from '@audit/database';
-import { requireAuth } from '../middleware/auth.middleware';
+const prisma = require('@audit/database').default;
+import { requireAuth, requirePermission } from '../middleware/auth.middleware';
 
 const router = Router();
 
 // GET /api/users
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requirePermission('user:read'), async (req, res) => {
   try {
     const tenantId = req.user!.tenantId;
     const users = await prisma.user.findMany({
