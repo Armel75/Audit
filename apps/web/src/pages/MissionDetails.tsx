@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload
 import { apiFetch } from '../lib/api';
 import RecommendationList from '../components/RecommendationList';
 import RecommendationFormModal from '../components/RecommendationFormModal';
+import { useAuth } from '../context/AuthContext';
 interface Finding {
   id: number;
   title: string;
@@ -582,6 +583,12 @@ export default function MissionDetails() {
     mission.programs?.some(p => p.status === 'APPROVED');
   //const currentAction = missionTransitions[mission.status];
   const currentActions = missionTransitions[mission.status] || [];
+  const { user } = useAuth();
+  const canUpdateMission = user?.permissions?.includes('audit_mission:update') ?? false;
+  const canDeleteMission = user?.permissions?.includes('audit_mission:delete') ?? false;
+  const visibleActions = currentActions.filter(action =>
+    action.next === 'CANCELLED' ? canDeleteMission : canUpdateMission
+  );
   const canCreateFinding = mission.status === 'IN_PROGRESS';
   const canViewReport = ['UNDER_REVIEW', 'APPROVED', 'CLOSED'].includes(mission.status);
   const canEditCadrage = ['PLANNED', 'READY'].includes(mission.status);
@@ -750,7 +757,7 @@ export default function MissionDetails() {
                 {currentAction.label}
               </button>
             )} */}
-            {currentActions.map((action, index) => (
+            {visibleActions.map((action, index) => (
               <button
                 key={index}
                 onClick={() => {

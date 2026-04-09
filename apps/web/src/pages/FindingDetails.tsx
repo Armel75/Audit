@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, MessageSquare, Paperclip, User, Calendar, ShieldAlert, CheckCircle, XCircle, Upload, Plus, Target, Briefcase, FileText, Clock } from 'lucide-react';
 import RecommendationFormModal from '../components/RecommendationFormModal';
@@ -100,6 +101,9 @@ export default function FindingDetails() {
   const [isRecoModalOpen, setIsRecoModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canSubmitFinding = user?.permissions?.includes('finding:submit') ?? false;
+  const canRejectFinding = user?.permissions?.includes('finding:reject') ?? false;
   const API_BASE = import.meta.env.VITE_API_URL;
 
   const fetchFinding = () => {
@@ -199,6 +203,29 @@ export default function FindingDetails() {
       alert(err.message);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDownload = async (docId: number, fileName: string) => {
+    try {
+      const res = await apiFetch(`${API_BASE}/documents/download/${docId}`);
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Erreur téléchargement');
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors du téléchargement');
     }
   };
 
@@ -309,19 +336,23 @@ export default function FindingDetails() {
                       Confirmer
                     </button>
                   )} */}
+                  {canSubmitFinding && (
                   <button
                     onClick={() => handleStatusChange('SUBMITTED')}
                     className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded"
                   >
                     Soumettre pour validation
                   </button>
+                  )}
                   {/* REJET */}
+                  {canRejectFinding && (
                   <button
                     onClick={() => handleStatusChange('REJECTED')}
                     className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded"
                   >
                     Rejeter
                   </button>
+                  )}
                 </>
               )}
 
@@ -697,9 +728,12 @@ export default function FindingDetails() {
                   <li key={doc.id} className="py-3 flex items-center justify-between">
                     <div className="flex items-center min-w-0">
                       <Paperclip className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
-                      <a href={`${API_BASE}/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                      <button
+                        onClick={() => handleDownload(doc.id, doc.originalName)}
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate"
+                      >
                         {doc.originalName}
-                      </a>
+                      </button>
                     </div>
                     <span className="text-xs text-slate-500 ml-2 flex-shrink-0">
                       {(doc.sizeBytes / 1024).toFixed(1)} KB

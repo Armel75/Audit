@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Edit, Trash2, CheckCircle, Clock, FileText, Target, List, User, Flag, Paperclip } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+
+const programStatusLabels: Record<string, string> = {
+  DRAFT: 'Brouillon',
+  PENDING_APPROVAL: 'En attente de validation',
+  APPROVED: 'Approuvé',
+  REJECTED: 'Rejeté',
+  VALIDATED: 'Validé',
+  CANCELLED: 'Annulé',
+  CLOSED: 'Clôturé',
+};
 
 interface Procedure {
   id: number;
@@ -48,6 +59,8 @@ interface Program {
 
 export default function AuditProgramDetails() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const canApproveProgram = user?.permissions?.includes('audit_program:approve') ?? false;
   const [program, setProgram] = useState<Program | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -345,7 +358,7 @@ export default function AuditProgramDetails() {
                   Approuver
                 </button>
               )} */}
-              {hasPendingApproval && program.status !== 'APPROVED' && (
+              {hasPendingApproval && program.status !== 'APPROVED' && canApproveProgram && (
                 <button
                   onClick={approveProgram}
                   disabled={approving}
@@ -357,7 +370,7 @@ export default function AuditProgramDetails() {
             </div>
             <div className="mt-2 flex items-center space-x-4 text-sm text-slate-500">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                {program.status}
+                {programStatusLabels[program.status] ?? program.status}
               </span>
               {program.preparedBy && (
                 <span>Préparé par : {program.preparedBy.firstName} {program.preparedBy.lastName}</span>

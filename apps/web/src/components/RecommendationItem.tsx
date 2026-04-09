@@ -1,6 +1,7 @@
 import { apiFetch } from '../lib/api';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { ChevronRight, Edit2, Paperclip } from 'lucide-react';
 import RecommendationFormModal from './RecommendationFormModal';
 
@@ -15,6 +16,8 @@ const recoStatusLabels: Record<string, string> = {
 };
 
 export default function RecommendationItem({ reco, onRefresh }: any) {
+  const { user } = useAuth();
+  const canRejectReco = user?.permissions?.includes('recommendation:reject') ?? false;
   const isOverdue = new Date(reco.targetDate) < new Date();
   const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -288,7 +291,7 @@ export default function RecommendationItem({ reco, onRefresh }: any) {
           )}
 
           {/* REJECT */}
-          {['DRAFT', 'OPEN', 'IN_PROGRESS', 'IMPLEMENTED'].includes(reco.status) && (
+          {canRejectReco && ['DRAFT', 'OPEN', 'IN_PROGRESS', 'IMPLEMENTED'].includes(reco.status) && (
             <button
               onClick={handleReject}
               className="inline-flex items-center rounded-md bg-red-500 px-4 py-2 text-sm font-medium text-white"

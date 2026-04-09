@@ -87,6 +87,8 @@ const permissions = [
   { code: 'finding:read', description: 'Voir les constats' },
   { code: 'finding:update', description: 'Modifier un constat' },
   { code: 'finding:comment', description: 'Commenter un constat' },
+  { code: 'finding:submit', description: 'Soumettre un constat pour validation' },
+  { code: 'finding:reject', description: 'Rejeter un constat' },
   { code: 'finding:validate', description: 'Valider un constat' },
 
   // ================= RECOMMENDATIONS =================
@@ -96,6 +98,7 @@ const permissions = [
   { code: 'recommendation:comment', description: 'Commenter une recommandation' },
   { code: 'recommendation:follow_up', description: 'Ajouter un suivi a une recommandation' },
   { code: 'recommendation:validate', description: 'Valider une recommandation' },
+  { code: 'recommendation:reject', description: 'Rejeter une recommandation' },
   { code: 'recommendation:assign', description: 'Assigner une recommandation' },
 
   // ================= APPROVAL =================

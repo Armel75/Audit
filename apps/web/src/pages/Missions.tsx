@@ -4,9 +4,14 @@ import { Plus, Search } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { getMissionStatusMeta } from '../utils/status';
 import { Mission } from '@/types/mission';
+import { useAuth } from '../context/AuthContext';
 
 export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archive' }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canCreate = user?.permissions?.includes('audit_mission:create') ?? false;
+  const canUpdate = user?.permissions?.includes('audit_mission:update') ?? false;
+  const canDelete = user?.permissions?.includes('audit_mission:delete') ?? false;
 
   //const [missions, setMissions] = useState<any[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -101,13 +106,15 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
           </p>
         </div>
 
-        <button
-          onClick={() => navigate('/missions/new')}
-          className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2.5 rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
-        >
-          <Plus size={18} />
-          Nouvelle mission
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => navigate('/missions/new')}
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2.5 rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
+          >
+            <Plus size={18} />
+            Nouvelle mission
+          </button>
+        )}
       </div>
 
       {/* SEARCH */}
@@ -206,6 +213,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                           Voir détails mission
                         </button>
 
+                        {canUpdate && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -223,7 +231,9 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                         >
                           Modifier mission
                         </button>
+                        )}
 
+                        {canDelete && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -241,6 +251,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                         >
                           Supprimer mission
                         </button>
+                        )}
 
                       </div>
                     </td>

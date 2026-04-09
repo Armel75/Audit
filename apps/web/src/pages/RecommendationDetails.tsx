@@ -283,6 +283,29 @@ export default function RecommendationDetails() {
     }
   };
 
+  const handleDownload = async (docId: number, fileName: string) => {
+    try {
+      const res = await apiFetch(`${API_BASE}/documents/download/${docId}`);
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Erreur téléchargement');
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors du téléchargement');
+    }
+  };
+
   const handleAddFollowUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittingFollowUp(true);
@@ -448,9 +471,50 @@ export default function RecommendationDetails() {
                 </button>
               )}
               {recommendation.status === 'IMPLEMENTED' && (
-                <button onClick={() => handleStatusChange('VALIDATED')} className="text-xs inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200">
-                  <CheckCircle className="w-3 h-3 mr-1" /> Valider
-                </button>
+                (() => {
+                  const hasApproved = recommendation.approvals?.some(a => a.decision === 'APPROVED');
+                  const hasPending = recommendation.approvals?.some(a => a.decision === 'PENDING');
+                  if (hasApproved) {
+                    return (
+                      <button onClick={() => handleStatusChange('VALIDATED')} className="text-xs inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200">
+                        <CheckCircle className="w-3 h-3 mr-1" /> Valider
+                      </button>
+                    );
+                  }
+                  if (hasPending) {
+                    return (
+                      <span className="text-xs inline-flex items-center px-2 py-1 bg-amber-50 text-amber-600 rounded border border-amber-200">
+                        <Clock className="w-3 h-3 mr-1" /> Validation en attente d'approbation
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await apiFetch(`${API_BASE}/approvals`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              approvalType: 'RECOMMENDATION_APPROVAL',
+                              recommendationId: recommendation.id
+                            })
+                          });
+                          if (!res.ok) {
+                            const data = await res.json();
+                            throw new Error(data.error || 'Erreur');
+                          }
+                          fetchRecommendation();
+                        } catch (err: any) {
+                          alert(err.message);
+                        }
+                      }}
+                      className="text-xs inline-flex items-center px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                    >
+                      <CheckCircle className="w-3 h-3 mr-1" /> Demander validation
+                    </button>
+                  );
+                })()
               )}
               {recommendation.status === 'VALIDATED' && (
                 <button onClick={() => handleStatusChange('CLOSED')} className="text-xs inline-flex items-center px-2 py-1 bg-slate-800 text-white rounded hover:bg-slate-700">
@@ -859,9 +923,12 @@ export default function RecommendationDetails() {
                   <li key={doc.id} className="py-3 flex items-center justify-between">
                     <div className="flex items-center min-w-0">
                       <Paperclip className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
-                      <a href={`${API_BASE}/documents/download/${doc.id}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                      <button
+                        onClick={() => handleDownload(doc.id, doc.originalName)}
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate"
+                      >
                         {doc.originalName}
-                      </a>
+                      </button>
                     </div>
                     <span className="text-xs text-slate-500 ml-2 flex-shrink-0">
                       {(doc.sizeBytes / 1024).toFixed(1)} KB

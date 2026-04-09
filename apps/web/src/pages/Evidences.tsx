@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   FileSearch,
@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 
 export default function Evidences() {
-  const { findingId } = useParams();
+  const [searchParams] = useSearchParams();
+  const findingId = searchParams.get('findingId');
   const navigate = useNavigate();
 
   const [evidences, setEvidences] = useState<any[]>([]);
