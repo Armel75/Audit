@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import {
   CheckCircle,
   XCircle,
@@ -15,20 +16,22 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-const TYPE_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  PROGRAM_APPROVAL:        { label: "Programme d'audit", color: 'bg-indigo-100 text-indigo-800 border-indigo-200',   icon: <ClipboardList className="w-4 h-4" /> },
-  MISSION_APPROVAL:        { label: "Mission d'audit",   color: 'bg-blue-100 text-blue-800 border-blue-200',          icon: <Target className="w-4 h-4" /> },
-  PLAN_APPROVAL:           { label: "Plan d'audit",      color: 'bg-violet-100 text-violet-800 border-violet-200',    icon: <FileText className="w-4 h-4" /> },
-  FINDING_APPROVAL:        { label: 'Constat',            color: 'bg-amber-100 text-amber-800 border-amber-200',       icon: <AlertTriangle className="w-4 h-4" /> },
-  RECOMMENDATION_APPROVAL: { label: 'Recommandation',    color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: <Lightbulb className="w-4 h-4" /> },
+const TYPE_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode; permission: string }> = {
+  PROGRAM_APPROVAL:        { label: "Programme d'audit", color: 'bg-indigo-100 text-indigo-800 border-indigo-200',   icon: <ClipboardList className="w-4 h-4" />, permission: 'audit_program:approve' },
+  MISSION_APPROVAL:        { label: "Mission d'audit",   color: 'bg-blue-100 text-blue-800 border-blue-200',          icon: <Target className="w-4 h-4" />, permission: 'audit_mission:update' },
+  PLAN_APPROVAL:           { label: "Plan d'audit",      color: 'bg-violet-100 text-violet-800 border-violet-200',    icon: <FileText className="w-4 h-4" />, permission: 'audit_plan:approve' },
+  FINDING_APPROVAL:        { label: 'Constat',            color: 'bg-amber-100 text-amber-800 border-amber-200',       icon: <AlertTriangle className="w-4 h-4" />, permission: 'finding:validate' },
+  RECOMMENDATION_APPROVAL: { label: 'Recommandation',    color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: <Lightbulb className="w-4 h-4" />, permission: 'recommendation:validate' },
 };
 
 export default function ApprovalCenter() {
+  const { user } = useAuth();
   const [approvals, setApprovals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [deciding, setDeciding]   = useState<number | null>(null);
 
   const API_BASE = import.meta.env.VITE_API_URL;
+  const userPermissions = user?.permissions || [];
 
   const fetchApprovals = async () => {
     setLoading(true);
@@ -81,8 +84,10 @@ export default function ApprovalCenter() {
             label: a.approvalType,
             color: 'bg-slate-100 text-slate-700 border-slate-200',
             icon: <FileText className="w-4 h-4" />,
+            permission: 'approval:decide',
           };
           const isDeciding = deciding === a.id;
+          const canDecide = userPermissions.includes(typeConf.permission);
 
           return (
             <div
@@ -215,6 +220,7 @@ export default function ApprovalCenter() {
                   </div>
 
                   {/* RIGHT  actions */}
+                  {canDecide && (
                   <div className="flex sm:flex-col gap-2 shrink-0">
                     <button
                       onClick={() => handleDecision(a.id, 'APPROVED')}
@@ -233,6 +239,7 @@ export default function ApprovalCenter() {
                       {isDeciding ? '...' : 'Rejeter'}
                     </button>
                   </div>
+                  )}
                 </div>
               </div>
             </div>

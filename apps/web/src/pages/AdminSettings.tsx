@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Shield, Users, Building2, Key, AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 type TabType = 'tenants' | 'users' | 'roles' | 'security';
 
@@ -29,7 +30,17 @@ export default function AdminSettings() {
   const [isEditingTenant, setIsEditingTenant] = useState(false);
   const [tenantForm, setTenantForm] = useState<any>({});
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const userPermissions = user?.permissions || [];
   const API_BASE = import.meta.env.VITE_API_URL;
+
+  const tabPermissions: Record<TabType, string> = {
+    tenants: 'tenant:read',
+    users: 'user:read',
+    roles: 'role:read',
+    security: 'token:read',
+  };
+  const hasPerm = (tab: TabType) => userPermissions.includes(tabPermissions[tab]);
 
   const syncSelectedRole = (rolesData: any[], preferredRoleId?: number) => {
     const targetRoleId = preferredRoleId ?? selectedRole?.id;
@@ -73,14 +84,21 @@ export default function AdminSettings() {
         apiFetch(`${API_BASE}/admin/tokens/reset`)
       ]);
 
-      setTenants(await tenantsRes.json());
-      setUsers(await usersRes.json());
+      const tenantsData = await tenantsRes.json();
+      if (Array.isArray(tenantsData)) setTenants(tenantsData);
+      const usersData = await usersRes.json();
+      if (Array.isArray(usersData)) setUsers(usersData);
       const rolesData = await rolesRes.json();
-      setRoles(rolesData);
-      syncSelectedRole(rolesData, preferredRoleId);
-      setPermissions(await permsRes.json());
-      setRefreshTokens(await rTokensRes.json());
-      setResetTokens(await pTokensRes.json());
+      if (Array.isArray(rolesData)) {
+        setRoles(rolesData);
+        syncSelectedRole(rolesData, preferredRoleId);
+      }
+      const permsData = await permsRes.json();
+      if (Array.isArray(permsData)) setPermissions(permsData);
+      const rTokensData = await rTokensRes.json();
+      if (Array.isArray(rTokensData)) setRefreshTokens(rTokensData);
+      const pTokensData = await pTokensRes.json();
+      if (Array.isArray(pTokensData)) setResetTokens(pTokensData);
     } catch (err: any) {
       setError("Erreur lors du chargement des données d'administration.");
     }
@@ -355,11 +373,11 @@ export default function AdminSettings() {
       {/* Tabs */}
       <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-fit">
         {[
-          { id: 'tenants', icon: Building2, label: 'Tenants' },
-          { id: 'users', icon: Users, label: 'Utilisateurs' },
-          { id: 'roles', icon: Shield, label: 'Rôles & Permissions' },
-          { id: 'security', icon: Key, label: 'Sécurité (Tokens)' },
-        ].map((tab) => (
+          { id: 'tenants', icon: Building2, label: 'Tenants', permission: 'tenant:read' },
+          { id: 'users', icon: Users, label: 'Utilisateurs', permission: 'user:read' },
+          { id: 'roles', icon: Shield, label: 'Rôles & Permissions', permission: 'role:read' },
+          { id: 'security', icon: Key, label: 'Sécurité (Tokens)', permission: 'token:read' },
+        ].filter((tab) => userPermissions.includes(tab.permission)).map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as TabType)}
@@ -377,7 +395,7 @@ export default function AdminSettings() {
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         
         {/* TENANTS TAB */}
-        {activeTab === 'tenants' && (
+        {activeTab === 'tenants' && hasPerm('tenants') && (
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-semibold text-slate-900">Gestion des Locataires (Tenants)</h2>
@@ -443,7 +461,7 @@ export default function AdminSettings() {
         )}
 
         {/* USERS TAB */}
-        {activeTab === 'users' && (
+        {activeTab === 'users' && hasPerm('users') && (
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-semibold text-slate-900">Gestion des Utilisateurs</h2>
@@ -472,10 +490,10 @@ export default function AdminSettings() {
               </select>
 
               <select required value={userForm.status || ''} onChange={e => setUserForm({...userForm, status: e.target.value})} className="px-3 py-2 border rounded-lg bg-white">
-                <option value="PENDING">PENDING</option>
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="LOCKED">LOCKED</option>
-                <option value="INACTIVE">INACTIVE</option>
+                <option value="PENDING">En attente</option>
+                <option value="ACTIVE">Actif</option>
+                <option value="LOCKED">Verrouillé</option>
+                <option value="INACTIVE">Inactif</option>
               </select>
 
               <input type="password" placeholder={isEditingUser ? "Nouveau mot de passe (optionnel)" : "Mot de passe"} required={!isEditingUser} onChange={e => setUserForm({...userForm, password: e.target.value})} className="px-3 py-2 border rounded-lg" />
@@ -527,7 +545,7 @@ export default function AdminSettings() {
                               : 'bg-slate-100 text-slate-700'
                           }`}
                         >
-                          {u.status}
+                          {u.status === 'ACTIVE' ? 'Actif' : u.status === 'PENDING' ? 'En attente' : u.status === 'LOCKED' ? 'Verrouillé' : u.status === 'INACTIVE' ? 'Inactif' : u.status}
                         </span>
                       </td>
                       {/* <td className="px-4 py-3 text-right space-x-3">
@@ -548,7 +566,7 @@ export default function AdminSettings() {
                           onClick={() => { setIsEditingUser(true); setUserForm(u); }}
                           className="text-indigo-600 hover:underline"
                         >
-                          Éditer
+                          Modifier
                         </button>
 
                         <button
@@ -567,7 +585,7 @@ export default function AdminSettings() {
         )}
 
         {/* ROLES & PERMISSIONS TAB */}
-        {activeTab === 'roles' && (
+        {activeTab === 'roles' && hasPerm('roles') && (
           <div className="min-h-[500px]">
             <div className="border-b border-slate-200 p-6 bg-slate-50/60">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -714,7 +732,7 @@ export default function AdminSettings() {
         )}
 
         {/* SECURITY TOKENS TAB */}
-        {activeTab === 'security' && (
+        {activeTab === 'security' && hasPerm('security') && (
           <div className="p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-6">Sessions Actives (Refresh Tokens)</h2>
             <div className="overflow-x-auto mb-8">

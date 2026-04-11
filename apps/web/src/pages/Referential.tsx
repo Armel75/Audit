@@ -12,10 +12,21 @@ import {
   X
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 type TabType = 'entities' | 'processes' | 'controls' | 'risks' | 'risk-controls';
 
 export default function Referential() {
+  const { user } = useAuth();
+  const userPermissions = user?.permissions || [];
+  const tabPermissions: Record<TabType, string> = {
+    entities: 'auditable_entity:read',
+    processes: 'business_process:read',
+    risks: 'risk:read',
+    controls: 'control:read',
+    'risk-controls': 'risk_control:read',
+  };
+  const hasPerm = (tab: TabType) => userPermissions.includes(tabPermissions[tab]);
   const [activeTab, setActiveTab] = useState<TabType>('entities');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -746,6 +757,7 @@ export default function Referential() {
 
       {/* Tabs */}
       <div className="flex overflow-x-auto border-b border-slate-200">
+        {hasPerm('entities') && (
         <button
           onClick={() => { setActiveTab('entities'); setIsEditing(false); }}
           className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'entities' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -754,6 +766,8 @@ export default function Referential() {
           <Building2 className="w-4 h-4" />
           Entités Auditables
         </button>
+        )}
+        {hasPerm('processes') && (
         <button
           onClick={() => { setActiveTab('processes'); setIsEditing(false); }}
           className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'processes' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -762,6 +776,8 @@ export default function Referential() {
           <GitMerge className="w-4 h-4" />
           Processus Métiers
         </button>
+        )}
+        {hasPerm('risks') && (
         <button
           onClick={() => { setActiveTab('risks'); setIsEditing(false); }}
           className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'risks' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -770,6 +786,8 @@ export default function Referential() {
           <AlertTriangle className="w-4 h-4" />
           Risques
         </button>
+        )}
+        {hasPerm('controls') && (
         <button
           onClick={() => { setActiveTab('controls'); setIsEditing(false); }}
           className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'controls' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -778,6 +796,8 @@ export default function Referential() {
           <ShieldCheck className="w-4 h-4" />
           Contrôles
         </button>
+        )}
+        {hasPerm('risk-controls') && (
         <button
           onClick={() => { setActiveTab('risk-controls'); setIsEditing(false); }}
           className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'risk-controls' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -786,9 +806,10 @@ export default function Referential() {
           <LinkIcon className="w-4 h-4" />
           Matrice Risques-Contrôles
         </button>
+        )}
       </div>
 
-      {isEditing ? renderForm() : renderTable()}
+      {hasPerm(activeTab) && (isEditing ? renderForm() : renderTable())}
     </div>
   );
 }

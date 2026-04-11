@@ -1,36 +1,39 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../lib/api';
 import {
   AlertTriangle,
   ArrowRight,
   Bell,
   Briefcase,
   CalendarRange,
-  CheckCircle2,
   CheckSquare,
   ChevronRight,
   ClipboardCheck,
   Clock3,
   FileCheck2,
-  FileText,
   FolderOpen,
   GitBranch,
   Gauge,
   LayoutGrid,
+  Loader2,
   Network,
-  ShieldAlert,
-  ShieldCheck,
+  Shield,
   Siren,
-  TriangleAlert,
+  Target,
+  TrendingUp,
   User2,
-  Waypoints,
-  XCircle,
+  Users,
 } from 'lucide-react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -39,597 +42,91 @@ import {
   YAxis,
 } from 'recharts';
 
-type Tone =
-  | 'slate'
-  | 'blue'
-  | 'amber'
-  | 'emerald'
-  | 'red'
-  | 'violet'
-  | 'indigo'
-  | 'rose';
+type Tone = 'slate' | 'blue' | 'amber' | 'emerald' | 'red' | 'violet' | 'indigo' | 'rose';
 
-type MissionStatus = 'PLANNED' | 'IN_PROGRESS' | 'REVIEW' | 'COMPLETED' | 'OVERDUE';
-type FindingStatus = 'DRAFT' | 'UNDER_REVIEW' | 'VALIDATED' | 'CRITICAL_OPEN' | 'CLOSED';
-type RecommendationStatus = 'OPEN' | 'IN_PROGRESS' | 'OVERDUE' | 'PENDING_VALIDATION' | 'CLOSED';
-type ApprovalDecision = 'PENDING' | 'APPROVED' | 'REJECTED';
-type TicketStatus = 'OPEN' | 'BLOCKED' | 'RESOLVED';
-type Priority = 'Low' | 'Medium' | 'High' | 'Critical';
-type Risk = 'Low' | 'Moderate' | 'High' | 'Critical';
-
-type Kpi = {
-  label: string;
-  value: string;
-  hint: string;
-  delta?: string;
-  tone: Tone;
-  icon: React.ComponentType<{ className?: string }>;
+const missionStatusColors: Record<string, string> = {
+  PLANNED: '#cbd5e1', IN_PROGRESS: '#2563eb', REVIEW: '#7c3aed',
+  COMPLETED: '#059669', OVERDUE: '#dc2626', CANCELLED: '#94a3b8',
 };
 
-type Mission = {
-  id: string;
-  title: string;
-  plan: string;
-  department: string;
-  leader: string;
-  due: string;
-  status: MissionStatus;
-  progress: number;
-  priority: Priority;
-  programValidated: boolean;
+const missionStatusLabels: Record<string, string> = {
+  PLANNED: 'Planifiées', IN_PROGRESS: 'En cours', REVIEW: 'Revue',
+  COMPLETED: 'Terminées', OVERDUE: 'En retard', CANCELLED: 'Annulées',
 };
 
-type Finding = {
-  id: string;
-  title: string;
-  mission: string;
-  process: string;
-  owner: string;
-  risk: Risk;
-  status: FindingStatus;
-  ageDays: number;
+const statusLabelsMap: Record<string, string> = {
+  PLANNED: 'Planifiée', IN_PROGRESS: 'En cours', REVIEW: 'Revue',
+  COMPLETED: 'Terminée', OVERDUE: 'En retard', CANCELLED: 'Annulée',
+  DRAFT: 'Brouillon', SUBMITTED: 'Soumis', CONFIRMED: 'Confirmé',
+  VALIDATED: 'Validé', REJECTED: 'Rejeté', CLOSED: 'Clôturé',
+  OPEN: 'Ouverte', IMPLEMENTED: 'Implémentée', PENDING: 'En attente',
+  APPROVED: 'Approuvé', BLOCKED: 'Bloqué', RESOLVED: 'Résolu',
+  UNDER_REVIEW: 'En revue', CRITICAL_OPEN: 'Critique', PENDING_VALIDATION: 'À valider',
+  PENDING_APPROVAL: 'En attente d’approbation',
 };
 
-type Recommendation = {
-  id: string;
-  title: string;
-  department: string;
-  assignee: string;
-  targetDate: string;
-  progress: number;
-  status: RecommendationStatus;
-  priority: Priority;
-  linkedTicket: string;
-};
-
-type ApprovalItem = {
-  id: string;
-  item: string;
-  type: string;
-  level: number;
-  requestedBy: string;
-  approver: string;
-  date: string;
-  decision: ApprovalDecision;
-};
-
-type TicketItem = {
-  id: string;
-  number: string;
-  title: string;
-  assignee: string;
-  syncAt: string;
-  status: TicketStatus;
-  recommendation: string;
-};
-
-type ActivityItem = {
-  id: string;
-  actor: string;
-  action: string;
-  entity: string;
-  time: string;
-  tone: Tone;
-};
-
-type AlertItem = {
-  id: string;
-  title: string;
-  detail: string;
-  severity: 'critical' | 'high' | 'medium';
+const statusBadgeStyles: Record<string, string> = {
+  PLANNED: 'bg-slate-100 text-slate-700 border-slate-200',
+  IN_PROGRESS: 'bg-blue-50 text-blue-700 border-blue-200',
+  REVIEW: 'bg-violet-50 text-violet-700 border-violet-200',
+  COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  OVERDUE: 'bg-red-50 text-red-700 border-red-200',
+  DRAFT: 'bg-slate-100 text-slate-700 border-slate-200',
+  UNDER_REVIEW: 'bg-amber-50 text-amber-700 border-amber-200',
+  VALIDATED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  CRITICAL_OPEN: 'bg-red-50 text-red-700 border-red-200',
+  CLOSED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  OPEN: 'bg-blue-50 text-blue-700 border-blue-200',
+  PENDING_VALIDATION: 'bg-violet-50 text-violet-700 border-violet-200',
+  PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
+  APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  REJECTED: 'bg-red-50 text-red-700 border-red-200',
+  BLOCKED: 'bg-red-50 text-red-700 border-red-200',
+  RESOLVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  SUBMITTED: 'bg-amber-50 text-amber-700 border-amber-200',
+  CONFIRMED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  IMPLEMENTED: 'bg-purple-50 text-purple-700 border-purple-200',
+  CANCELLED: 'bg-slate-100 text-slate-700 border-slate-200',
+  PENDING_APPROVAL: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
 const toneMap: Record<
   Tone,
-  {
-    soft: string;
-    text: string;
-    border: string;
-    dot: string;
-  }
+  { soft: string; text: string; border: string; dot: string }
 > = {
-  slate: {
-    soft: 'bg-slate-50',
-    text: 'text-slate-700',
-    border: 'border-slate-200',
-    dot: 'bg-slate-500',
-  },
-  blue: {
-    soft: 'bg-blue-50',
-    text: 'text-blue-700',
-    border: 'border-blue-200',
-    dot: 'bg-blue-500',
-  },
-  amber: {
-    soft: 'bg-amber-50',
-    text: 'text-amber-700',
-    border: 'border-amber-200',
-    dot: 'bg-amber-500',
-  },
-  emerald: {
-    soft: 'bg-emerald-50',
-    text: 'text-emerald-700',
-    border: 'border-emerald-200',
-    dot: 'bg-emerald-500',
-  },
-  red: {
-    soft: 'bg-red-50',
-    text: 'text-red-700',
-    border: 'border-red-200',
-    dot: 'bg-red-500',
-  },
-  violet: {
-    soft: 'bg-violet-50',
-    text: 'text-violet-700',
-    border: 'border-violet-200',
-    dot: 'bg-violet-500',
-  },
-  indigo: {
-    soft: 'bg-indigo-50',
-    text: 'text-indigo-700',
-    border: 'border-indigo-200',
-    dot: 'bg-indigo-500',
-  },
-  rose: {
-    soft: 'bg-rose-50',
-    text: 'text-rose-700',
-    border: 'border-rose-200',
-    dot: 'bg-rose-500',
-  },
+  slate: { soft: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', dot: 'bg-slate-500' },
+  blue: { soft: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' },
+  amber: { soft: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
+  emerald: { soft: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+  red: { soft: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500' },
+  violet: { soft: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', dot: 'bg-violet-500' },
+  indigo: { soft: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-500' },
+  rose: { soft: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', dot: 'bg-rose-500' },
 };
 
-const kpis: Kpi[] = [
-  {
-    label: 'Missions actives',
-    value: '12',
-    hint: 'sur 18 missions du plan 2026',
-    delta: '+2 ce mois',
-    tone: 'blue',
-    icon: Briefcase,
-  },
-  {
-    label: 'Plans en exécution',
-    value: '03',
-    hint: '2 approuvés, 1 en révision',
-    delta: 'v2026.4 active',
-    tone: 'indigo',
-    icon: LayoutGrid,
-  },
-  {
-    label: 'Findings ouverts',
-    value: '47',
-    hint: 'dont 9 critiques',
-    delta: '+5 cette semaine',
-    tone: 'amber',
-    icon: AlertTriangle,
-  },
-  {
-    label: 'Recommandations en retard',
-    value: '14',
-    hint: 'sur 63 recommandations ouvertes',
-    delta: '4 > 30 jours',
-    tone: 'red',
-    icon: Clock3,
-  },
-  {
-    label: 'Approbations en attente',
-    value: '08',
-    hint: 'programmes, constats, plans',
-    delta: '3 niveau 2',
-    tone: 'violet',
-    icon: ClipboardCheck,
-  },
-  {
-    label: 'Taux moyen d’implémentation',
-    value: '71%',
-    hint: 'remédiation globale',
-    delta: '+6 pts / trimestre',
-    tone: 'emerald',
-    icon: Gauge,
-  },
-];
+function formatDate(d: string | null) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
-const planExecution = {
-  year: 2026,
-  progress: 68,
-  executedMissions: 18,
-  totalMissions: 26,
-  approvedPrograms: 14,
-  pendingPrograms: 4,
-  overdueProcedures: 11,
-  missionsWithoutValidatedProgram: 3,
-};
-
-const missionStatusData = [
-  { name: 'Planifiées', value: 5, color: '#cbd5e1' },
-  { name: 'En cours', value: 7, color: '#2563eb' },
-  { name: 'Revue', value: 3, color: '#7c3aed' },
-  { name: 'Terminées', value: 8, color: '#059669' },
-  { name: 'En retard', value: 3, color: '#dc2626' },
-];
-
-const findingsByRisk = [
-  { name: 'Faible', value: 7 },
-  { name: 'Modéré', value: 14 },
-  { name: 'Élevé', value: 17 },
-  { name: 'Critique', value: 9 },
-];
-
-const recommendationsByDepartment = [
-  { name: 'Finance', value: 11 },
-  { name: 'IT', value: 16 },
-  { name: 'Achats', value: 8 },
-  { name: 'RH', value: 6 },
-  { name: 'Opérations', value: 13 },
-];
-
-const missions: Mission[] = [
-  {
-    id: 'MIS-2026-014',
-    title: 'Audit cybersécurité des accès privilégiés',
-    plan: 'Plan 2026',
-    department: 'IT',
-    leader: 'Nadine Ekani',
-    due: '28 mars 2026',
-    status: 'IN_PROGRESS',
-    progress: 76,
-    priority: 'Critical',
-    programValidated: true,
-  },
-  {
-    id: 'MIS-2026-009',
-    title: 'Audit caisse et rapprochements bancaires',
-    plan: 'Plan 2026',
-    department: 'Finance',
-    leader: 'Armel Ndzi',
-    due: '24 mars 2026',
-    status: 'OVERDUE',
-    progress: 83,
-    priority: 'High',
-    programValidated: true,
-  },
-  {
-    id: 'MIS-2026-017',
-    title: 'Audit gestion fournisseurs stratégiques',
-    plan: 'Plan 2026',
-    department: 'Achats',
-    leader: 'Ruth Meka',
-    due: '02 avril 2026',
-    status: 'REVIEW',
-    progress: 91,
-    priority: 'High',
-    programValidated: true,
-  },
-  {
-    id: 'MIS-2026-021',
-    title: 'Audit continuité d’activité datacenter',
-    plan: 'Plan 2026',
-    department: 'IT',
-    leader: 'Blaise Nono',
-    due: '06 avril 2026',
-    status: 'PLANNED',
-    progress: 22,
-    priority: 'Critical',
-    programValidated: false,
-  },
-  {
-    id: 'MIS-2026-018',
-    title: 'Audit paie et habilitations RH',
-    plan: 'Plan 2026',
-    department: 'RH',
-    leader: 'Amina Bell',
-    due: '31 mars 2026',
-    status: 'IN_PROGRESS',
-    progress: 58,
-    priority: 'Medium',
-    programValidated: false,
-  },
-];
-
-const findings: Finding[] = [
-  {
-    id: 'FND-447',
-    title: 'Absence de revue périodique des comptes à privilèges',
-    mission: 'Cybersécurité des accès privilégiés',
-    process: 'Identity & Access Management',
-    owner: 'IT Security',
-    risk: 'Critical',
-    status: 'CRITICAL_OPEN',
-    ageDays: 18,
-  },
-  {
-    id: 'FND-438',
-    title: 'Rapprochements bancaires non validés à date',
-    mission: 'Caisse et rapprochements bancaires',
-    process: 'Trésorerie',
-    owner: 'Finance',
-    risk: 'High',
-    status: 'VALIDATED',
-    ageDays: 11,
-  },
-  {
-    id: 'FND-431',
-    title: 'Échantillonnage fournisseurs incomplet',
-    mission: 'Gestion fournisseurs stratégiques',
-    process: 'Procure-to-Pay',
-    owner: 'Achats',
-    risk: 'Moderate',
-    status: 'UNDER_REVIEW',
-    ageDays: 7,
-  },
-  {
-    id: 'FND-425',
-    title: 'Traçabilité insuffisante des changements d’accès RH',
-    mission: 'Paie et habilitations RH',
-    process: 'HR Access Control',
-    owner: 'RH',
-    risk: 'High',
-    status: 'DRAFT',
-    ageDays: 5,
-  },
-];
-
-const recommendations: Recommendation[] = [
-  {
-    id: 'REC-903',
-    title: 'Mettre en place une revue mensuelle des comptes à privilèges',
-    department: 'IT',
-    assignee: 'Kevin Mballa',
-    targetDate: '22 mars 2026',
-    progress: 45,
-    status: 'OVERDUE',
-    priority: 'Critical',
-    linkedTicket: 'GLPI-18429',
-  },
-  {
-    id: 'REC-894',
-    title: 'Automatiser la validation des rapprochements avant clôture',
-    department: 'Finance',
-    assignee: 'Sarah Eyenga',
-    targetDate: '30 mars 2026',
-    progress: 72,
-    status: 'IN_PROGRESS',
-    priority: 'High',
-    linkedTicket: 'GLPI-18371',
-  },
-  {
-    id: 'REC-888',
-    title: 'Formaliser un contrôle compensatoire sur les fournisseurs sensibles',
-    department: 'Achats',
-    assignee: 'Jules Tchoua',
-    targetDate: '09 avril 2026',
-    progress: 20,
-    status: 'OPEN',
-    priority: 'High',
-    linkedTicket: 'GLPI-18109',
-  },
-  {
-    id: 'REC-875',
-    title: 'Valider la procédure de retrait des droits après mobilité interne',
-    department: 'RH',
-    assignee: 'Mireille Simo',
-    targetDate: '25 mars 2026',
-    progress: 100,
-    status: 'PENDING_VALIDATION',
-    priority: 'Medium',
-    linkedTicket: 'GLPI-18022',
-  },
-];
-
-const approvals: ApprovalItem[] = [
-  {
-    id: 'APR-220',
-    item: 'Programme v2 — Audit cybersécurité des accès privilégiés',
-    type: 'AuditProgram',
-    level: 2,
-    requestedBy: 'Nadine Ekani',
-    approver: 'Directeur Audit',
-    date: '18 mars 2026',
-    decision: 'PENDING',
-  },
-  {
-    id: 'APR-214',
-    item: 'Finding FND-438 — Rapprochements bancaires',
-    type: 'Finding',
-    level: 1,
-    requestedBy: 'Armel Ndzi',
-    approver: 'Manager Finance',
-    date: '17 mars 2026',
-    decision: 'APPROVED',
-  },
-  {
-    id: 'APR-208',
-    item: 'Version 4 — Plan d’audit 2026',
-    type: 'AuditPlan',
-    level: 3,
-    requestedBy: 'Head of Internal Audit',
-    approver: 'Comité d’audit',
-    date: '15 mars 2026',
-    decision: 'REJECTED',
-  },
-  {
-    id: 'APR-226',
-    item: 'Recommandation REC-875 — Retrait des droits RH',
-    type: 'Recommendation',
-    level: 1,
-    requestedBy: 'Mireille Simo',
-    approver: 'Head of HR',
-    date: '19 mars 2026',
-    decision: 'PENDING',
-  },
-];
-
-const tickets: TicketItem[] = [
-  {
-    id: 'TCK-1',
-    number: 'GLPI-18429',
-    title: 'Revue mensuelle des comptes à privilèges',
-    assignee: 'Admin IAM',
-    syncAt: 'Il y a 18 min',
-    status: 'BLOCKED',
-    recommendation: 'REC-903',
-  },
-  {
-    id: 'TCK-2',
-    number: 'GLPI-18371',
-    title: 'Workflow de validation des rapprochements',
-    assignee: 'Core Banking Team',
-    syncAt: 'Il y a 42 min',
-    status: 'OPEN',
-    recommendation: 'REC-894',
-  },
-  {
-    id: 'TCK-3',
-    number: 'GLPI-18109',
-    title: 'Contrôle compensatoire fournisseurs sensibles',
-    assignee: 'Procurement Ops',
-    syncAt: 'Il y a 1 h',
-    status: 'OPEN',
-    recommendation: 'REC-888',
-  },
-  {
-    id: 'TCK-4',
-    number: 'GLPI-18022',
-    title: 'Retrait automatique des droits après mobilité',
-    assignee: 'HRIS Support',
-    syncAt: 'Il y a 3 h',
-    status: 'RESOLVED',
-    recommendation: 'REC-875',
-  },
-];
-
-const activities: ActivityItem[] = [
-  {
-    id: 'LOG-9012',
-    actor: 'Nadine Ekani',
-    action: 'a soumis un programme pour approbation',
-    entity: 'AuditProgram · MIS-2026-014',
-    time: '09:14',
-    tone: 'violet',
-  },
-  {
-    id: 'LOG-9008',
-    actor: 'Kevin Mballa',
-    action: 'a mis à jour le suivi de remédiation à 45%',
-    entity: 'Recommendation · REC-903',
-    time: '08:46',
-    tone: 'amber',
-  },
-  {
-    id: 'LOG-9004',
-    actor: 'Sarah Eyenga',
-    action: 'a uploadé une preuve complémentaire',
-    entity: 'Evidence · EVD-411',
-    time: '08:21',
-    tone: 'blue',
-  },
-  {
-    id: 'LOG-8998',
-    actor: 'Directeur Audit',
-    action: 'a rejeté une version du plan',
-    entity: 'AuditPlanVersion · v4',
-    time: 'Hier, 18:12',
-    tone: 'red',
-  },
-  {
-    id: 'LOG-8991',
-    actor: 'Système GLPI',
-    action: 'a synchronisé 7 tickets liés aux recommandations',
-    entity: 'RecommendationTicket',
-    time: 'Hier, 16:47',
-    tone: 'emerald',
-  },
-  {
-    id: 'LOG-8986',
-    actor: 'Mireille Simo',
-    action: 'a demandé validation d’implémentation',
-    entity: 'Recommendation · REC-875',
-    time: 'Hier, 15:20',
-    tone: 'indigo',
-  },
-];
-
-const alerts: AlertItem[] = [
-  {
-    id: 'ALT-1',
-    title: '14 recommandations en retard',
-    detail: '4 dépassent la cible de plus de 30 jours et 3 sont liées à des findings critiques.',
-    severity: 'critical',
-  },
-  {
-    id: 'ALT-2',
-    title: '11 procédures d’audit hors délai',
-    detail: 'Les missions MIS-2026-009 et MIS-2026-018 concentrent 73% du retard.',
-    severity: 'high',
-  },
-  {
-    id: 'ALT-3',
-    title: '9 findings critiques non traités',
-    detail: '2 n’ont pas encore de recommandation validée associée.',
-    severity: 'critical',
-  },
-  {
-    id: 'ALT-4',
-    title: '8 approbations en attente',
-    detail: '3 dossiers sont bloqués au niveau 2 depuis plus de 5 jours.',
-    severity: 'high',
-  },
-  {
-    id: 'ALT-5',
-    title: '6 risques sans contrôle',
-    detail: 'Principalement sur Identity & Access Management et Procurement.',
-    severity: 'critical',
-  },
-  {
-    id: 'ALT-6',
-    title: '3 missions sans programme validé',
-    detail: 'Le démarrage opérationnel est engagé alors que le cadre n’est pas encore approuvé.',
-    severity: 'medium',
-  },
-  {
-    id: 'ALT-7',
-    title: '12 notifications importantes non lues',
-    detail: 'Dont 5 liées à des demandes d’approbation et 4 à des échéances de remédiation.',
-    severity: 'medium',
-  },
-];
+function timeAgo(d: string) {
+  const diff = Date.now() - new Date(d).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `Il y a ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Il y a ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `Il y a ${days} j`;
+}
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }
 
 function SectionCard({
-  title,
-  subtitle,
-  action,
-  children,
-  className,
+  title, subtitle, action, children, className,
 }: {
-  title: string;
-  subtitle?: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
+  title: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode; className?: string;
 }) {
   return (
     <section className={cn('rounded-2xl border border-slate-200 bg-white shadow-sm', className)}>
@@ -645,155 +142,52 @@ function SectionCard({
   );
 }
 
-function KpiCard({ item }: { item: Kpi }) {
-  const tone = toneMap[item.tone];
-  const Icon = item.icon;
-
+function KpiCard({ label, value, hint, tone, icon: Icon }: {
+  label: string; value: string; hint: string; tone: Tone; icon: React.ComponentType<{ className?: string }>;
+}) {
+  const t = toneMap[tone];
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl border', tone.soft, tone.border)}>
-          <Icon className={cn('h-5 w-5', tone.text)} />
+        <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl border', t.soft, t.border)}>
+          <Icon className={cn('h-5 w-5', t.text)} />
         </div>
-        {item.delta ? (
-          <span className={cn('rounded-full px-2.5 py-1 text-[11px] font-medium', tone.soft, tone.text)}>
-            {item.delta}
-          </span>
-        ) : null}
       </div>
       <div className="mt-4">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">{label}</p>
         <div className="mt-2 flex items-end gap-2">
-          <span className="text-3xl font-semibold tracking-tight text-slate-950">{item.value}</span>
+          <span className="text-3xl font-semibold tracking-tight text-slate-950">{value}</span>
         </div>
-        <p className="mt-2 text-sm text-slate-500">{item.hint}</p>
+        <p className="mt-2 text-sm text-slate-500">{hint}</p>
       </div>
     </div>
   );
 }
 
-function StatusBadge({ value }: { value: MissionStatus | FindingStatus | RecommendationStatus | ApprovalDecision | TicketStatus }) {
-  const styles: Record<string, string> = {
-    PLANNED: 'bg-slate-100 text-slate-700 border-slate-200',
-    IN_PROGRESS: 'bg-blue-50 text-blue-700 border-blue-200',
-    REVIEW: 'bg-violet-50 text-violet-700 border-violet-200',
-    COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    OVERDUE: 'bg-red-50 text-red-700 border-red-200',
-    DRAFT: 'bg-slate-100 text-slate-700 border-slate-200',
-    UNDER_REVIEW: 'bg-amber-50 text-amber-700 border-amber-200',
-    VALIDATED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    CRITICAL_OPEN: 'bg-red-50 text-red-700 border-red-200',
-    CLOSED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    OPEN: 'bg-blue-50 text-blue-700 border-blue-200',
-    PENDING_VALIDATION: 'bg-violet-50 text-violet-700 border-violet-200',
-    PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
-    APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    REJECTED: 'bg-red-50 text-red-700 border-red-200',
-    BLOCKED: 'bg-red-50 text-red-700 border-red-200',
-    RESOLVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  };
-
-  const labels: Record<string, string> = {
-    PLANNED: 'Planifiée',
-    IN_PROGRESS: 'En cours',
-    REVIEW: 'Revue',
-    COMPLETED: 'Terminée',
-    OVERDUE: 'En retard',
-    DRAFT: 'Draft',
-    UNDER_REVIEW: 'En revue',
-    VALIDATED: 'Validé',
-    CRITICAL_OPEN: 'Critique',
-    CLOSED: 'Clôturé',
-    OPEN: 'Ouverte',
-    PENDING_VALIDATION: 'À valider',
-    PENDING: 'En attente',
-    APPROVED: 'Approuvé',
-    REJECTED: 'Rejeté',
-    BLOCKED: 'Bloqué',
-    RESOLVED: 'Résolu',
-  };
-
+function StatusBadge({ value }: { value: string }) {
   return (
-    <span className={cn('inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium', styles[value])}>
-      {labels[value]}
+    <span className={cn('inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium', statusBadgeStyles[value] || 'bg-slate-100 text-slate-700 border-slate-200')}>
+      {statusLabelsMap[value] || value}
     </span>
   );
 }
 
-function PriorityBadge({ value }: { value: Priority }) {
-  const styles: Record<Priority, string> = {
-    Low: 'bg-slate-100 text-slate-700 border-slate-200',
-    Medium: 'bg-blue-50 text-blue-700 border-blue-200',
-    High: 'bg-amber-50 text-amber-700 border-amber-200',
-    Critical: 'bg-red-50 text-red-700 border-red-200',
-  };
-
-  return (
-    <span className={cn('inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium', styles[value])}>
-      {value}
-    </span>
-  );
-}
-
-function RiskBadge({ value }: { value: Risk }) {
-  const styles: Record<Risk, string> = {
-    Low: 'bg-slate-100 text-slate-700 border-slate-200',
-    Moderate: 'bg-blue-50 text-blue-700 border-blue-200',
-    High: 'bg-amber-50 text-amber-700 border-amber-200',
-    Critical: 'bg-red-50 text-red-700 border-red-200',
-  };
-
-  return (
-    <span className={cn('inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium', styles[value])}>
-      {value}
-    </span>
-  );
-}
-
-function ProgressBar({
-  value,
-  tone = 'blue',
-  showLabel = true,
-}: {
-  value: number;
-  tone?: Tone;
-  showLabel?: boolean;
-}) {
+function ProgressBar({ value, tone = 'blue', showLabel = true }: { value: number; tone?: Tone; showLabel?: boolean }) {
   const barColor: Record<Tone, string> = {
-    slate: 'bg-slate-500',
-    blue: 'bg-blue-600',
-    amber: 'bg-amber-500',
-    emerald: 'bg-emerald-600',
-    red: 'bg-red-600',
-    violet: 'bg-violet-600',
-    indigo: 'bg-indigo-600',
-    rose: 'bg-rose-600',
+    slate: 'bg-slate-500', blue: 'bg-blue-600', amber: 'bg-amber-500', emerald: 'bg-emerald-600',
+    red: 'bg-red-600', violet: 'bg-violet-600', indigo: 'bg-indigo-600', rose: 'bg-rose-600',
   };
-
   return (
     <div className="flex items-center gap-3">
       <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className={cn('h-full rounded-full', barColor[tone])}
-          style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
-        />
+        <div className={cn('h-full rounded-full', barColor[tone])} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
       </div>
       {showLabel ? <span className="w-10 text-right text-xs font-medium text-slate-600">{value}%</span> : null}
     </div>
   );
 }
 
-function MetricRow({
-  label,
-  value,
-  hint,
-  tone = 'slate',
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: Tone;
-}) {
+function MetricRow({ label, value, hint, tone = 'slate' }: { label: string; value: string; hint?: string; tone?: Tone }) {
   const t = toneMap[tone];
   return (
     <div className="rounded-xl border border-slate-200 p-4">
@@ -808,43 +202,68 @@ function MetricRow({
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const API_BASE = import.meta.env.VITE_API_URL;
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const unreadNotifications = 12;
-  const documentStats = {
-    totalDocuments: 286,
-    totalEvidence: 174,
-    sensitiveEvidence: 19,
-    missingEvidence: 7,
-    generatedDocs: 42,
-    evidenceCoverage: 83,
-  };
+  useEffect(() => {
+    apiFetch(`${API_BASE}/dashboard/main`)
+      .then(res => {
+        if (!res.ok) throw new Error('Erreur lors du chargement du tableau de bord');
+        return res.json();
+      })
+      .then(d => { setData(d); setLoading(false); })
+      .catch(err => { setError(err.message); setLoading(false); });
+  }, []);
 
-  const riskControlStats = {
-    activeRisks: 28,
-    risksWithoutControls: 6,
-    keyControls: 19,
-    controlCoverage: 79,
-    weakLinks: 5,
-    strongLinks: 21,
-  };
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
 
-  const findingsSummary = {
-    open: 47,
-    critical: 9,
-    pendingValidation: 6,
-    recent: 12,
-  };
+  if (error || !data) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+          <AlertTriangle className="mx-auto h-8 w-8 text-red-500 mb-3" />
+          <p className="text-sm text-red-700">{error || 'Erreur inconnue'}</p>
+        </div>
+      </div>
+    );
+  }
 
-  const recommendationSummary = {
-    open: 63,
-    overdue: 14,
-    averageProgress: 71,
-    dueNext7Days: 9,
-  };
+  const {
+    kpis, planExecution, missionStatusData, topMissions, findingsSummary,
+    findingsByRisk, topFindings, recommendationSummary, recommendationsByDepartment,
+    topRecommendations, approvalsSummary, recentApprovals, tickets, recentTickets,
+    documents, riskControl, recentActivity, unreadNotifications, performance,
+  } = data;
+
+  const missionPieData = (missionStatusData || []).map((m: any) => ({
+    name: missionStatusLabels[m.status] || m.status,
+    value: m.count,
+    color: missionStatusColors[m.status] || '#94a3b8',
+  }));
+
+  // Alerts dynamiques
+  const alerts: Array<{ id: string; title: string; detail: string; severity: 'critical' | 'high' | 'medium' }> = [];
+  if (kpis.recosOverdue > 0) alerts.push({ id: 'a1', title: `${kpis.recosOverdue} recommandation(s) en retard`, detail: 'Cibles dépassées nécessitant une action immédiate.', severity: 'critical' });
+  if (kpis.findingsCriticalOpen > 0) alerts.push({ id: 'a2', title: `${kpis.findingsCriticalOpen} constat(s) critique(s) ouvert(s)`, detail: 'Constats à risque élevé non clôturés.', severity: 'critical' });
+  if (kpis.approvalsPending > 0) alerts.push({ id: 'a3', title: `${kpis.approvalsPending} approbation(s) en attente`, detail: 'Éléments bloquants dans les workflows de gouvernance.', severity: 'high' });
+  if (riskControl?.risksWithoutControls > 0) alerts.push({ id: 'a4', title: `${riskControl.risksWithoutControls} risque(s) sans contrôle`, detail: 'Lacunes de couverture dans le dispositif de contrôle.', severity: 'critical' });
+  if (planExecution?.missionsWithoutValidatedProgram > 0) alerts.push({ id: 'a5', title: `${planExecution.missionsWithoutValidatedProgram} mission(s) sans programme validé`, detail: 'Démarrage opérationnel sans cadre approuvé.', severity: 'medium' });
+  if (unreadNotifications > 0) alerts.push({ id: 'a6', title: `${unreadNotifications} notification(s) non lue(s)`, detail: 'Dont possiblement des demandes d’approbation et échéances.', severity: 'medium' });
+
+  const now = new Date();
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-[1680px] space-y-6 px-4 py-6 sm:px-6 xl:px-8">
+        {/* Header */}
         <header className="rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-5 px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
@@ -852,21 +271,19 @@ export default function Dashboard() {
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-600">
                   Audit command center
                 </span>
-                <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">
-                  Période · T1 2026
-                </span>
+                {planExecution && (
+                  <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">
+                    Plan {planExecution.year}
+                  </span>
+                )}
               </div>
 
-              <div className="mt-3 flex flex-col gap-2 xl:flex-row xl:items-end xl:justify-between">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-                    Tableau de bord audit
-                  </h1>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                    Pilotage consolidé du plan, des missions, des constats, de la remédiation, des risques,
-                    des approbations et des intégrations opérationnelles.
-                  </p>
-                </div>
+              <div className="mt-3">
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Tableau de bord audit</h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                  Pilotage consolidé du plan, des missions, des constats, de la remédiation, des risques,
+                  des approbations et des intégrations opérationnelles.
+                </p>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -876,199 +293,137 @@ export default function Dashboard() {
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
                   <CalendarRange className="h-3.5 w-3.5" />
-                  19 mars 2026
+                  {now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
                   <Bell className="h-3.5 w-3.5" />
-                  {unreadNotifications} notifications importantes non lues
+                  {unreadNotifications} notification(s) non lue(s)
                 </span>
               </div>
             </div>
 
             <div className="flex w-full flex-col gap-3 lg:w-auto lg:min-w-[420px]">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Version active</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">Plan d’audit 2026 · v4</p>
+              {planExecution && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Version active</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{planExecution.title || `Plan ${planExecution.year}`} · v{planExecution.versionNumber}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Couverture</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{planExecution.completedMissions} / {planExecution.totalMissions} missions terminées</p>
+                  </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Couverture</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">18 / 26 missions exécutées</p>
-                </div>
-              </div>
-
+              )}
               <div className="flex flex-wrap gap-2">
-                <button className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800">
-                  Nouveau plan
-                </button>
-                <Link
-                  to="/missions"
-                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
+                <Link to="/missions" className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
                   Voir les missions
                 </Link>
-                <button className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-                  Exporter le reporting
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-                {['Tenant · Groupe CamerAudit', 'Entité · Corporate', 'Type · Tous audits', 'Vue · Exécutive'].map((item) => (
-                  <button
-                    key={item}
-                    className="inline-flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    <span className="truncate">{item}</span>
-                    <ChevronRight className="ml-2 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  </button>
-                ))}
               </div>
             </div>
           </div>
         </header>
 
+        {/* KPIs */}
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-          {kpis.map((item) => (
-            <KpiCard key={item.label} item={item} />
-          ))}
+          <KpiCard label="Missions actives" value={String(kpis.missionsActive).padStart(2, '0')} hint={`sur ${kpis.missionsTotal} missions au total`} tone="blue" icon={Briefcase} />
+          <KpiCard label="Plans approuvés" value={String(kpis.plansApproved).padStart(2, '0')} hint={`sur ${kpis.plansTotal} plans au total`} tone="indigo" icon={LayoutGrid} />
+          <KpiCard label="Constats ouverts" value={String(kpis.findingsOpen)} hint={`dont ${kpis.findingsCriticalOpen} critique(s)`} tone="amber" icon={AlertTriangle} />
+          <KpiCard label="Recommandations en retard" value={String(kpis.recosOverdue)} hint={`sur ${kpis.recosOpen} recommandations ouvertes`} tone="red" icon={Clock3} />
+          <KpiCard label="Approbations en attente" value={String(kpis.approvalsPending).padStart(2, '0')} hint="programmes, constats, plans" tone="violet" icon={ClipboardCheck} />
+          <KpiCard label="Taux d’implémentation" value={`${kpis.avgImplementation}%`} hint="remédiation globale" tone="emerald" icon={Gauge} />
         </section>
 
+        {/* Missions + Alerts */}
         <section className="grid grid-cols-1 gap-6 2xl:grid-cols-[1.35fr_0.9fr]">
           <SectionCard
             title="Pilotage du plan et des missions"
             subtitle="Exécution du plan, répartition des statuts, supervision des chefs de mission et maîtrise des délais."
-            action={
-              <Link
-                to="/missions"
-                className="hidden rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:inline-flex"
-              >
-                Détail missions
-              </Link>
-            }
+            action={<Link to="/missions" className="hidden rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:inline-flex">Détail missions</Link>}
           >
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-[0.95fr_1.05fr]">
               <div className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Progression plan {planExecution.year}</p>
-                      <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                        {planExecution.executedMissions}/{planExecution.totalMissions}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                      {planExecution.progress}% exécuté
-                    </span>
-                  </div>
-                  <div className="mt-4">
-                    <ProgressBar value={planExecution.progress} tone="blue" />
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <MetricRow
-                      label="Programmes approuvés"
-                      value={`${planExecution.approvedPrograms}`}
-                      hint="cadre méthodologique validé"
-                      tone="emerald"
-                    />
-                    <MetricRow
-                      label="Programmes en attente"
-                      value={`${planExecution.pendingPrograms}`}
-                      hint="soumis ou en révision"
-                      tone="amber"
-                    />
-                    <MetricRow
-                      label="Procédures en retard"
-                      value={`${planExecution.overdueProcedures}`}
-                      hint="impacte l’avancement terrain"
-                      tone="red"
-                    />
-                    <MetricRow
-                      label="Missions sans programme validé"
-                      value={`${planExecution.missionsWithoutValidatedProgram}`}
-                      hint="alerte de gouvernance"
-                      tone="violet"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 p-4">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-slate-900">Répartition des missions par statut</h4>
-                    <span className="text-xs text-slate-500">26 missions</span>
-                  </div>
-                  <div className="h-[260px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={missionStatusData} dataKey="value" nameKey="name" innerRadius={62} outerRadius={92} paddingAngle={3}>
-                          {missionStatusData.map((entry) => (
-                            <Cell key={entry.name} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {missionStatusData.map((item) => (
-                      <div key={item.name} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span className="text-sm text-slate-600">{item.name}</span>
-                        </div>
-                        <span className="text-sm font-semibold text-slate-900">{item.value}</span>
+                {planExecution && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Progression plan {planExecution.year}</p>
+                        <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                          {planExecution.completedMissions}/{planExecution.totalMissions}
+                        </p>
                       </div>
-                    ))}
+                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                        {planExecution.progress}% exécuté
+                      </span>
+                    </div>
+                    <div className="mt-4"><ProgressBar value={planExecution.progress} tone="blue" /></div>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <MetricRow label="Programmes approuvés" value={`${planExecution.programsApproved}`} hint="cadre validé" tone="emerald" />
+                      <MetricRow label="Programmes en attente" value={`${planExecution.programsPending}`} hint="soumis ou en révision" tone="amber" />
+                      <MetricRow label="Missions sans programme" value={`${planExecution.missionsWithoutValidatedProgram}`} hint="alerte de gouvernance" tone="violet" />
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {missionPieData.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 p-4">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-slate-900">Répartition des missions par statut</h4>
+                      <span className="text-xs text-slate-500">{kpis.missionsTotal} missions</span>
+                    </div>
+                    <div className="h-[260px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={missionPieData} dataKey="value" nameKey="name" innerRadius={62} outerRadius={92} paddingAngle={3}>
+                            {missionPieData.map((entry: any) => (<Cell key={entry.name} fill={entry.color} />))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {missionPieData.map((item: any) => (
+                        <div key={item.name} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                            <span className="text-sm text-slate-600">{item.name}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-slate-900">{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
+              {/* Top missions table */}
               <div className="overflow-hidden rounded-2xl border border-slate-200">
-                <div className="grid grid-cols-[1.35fr_0.75fr_0.85fr_0.7fr_0.75fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                  <span>Mission prioritaire</span>
+                <div className="grid grid-cols-[1.35fr_0.75fr_0.85fr_0.7fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                  <span>Mission</span>
                   <span>Chef de mission</span>
                   <span>Échéance</span>
                   <span>Statut</span>
-                  <span>Avancement</span>
                 </div>
                 <div className="divide-y divide-slate-100">
-                  {missions.map((mission) => (
-                    <div
-                      key={mission.id}
-                      className="grid grid-cols-1 gap-4 px-4 py-4 xl:grid-cols-[1.35fr_0.75fr_0.85fr_0.7fr_0.75fr]"
-                    >
+                  {(topMissions || []).length === 0 ? (
+                    <p className="px-4 py-8 text-center text-sm text-slate-400 italic">Aucune mission active.</p>
+                  ) : (topMissions || []).map((mission: any) => (
+                    <div key={mission.id} className="grid grid-cols-1 gap-4 px-4 py-4 xl:grid-cols-[1.35fr_0.75fr_0.85fr_0.7fr]">
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <PriorityBadge value={mission.priority} />
-                          {!mission.programValidated ? (
-                            <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700">
-                              Programme non validé
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="mt-2 text-sm font-semibold leading-6 text-slate-900">{mission.title}</p>
+                        {!mission.programValidated && (
+                          <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700 mb-2">
+                            Programme non validé
+                          </span>
+                        )}
+                        <p className="text-sm font-semibold leading-6 text-slate-900">{mission.title}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                          <span>{mission.id}</span>
-                          <span>•</span>
-                          <span>{mission.department}</span>
-                          <span>•</span>
-                          <span>{mission.plan}</span>
+                          <span>#{mission.id}</span>
+                          {mission.plan && <><span>•</span><span>{mission.plan}</span></>}
                         </div>
                       </div>
-
-                      <div className="text-sm text-slate-700">{mission.leader}</div>
-
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{mission.due}</p>
-                        <p className="mt-1 text-xs text-slate-500">échéance proche</p>
-                      </div>
-
-                      <div>
-                        <StatusBadge value={mission.status} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <ProgressBar value={mission.progress} tone={mission.status === 'OVERDUE' ? 'red' : 'blue'} />
-                      </div>
+                      <div className="text-sm text-slate-700">{mission.leader || '—'}</div>
+                      <div><p className="text-sm font-medium text-slate-900">{formatDate(mission.endDate)}</p></div>
+                      <div><StatusBadge value={mission.status} /></div>
                     </div>
                   ))}
                 </div>
@@ -1076,39 +431,28 @@ export default function Dashboard() {
             </div>
           </SectionCard>
 
-          <SectionCard
-            title="Alertes prioritaires"
-            subtitle="Points critiques nécessitant une décision, une validation ou une remédiation immédiate."
-            className="border-red-200"
-          >
+          {/* Alerts */}
+          <SectionCard title="Alertes prioritaires" subtitle="Points critiques nécessitant une décision ou une remédiation immédiate." className={alerts.some(a => a.severity === 'critical') ? 'border-red-200' : ''}>
             <div className="space-y-3">
-              {alerts.map((alert) => {
+              {alerts.length === 0 ? (
+                <p className="text-sm text-slate-500 italic text-center py-8">Aucune alerte active.</p>
+              ) : alerts.map((alert) => {
                 const severityStyles = {
                   critical: 'border-red-200 bg-red-50 text-red-700',
                   high: 'border-amber-200 bg-amber-50 text-amber-700',
                   medium: 'border-blue-200 bg-blue-50 text-blue-700',
                 } as const;
-
                 return (
                   <div key={alert.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                     <div className="flex items-start gap-3">
-                      <div
-                        className={cn(
-                          'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border',
-                          severityStyles[alert.severity]
-                        )}
-                      >
+                      <div className={cn('mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border', severityStyles[alert.severity])}>
                         <Siren className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-semibold text-slate-900">{alert.title}</p>
                           <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', severityStyles[alert.severity])}>
-                            {alert.severity === 'critical'
-                              ? 'Critique'
-                              : alert.severity === 'high'
-                              ? 'Élevée'
-                              : 'Surveillance'}
+                            {alert.severity === 'critical' ? 'Critique' : alert.severity === 'high' ? 'Élevée' : 'Surveillance'}
                           </span>
                         </div>
                         <p className="mt-1 text-sm leading-6 text-slate-600">{alert.detail}</p>
@@ -1121,136 +465,198 @@ export default function Dashboard() {
           </SectionCard>
         </section>
 
+        {/* Performance & couverture */}
+        {performance && (
+          <section className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+            <SectionCard
+              title="Performance & couverture"
+              subtitle="Indicateurs clés de performance : couverture de l'univers, délais de clôture, conformité et charge."
+              className="xl:col-span-5"
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50">
+                        <Target className="h-5 w-5 text-emerald-700" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Couverture univers</p>
+                        <p className="text-2xl font-semibold tracking-tight text-slate-950">{performance.coverageRate}%</p>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">{performance.coveredEntitiesCount} / {performance.totalAuditableEntities} entités auditées</p>
+                    <div className="mt-2"><ProgressBar value={performance.coverageRate} tone="emerald" /></div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-50">
+                        <Shield className="h-5 w-5 text-blue-700" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Conformité procédures</p>
+                        <p className="text-2xl font-semibold tracking-tight text-slate-950">{performance.procedureConformityRate}%</p>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">{performance.proceduresOk} OK sur {performance.proceduresTotal} testées</p>
+                    <div className="mt-2"><ProgressBar value={performance.procedureConformityRate} tone={performance.procedureConformityRate >= 80 ? 'emerald' : performance.procedureConformityRate >= 50 ? 'amber' : 'red'} /></div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <MetricRow label="Délai moyen clôture constats" value={`${performance.avgFindingCloseDays} j`} hint="de la création à la clôture" tone="amber" />
+                  <MetricRow label="Délai moyen clôture recos" value={`${performance.avgRecoCloseDays} j`} hint="de la création à la clôture" tone="blue" />
+                  <MetricRow label="Respect des échéances" value={`${performance.missionsOnTimeRate}%`} hint={`${performance.missionsLate} mission(s) en retard`} tone={performance.missionsOnTimeRate >= 80 ? 'emerald' : 'red'} />
+                  <MetricRow label="Missions terminées" value={`${performance.completedMissionsCount}`} hint="clôturées sur la période" tone="emerald" />
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title="Tendances & charge"
+              subtitle="Évolution mensuelle des constats et répartition de la charge par auditeur."
+              className="xl:col-span-7"
+            >
+              <div className="grid grid-cols-1 gap-5">
+                {(performance.findingsTrend || []).length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 p-4">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-slate-900">Constats créés vs clôturés (6 mois)</h4>
+                      <TrendingUp className="h-4 w-4 text-slate-400" />
+                    </div>
+                    <div className="h-[240px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={performance.findingsTrend}>
+                          <CartesianGrid vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
+                          <YAxis tickLine={false} axisLine={false} fontSize={12} />
+                          <Tooltip />
+                          <Legend />
+                          <Line type="monotone" dataKey="created" name="Créés" stroke="#dc2626" strokeWidth={2} dot={{ r: 4 }} />
+                          <Line type="monotone" dataKey="closed" name="Clôturés" stroke="#059669" strokeWidth={2} dot={{ r: 4 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {(performance.auditorWorkload || []).length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 p-4">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-slate-900">Charge par auditeur (missions actives)</h4>
+                      <Users className="h-4 w-4 text-slate-400" />
+                    </div>
+                    <div className="h-[200px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={performance.auditorWorkload} layout="vertical" margin={{ left: 10, right: 10 }}>
+                          <CartesianGrid horizontal={false} stroke="#e2e8f0" />
+                          <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
+                          <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} fontSize={12} width={120} />
+                          <Tooltip />
+                          <Bar dataKey="missions" name="Missions" radius={[0, 8, 8, 0]} fill="#2563eb" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+          </section>
+        )}
+
+        {/* Findings + Recommendations */}
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-          <SectionCard
-            title="Findings / constats"
-            subtitle="Vue consolidée des constats ouverts, critiques, récents et en attente de validation."
-            className="xl:col-span-5"
-          >
+          <SectionCard title="Constats" subtitle="Vue consolidée des constats ouverts, critiques, récents et en attente de validation." className="xl:col-span-5">
             <div className="grid grid-cols-2 gap-3">
-              <MetricRow label="Findings ouverts" value={`${findingsSummary.open}`} hint="backlog actif" tone="amber" />
-              <MetricRow label="Findings critiques" value={`${findingsSummary.critical}`} hint="traitement prioritaire" tone="red" />
-              <MetricRow
-                label="En attente de validation"
-                value={`${findingsSummary.pendingValidation}`}
-                hint="workflow de revue"
-                tone="violet"
-              />
-              <MetricRow label="Constats récents (7j)" value={`${findingsSummary.recent}`} hint="activité récente" tone="blue" />
+              <MetricRow label="Constats ouverts" value={`${findingsSummary?.open ?? 0}`} hint="backlog actif" tone="amber" />
+              <MetricRow label="Constats critiques" value={`${findingsSummary?.critical ?? 0}`} hint="traitement prioritaire" tone="red" />
+              <MetricRow label="En attente de validation" value={`${findingsSummary?.pendingValidation ?? 0}`} hint="workflow de revue" tone="violet" />
+              <MetricRow label="Constats récents (7j)" value={`${findingsSummary?.recent ?? 0}`} hint="activité récente" tone="blue" />
             </div>
 
-            <div className="mt-5 rounded-2xl border border-slate-200 p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-slate-900">Findings par niveau de risque</h4>
-                <span className="text-xs text-slate-500">47 findings</span>
+            {(findingsByRisk || []).length > 0 && (
+              <div className="mt-5 rounded-2xl border border-slate-200 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-slate-900">Constats par niveau de risque</h4>
+                  <span className="text-xs text-slate-500">{findingsSummary?.open ?? 0} constats</span>
+                </div>
+                <div className="h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={findingsByRisk}>
+                      <CartesianGrid vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={12} />
+                      <YAxis tickLine={false} axisLine={false} fontSize={12} />
+                      <Tooltip />
+                      <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="#334155" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-              <div className="h-[240px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={findingsByRisk}>
-                    <CartesianGrid vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={12} />
-                    <YAxis tickLine={false} axisLine={false} fontSize={12} />
-                    <Tooltip />
-                    <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="#334155" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            )}
 
             <div className="mt-5 space-y-3">
-              {findings.map((finding) => (
+              {(topFindings || []).map((finding: any) => (
                 <div key={finding.id} className="rounded-2xl border border-slate-200 p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <RiskBadge value={finding.risk} />
+                    {finding.riskLevel && <span className="inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium bg-amber-50 text-amber-700 border-amber-200">{finding.riskLevel}</span>}
                     <StatusBadge value={finding.status} />
                   </div>
                   <p className="mt-3 text-sm font-semibold leading-6 text-slate-900">{finding.title}</p>
                   <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
-                    <span>{finding.id}</span>
+                    <span>#{finding.id}</span>
+                    {finding.mission && <><span>•</span><span>{finding.mission}</span></>}
                     <span>•</span>
-                    <span>{finding.mission}</span>
-                    <span>•</span>
-                    <span>{finding.process}</span>
-                    <span>•</span>
-                    <span>{finding.owner}</span>
-                    <span>•</span>
-                    <span>{finding.ageDays} j</span>
+                    <span>{Math.ceil((Date.now() - new Date(finding.createdAt).getTime()) / 86400000)} j</span>
                   </div>
                 </div>
               ))}
             </div>
           </SectionCard>
 
-          <SectionCard
-            title="Recommandations / remédiation"
-            subtitle="Suivi des recommandations ouvertes, échues, prioritaires et par département."
-            className="xl:col-span-7"
-          >
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_1fr]">
+          <SectionCard title="Recommandations / remédiation" subtitle="Suivi des recommandations ouvertes, échues, prioritaires et par département." className="xl:col-span-7">
+            <div className="grid grid-cols-1 gap-5">
               <div>
                 <div className="grid grid-cols-2 gap-3">
-                  <MetricRow
-                    label="Recommandations ouvertes"
-                    value={`${recommendationSummary.open}`}
-                    hint="hors clôturées"
-                    tone="blue"
-                  />
-                  <MetricRow
-                    label="Recommandations échues"
-                    value={`${recommendationSummary.overdue}`}
-                    hint="cibles dépassées"
-                    tone="red"
-                  />
-                  <MetricRow
-                    label="Progression moyenne"
-                    value={`${recommendationSummary.averageProgress}%`}
-                    hint="suivi d’implémentation"
-                    tone="emerald"
-                  />
-                  <MetricRow
-                    label="Prochaines échéances (7j)"
-                    value={`${recommendationSummary.dueNext7Days}`}
-                    hint="à surveiller"
-                    tone="amber"
-                  />
+                  <MetricRow label="Recommandations ouvertes" value={`${recommendationSummary?.open ?? 0}`} hint="hors clôturées" tone="blue" />
+                  <MetricRow label="Recommandations échues" value={`${recommendationSummary?.overdue ?? 0}`} hint="cibles dépassées" tone="red" />
+                  <MetricRow label="Progression moyenne" value={`${recommendationSummary?.averageProgress ?? 0}%`} hint="suivi d’implémentation" tone="emerald" />
+                  <MetricRow label="Prochaines échéances (7j)" value={`${recommendationSummary?.dueNext7Days ?? 0}`} hint="à surveiller" tone="amber" />
                 </div>
 
                 <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
                   <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr_0.7fr_0.7fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                    <span>Recommandation prioritaire</span>
+                    <span>Recommandation</span>
                     <span>Responsable</span>
                     <span>Département</span>
                     <span>Statut</span>
                     <span>Suivi</span>
                   </div>
-
                   <div className="divide-y divide-slate-100">
-                    {recommendations.map((reco) => (
+                    {(topRecommendations || []).length === 0 ? (
+                      <p className="px-4 py-8 text-center text-sm text-slate-400 italic">Aucune recommandation ouverte.</p>
+                    ) : (topRecommendations || []).map((reco: any) => (
                       <div key={reco.id} className="grid grid-cols-1 gap-4 px-4 py-4 xl:grid-cols-[1.4fr_0.8fr_0.8fr_0.7fr_0.7fr]">
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <PriorityBadge value={reco.priority} />
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                          {reco.linkedTicket && (
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 mr-2">
                               {reco.linkedTicket}
                             </span>
-                          </div>
+                          )}
                           <p className="mt-2 text-sm font-semibold leading-6 text-slate-900">{reco.title}</p>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                            <span>{reco.id}</span>
+                            <span>#{reco.id}</span>
                             <span>•</span>
-                            <span>Cible {reco.targetDate}</span>
+                            <span>Cible {formatDate(reco.targetDate)}</span>
                           </div>
                         </div>
-
-                        <div className="text-sm text-slate-700">{reco.assignee}</div>
-                        <div className="text-sm text-slate-700">{reco.department}</div>
-                        <div>
-                          <StatusBadge value={reco.status} />
-                        </div>
+                        <div className="text-sm text-slate-700">{reco.assignee || '—'}</div>
+                        <div className="text-sm text-slate-700">{reco.department || '—'}</div>
+                        <div><StatusBadge value={reco.status} /></div>
                         <div>
                           <ProgressBar
-                            value={reco.progress}
-                            tone={reco.status === 'OVERDUE' ? 'red' : reco.progress >= 70 ? 'emerald' : 'blue'}
+                            value={reco.progress ?? 0}
+                            tone={reco.targetDate && new Date(reco.targetDate) < now && reco.status !== 'CLOSED' ? 'red' : (reco.progress ?? 0) >= 70 ? 'emerald' : 'blue'}
                           />
                         </div>
                       </div>
@@ -1259,123 +665,48 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 p-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-slate-900">Recommandations par département</h4>
-                  <span className="text-xs text-slate-500">charges de remédiation</span>
+              {(recommendationsByDepartment || []).length > 0 && (
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-slate-900">Recommandations par département</h4>
+                    <span className="text-xs text-slate-500">charges de remédiation</span>
+                  </div>
+                  <div className="h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={recommendationsByDepartment} layout="vertical" margin={{ left: 10, right: 10 }}>
+                        <CartesianGrid horizontal={false} stroke="#e2e8f0" />
+                        <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
+                        <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} fontSize={12} width={80} />
+                        <Tooltip />
+                        <Bar dataKey="value" radius={[0, 8, 8, 0]} fill="#0f172a" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                <div className="h-[320px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={recommendationsByDepartment} layout="vertical" margin={{ left: 10, right: 10 }}>
-                      <CartesianGrid horizontal={false} stroke="#e2e8f0" />
-                      <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        tickLine={false}
-                        axisLine={false}
-                        fontSize={12}
-                        width={80}
-                      />
-                      <Tooltip />
-                      <Bar dataKey="value" radius={[0, 8, 8, 0]} fill="#0f172a" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+              )}
             </div>
           </SectionCard>
         </section>
 
+        {/* Risk/Controls + Approvals + Tickets */}
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-          <SectionCard
-            title="Risques et contrôles"
-            subtitle="Vue synthétique des risques actifs, contrôles clés et liens RiskControl."
-            className="xl:col-span-4"
-          >
+          <SectionCard title="Risques et contrôles" subtitle="Vue synthétique des risques actifs, contrôles et liens RiskControl." className="xl:col-span-4">
             <div className="grid grid-cols-2 gap-3">
-              <MetricRow label="Risques actifs" value={`${riskControlStats.activeRisks}`} hint="univers suivi" tone="amber" />
-              <MetricRow
-                label="Risques sans contrôles"
-                value={`${riskControlStats.risksWithoutControls}`}
-                hint="lacunes de couverture"
-                tone="red"
-              />
-              <MetricRow label="Contrôles clés" value={`${riskControlStats.keyControls}`} hint="topologie prioritaire" tone="blue" />
-              <MetricRow
-                label="Couverture des contrôles"
-                value={`${riskControlStats.controlCoverage}%`}
-                hint="risques couverts"
-                tone="emerald"
-              />
-            </div>
-
-            <div className="mt-5 space-y-3">
-              <div className="rounded-2xl border border-slate-200 p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Network className="h-4 w-4 text-slate-500" />
-                    <span className="text-sm font-semibold text-slate-900">Liens RiskControl</span>
-                  </div>
-                  <span className="text-xs text-slate-500">26 liens</span>
-                </div>
-                <div className="mt-4 space-y-3">
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="text-slate-600">Liens robustes</span>
-                      <span className="font-semibold text-slate-900">{riskControlStats.strongLinks}</span>
-                    </div>
-                    <ProgressBar value={81} tone="emerald" />
-                  </div>
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="text-slate-600">Liens fragiles / à revoir</span>
-                      <span className="font-semibold text-slate-900">{riskControlStats.weakLinks}</span>
-                    </div>
-                    <ProgressBar value={19} tone="red" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 p-4">
-                <div className="flex items-start gap-3">
-                  <ShieldAlert className="mt-0.5 h-5 w-5 text-red-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Risque sans contrôle — IAM</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">
-                      Revues d’accès privilégiés, séparation des tâches et révocation post-mobilité restent insuffisamment couvertes.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 p-4">
-                <div className="flex items-start gap-3">
-                  <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Contrôle clé — Clôture financière</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">
-                      Contrôle automatisé de rapprochement avant clôture mensuelle, efficacité design validée, operating effectiveness en cours.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <MetricRow label="Risques actifs" value={`${riskControl?.activeRisks ?? 0}`} hint="univers suivi" tone="amber" />
+              <MetricRow label="Risques sans contrôles" value={`${riskControl?.risksWithoutControls ?? 0}`} hint="lacunes de couverture" tone="red" />
+              <MetricRow label="Contrôles" value={`${riskControl?.totalControls ?? 0}`} hint="dispositif de contrôle" tone="blue" />
+              <MetricRow label="Liens Risk-Control" value={`${riskControl?.totalRiskControlLinks ?? 0}`} hint="couverture des risques" tone="emerald" />
             </div>
           </SectionCard>
 
-          <SectionCard
-            title="Approbations / gouvernance"
-            subtitle="Workflow de validation visible, niveaux d’approbation et décisions récentes."
-            className="xl:col-span-4"
-          >
+          <SectionCard title="Approbations / gouvernance" subtitle="Workflow de validation, niveaux d’approbation et décisions récentes." className="xl:col-span-4">
             <div className="mb-4 grid grid-cols-3 gap-3">
-              <MetricRow label="Pending" value="8" hint="flux bloquants" tone="amber" />
-              <MetricRow label="Approved" value="21" hint="période en cours" tone="emerald" />
-              <MetricRow label="Rejected" value="3" hint="révision requise" tone="red" />
+              <MetricRow label="En attente" value={`${approvalsSummary?.pending ?? 0}`} hint="flux bloquants" tone="amber" />
+              <MetricRow label="Approuvées" value={`${approvalsSummary?.approved ?? 0}`} hint="validées" tone="emerald" />
+              <MetricRow label="Rejetées" value={`${approvalsSummary?.rejected ?? 0}`} hint="révision requise" tone="red" />
             </div>
-
             <div className="space-y-3">
-              {approvals.map((item) => (
+              {(recentApprovals || []).map((item: any) => (
                 <div key={item.id} className="rounded-2xl border border-slate-200 p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge value={item.decision} />
@@ -1390,141 +721,97 @@ export default function Dashboard() {
                   <div className="mt-2 grid grid-cols-2 gap-3 text-xs text-slate-500">
                     <div>
                       <p className="font-medium text-slate-600">Demandé par</p>
-                      <p className="mt-1">{item.requestedBy}</p>
+                      <p className="mt-1">{item.requestedBy || '—'}</p>
                     </div>
                     <div>
-                      <p className="font-medium text-slate-600">Approver</p>
-                      <p className="mt-1">{item.approver}</p>
+                      <p className="font-medium text-slate-600">Approbateur</p>
+                      <p className="mt-1">{item.approver || 'Non assigné'}</p>
                     </div>
                   </div>
-
                   <div className="mt-4 flex items-center gap-2 overflow-hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                     <GitBranch className="h-3.5 w-3.5 shrink-0" />
                     <span>Request</span>
                     <ChevronRight className="h-3.5 w-3.5" />
-                    <span className={cn(item.level >= 2 && 'font-semibold text-slate-900')}>Level 1</span>
+                    <span className={cn(item.level >= 1 && 'font-semibold text-slate-900')}>Level 1</span>
                     <ChevronRight className="h-3.5 w-3.5" />
-                    <span className={cn(item.level >= 3 && 'font-semibold text-slate-900')}>Level 2</span>
+                    <span className={cn(item.level >= 2 && 'font-semibold text-slate-900')}>Level 2</span>
                     <ChevronRight className="h-3.5 w-3.5" />
                     <span>Final</span>
                   </div>
-
-                  <p className="mt-3 text-xs text-slate-500">{item.date}</p>
+                  <p className="mt-3 text-xs text-slate-500">{formatDate(item.createdAt)}</p>
                 </div>
               ))}
             </div>
           </SectionCard>
 
-          <SectionCard
-            title="Tickets GLPI / intégration"
-            subtitle="Suivi des tickets liés aux recommandations et synchronisations récentes."
-            className="xl:col-span-4"
-          >
+          <SectionCard title="Tickets GLPI / intégration" subtitle="Suivi des tickets liés aux recommandations et synchronisations récentes." className="xl:col-span-4">
             <div className="mb-4 grid grid-cols-3 gap-3">
-              <MetricRow label="Open" value="9" hint="à traiter" tone="blue" />
-              <MetricRow label="Blocked" value="3" hint="dépendances" tone="red" />
-              <MetricRow label="Resolved" value="11" hint="synchronisés" tone="emerald" />
+              <MetricRow label="Ouverts" value={`${tickets?.open ?? 0}`} hint="à traiter" tone="blue" />
+              <MetricRow label="Bloqués" value={`${tickets?.blocked ?? 0}`} hint="dépendances" tone="red" />
+              <MetricRow label="Résolus" value={`${tickets?.resolved ?? 0}`} hint="synchronisés" tone="emerald" />
             </div>
-
             <div className="space-y-3">
-              {tickets.map((ticket) => (
+              {(recentTickets || []).map((ticket: any) => (
                 <div key={ticket.id} className="rounded-2xl border border-slate-200 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">{ticket.number}</p>
-                      <p className="mt-1 truncate text-sm text-slate-600">{ticket.title}</p>
+                      <p className="text-sm font-semibold text-slate-900">{ticket.ticketNumber || `#${ticket.id}`}</p>
+                      <p className="mt-1 truncate text-sm text-slate-600">{ticket.title || '—'}</p>
                     </div>
-                    <StatusBadge value={ticket.status} />
+                    {ticket.status && <StatusBadge value={ticket.status} />}
                   </div>
-
                   <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500">
                     <div>
                       <p className="font-medium text-slate-600">Assigné à</p>
-                      <p className="mt-1">{ticket.assignee}</p>
+                      <p className="mt-1">{ticket.assignee || '—'}</p>
                     </div>
                     <div>
                       <p className="font-medium text-slate-600">Reco liée</p>
-                      <p className="mt-1">{ticket.recommendation}</p>
+                      <p className="mt-1">{ticket.recommendation || '—'}</p>
                     </div>
                   </div>
-
                   <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                    <span>Dernière synchro</span>
-                    <span className="font-medium text-slate-700">{ticket.syncAt}</span>
+                    <span>Créé le</span>
+                    <span className="font-medium text-slate-700">{timeAgo(ticket.createdAt)}</span>
                   </div>
                 </div>
               ))}
+              {(recentTickets || []).length === 0 && <p className="text-sm text-slate-400 italic text-center py-4">Aucun ticket lié.</p>}
             </div>
           </SectionCard>
         </section>
 
+        {/* Documents + Activity */}
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-          <SectionCard
-            title="Documents / preuves"
-            subtitle="Volume documentaire, éléments sensibles et preuves manquantes ou attendues."
-            className="xl:col-span-4"
-          >
+          <SectionCard title="Documents / preuves" subtitle="Volume documentaire et preuves sensibles." className="xl:col-span-4">
             <div className="grid grid-cols-2 gap-3">
-              <MetricRow label="Documents" value={`${documentStats.totalDocuments}`} hint="toutes catégories" tone="slate" />
-              <MetricRow label="Preuves collectées" value={`${documentStats.totalEvidence}`} hint="mission, finding, reco" tone="blue" />
-              <MetricRow
-                label="Éléments sensibles"
-                value={`${documentStats.sensitiveEvidence}`}
-                hint="chaîne de conservation"
-                tone="red"
-              />
-              <MetricRow
-                label="Preuves manquantes"
-                value={`${documentStats.missingEvidence}`}
-                hint="attendues / non fournies"
-                tone="amber"
-              />
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-slate-200 p-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-slate-900">Couverture documentaire</h4>
-                <span className="text-xs font-medium text-slate-600">{documentStats.evidenceCoverage}%</span>
-              </div>
-              <div className="mt-3">
-                <ProgressBar value={documentStats.evidenceCoverage} tone="emerald" />
-              </div>
-              <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                <TriangleAlert className="mt-0.5 h-4 w-4 text-amber-700" />
-                <p className="text-sm leading-6 text-amber-900">
-                  3 procédures attendent encore des preuves de test, dont 2 sur la mission cybersécurité.
-                </p>
-              </div>
+              <MetricRow label="Documents" value={`${documents?.totalDocuments ?? 0}`} hint="toutes catégories" tone="slate" />
+              <MetricRow label="Preuves collectées" value={`${documents?.totalEvidence ?? 0}`} hint="mission, constat, reco" tone="blue" />
+              <MetricRow label="Éléments sensibles" value={`${documents?.sensitiveEvidence ?? 0}`} hint="chaîne de conservation" tone="red" />
             </div>
           </SectionCard>
 
-          <SectionCard
-            title="Activité récente"
-            subtitle="Audit logs, changements de statut, validations, uploads et notifications système."
-            className="xl:col-span-8"
-          >
+          <SectionCard title="Activité récente" subtitle="Audit logs, changements de statut, validations et notifications système." className="xl:col-span-8">
             <div className="space-y-3">
-              {activities.map((activity) => {
-                const tone = toneMap[activity.tone];
+              {(recentActivity || []).length === 0 ? (
+                <p className="text-sm text-slate-400 italic text-center py-8">Aucune activité récente.</p>
+              ) : (recentActivity || []).map((activity: any) => {
+                const t = toneMap['slate'];
                 return (
-                  <div
-                    key={activity.id}
-                    className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4"
-                  >
-                    <div className={cn('mt-0.5 h-10 w-10 shrink-0 rounded-xl border', tone.soft, tone.border)}>
+                  <div key={activity.id} className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                    <div className={cn('mt-0.5 h-10 w-10 shrink-0 rounded-xl border', t.soft, t.border)}>
                       <div className="flex h-full w-full items-center justify-center">
-                        <span className={cn('h-2.5 w-2.5 rounded-full', tone.dot)} />
+                        <span className={cn('h-2.5 w-2.5 rounded-full', t.dot)} />
                       </div>
                     </div>
-
                     <div className="min-w-0 flex-1">
                       <p className="text-sm leading-6 text-slate-700">
                         <span className="font-semibold text-slate-900">{activity.actor}</span> {activity.action}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        <span className="rounded-full bg-slate-100 px-2 py-1 font-medium text-slate-600">{activity.entity}</span>
+                        {activity.entity && <span className="rounded-full bg-slate-100 px-2 py-1 font-medium text-slate-600">{activity.entity}</span>}
                         <span>•</span>
-                        <span>{activity.time}</span>
+                        <span>{timeAgo(activity.time)}</span>
                       </div>
                     </div>
                   </div>
@@ -1534,11 +821,9 @@ export default function Dashboard() {
           </SectionCard>
         </section>
 
+        {/* Quick links */}
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-          <Link
-            to="/missions"
-            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-          >
+          <Link to="/missions" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">
             <div className="flex items-center justify-between">
               <Briefcase className="h-5 w-5 text-slate-700" />
               <ArrowRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-0.5" />
@@ -1547,16 +832,19 @@ export default function Dashboard() {
             <p className="mt-1 text-sm text-slate-500">Planification, exécution, équipes et scopes.</p>
           </Link>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <CheckSquare className="h-5 w-5 text-slate-700" />
-            <p className="mt-4 text-sm font-semibold text-slate-900">Approvals watchlist</p>
-            <p className="mt-1 text-sm text-slate-500">8 éléments bloquants dans les workflows de gouvernance.</p>
-          </div>
+          <Link to="/approvals" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">
+            <div className="flex items-center justify-between">
+              <CheckSquare className="h-5 w-5 text-slate-700" />
+              <ArrowRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-0.5" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-slate-900">Approbations</p>
+            <p className="mt-1 text-sm text-slate-500">{kpis.approvalsPending} élément(s) en attente de validation.</p>
+          </Link>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <FolderOpen className="h-5 w-5 text-slate-700" />
             <p className="mt-4 text-sm font-semibold text-slate-900">Preuves sensibles</p>
-            <p className="mt-1 text-sm text-slate-500">19 éléments avec exigences renforcées de conservation.</p>
+            <p className="mt-1 text-sm text-slate-500">{documents?.sensitiveEvidence ?? 0} élément(s) avec exigences renforcées.</p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

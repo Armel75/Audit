@@ -161,24 +161,26 @@ export default function AuditPlans() {
             return (
               <div key={plan.id} className="bg-white dark:bg-slate-800 overflow-hidden shadow-sm rounded-xl border border-slate-200 dark:border-slate-700">
                 <div className="p-6 flex-1">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-5 w-5 text-slate-400" />
                       <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{plan.year}</h3>
                       <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md">v{plan.versionNumber}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${status.color}`}>
-                        <StatusIcon className="w-3.5 h-3.5" />
-                        {status.label}
-                      </span>
-                      <button onClick={() => handleOpenEdit(plan)} className="text-slate-400 hover:text-blue-600">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(plan.id)} className="text-slate-400 hover:text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${status.color}`}>
+                      <StatusIcon className="w-3.5 h-3.5" />
+                      {status.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <button onClick={() => handleOpenEdit(plan)} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Modifier
+                    </button>
+                    <button onClick={() => handleDelete(plan.id)} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Supprimer
+                    </button>
                   </div>
                   
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">

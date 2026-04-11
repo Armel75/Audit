@@ -173,6 +173,7 @@ const missionTransitions: Record<
 
 export default function MissionDetails() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [mission, setMission] = useState<Mission | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -229,8 +230,9 @@ export default function MissionDetails() {
   const fetchRecommendations = async () => {
     try {
       const res = await apiFetch(`${API_BASE}/recommendations/mission/${id}`);
+      if (!res.ok) return;
       const data = await res.json();
-      setRecommendations(data);
+      if (Array.isArray(data)) setRecommendations(data);
     } catch (err) {
       console.error(err);
     }
@@ -583,7 +585,6 @@ export default function MissionDetails() {
     mission.programs?.some(p => p.status === 'APPROVED');
   //const currentAction = missionTransitions[mission.status];
   const currentActions = missionTransitions[mission.status] || [];
-  const { user } = useAuth();
   const canUpdateMission = user?.permissions?.includes('audit_mission:update') ?? false;
   const canDeleteMission = user?.permissions?.includes('audit_mission:delete') ?? false;
   const visibleActions = currentActions.filter(action =>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Edit2, Trash2, Settings as SettingsIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 // Types
 interface Department { id: number; name: string; code: string; }
@@ -12,6 +13,16 @@ interface PriorityLevel { id: number; name: string; level: number; }
 type TabType = 'departments' | 'userDepartments' | 'auditTypes' | 'riskLevels' | 'priorityLevels';
 
 export default function Settings() {
+  const { user } = useAuth();
+  const userPermissions = user?.permissions || [];
+  const tabPermissions: Record<TabType, string> = {
+    departments: 'department:read',
+    userDepartments: 'department:read',
+    auditTypes: 'audit_type:read',
+    riskLevels: 'risk_level:read',
+    priorityLevels: 'priority_level:read',
+  };
+  const hasPerm = (tab: TabType) => userPermissions.includes(tabPermissions[tab]);
   const [activeTab, setActiveTab] = useState<TabType>('departments');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -331,7 +342,7 @@ export default function Settings() {
           { id: 'auditTypes', label: 'Types d\'Audit' },
           { id: 'riskLevels', label: 'Niveaux de Risque' },
           { id: 'priorityLevels', label: 'Niveaux de Priorité' },
-        ].map((tab) => (
+        ].filter((tab) => hasPerm(tab.id as TabType)).map((tab) => (
           <button
             key={tab.id}
             onClick={() => {
@@ -350,7 +361,7 @@ export default function Settings() {
 
       {/* Content */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-        {activeTab === 'departments' && (
+        {activeTab === 'departments' && hasPerm('departments') && (
           <>
             {renderForm('departments', [
               { name: 'name', label: 'Nom du département', type: 'text' },
@@ -363,7 +374,7 @@ export default function Settings() {
           </>
         )}
 
-        {activeTab === 'userDepartments' && (
+        {activeTab === 'userDepartments' && hasPerm('userDepartments') && (
           <>
             {renderForm('user-departments', [
               { name: 'userId', label: 'Utilisateur', type: 'select', options: users.map(u => ({ id: u.id, label: `${u.firstName} ${u.lastName} (${u.email})` })) },
@@ -382,7 +393,7 @@ export default function Settings() {
           </>
         )}
 
-        {activeTab === 'auditTypes' && (
+        {activeTab === 'auditTypes' && hasPerm('auditTypes') && (
           <>
             {renderForm('audit-types', [
               { name: 'name', label: 'Type d\'audit', type: 'text' }
@@ -403,7 +414,7 @@ export default function Settings() {
           </>
         )}
 
-        {activeTab === 'riskLevels' && (
+        {activeTab === 'riskLevels' && hasPerm('riskLevels') && (
           <>
             {renderForm('risk-levels', [
               { name: 'name', label: 'Niveau de risque', type: 'text' },
@@ -425,7 +436,7 @@ export default function Settings() {
           </>
         )}
 
-        {activeTab === 'priorityLevels' && (
+        {activeTab === 'priorityLevels' && hasPerm('priorityLevels') && (
           <>
             {renderForm('priority-levels', [
               { name: 'name', label: 'Niveau de priorité', type: 'text' },

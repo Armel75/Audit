@@ -482,3 +482,90 @@ export const deleteAuditProcedure = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to delete audit procedure' });
   }
 };
+
+// ── State machine for procedure status transitions ──
+const PROCEDURE_TRANSITIONS: Record<string, string[]> = {
+  PLANNED:     ['IN_PROGRESS'],
+  IN_PROGRESS: ['COMPLETED', 'BLOCKED'],
+  BLOCKED:     ['IN_PROGRESS'],
+  COMPLETED:   ['IN_PROGRESS'], // rework after review rejection
+};
+
+export const updateProcedureStatus = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const userId = req.user?.userId;
+    const { procedureId } = req.params;
+    const { status: newStatus } = req.body;
+
+    if (!tenantId) return res.status(400).json({ error: 'Tenant ID requis' });
+    if (!newStatus) return res.status(400).json({ error: 'Le nouveau statut est requis' });
+
+    const procedure = await prisma.auditProcedure.findFirst({
+      where: { id: Number(procedureId), tenantId },
+    });
+    if (!procedure) return res.status(404).json({ error: 'Procédure introuvable' });
+
+    // Validate transition
+    const allowed = PROCEDURE_TRANSITIONS[procedure.status];
+    if (!allowed || !allowed.includes(newStatus)) {
+      return res.status(400).json({
+        error: `Transition interdite : ${procedure.status} → ${newStatus}`,
+      });
+    }
+
+    // Check program is not COMPLETED/CLOSED (structure + execution locked)
+    const program = await prisma.auditProgram.findFirst({
+      where: { id: procedure.programId, tenantId },
+      include: { mission: { select: { leaderId: true } } },
+    });
+    if (!program) return res.status(404).json({ error: 'Programme introuvable' });
+
+    if (['COMPLETED', 'CLOSED'].includes(program.status)) {
+      return res.status(400).json({
+        error: 'Modification interdite : le programme est clôturé',
+      });
+    }
+
+    // Ownership check: only the assigned auditor or mission leader can change status
+    const isAssigned = procedure.assignedToId === userId;
+    const isPerformer = procedure.performedById === userId;
+    const isMissionLeader = (program as any).mission?.leaderId === userId;
+
+    if (!isAssigned && !isPerformer && !isMissionLeader) {
+      return res.status(403).json({
+        error: 'Seul l\'auditeur assigné ou le chef de mission peut modifier le statut de cette procédure',
+      });
+    }
+
+    // Build update data with automatic timestamps
+    const updateData: any = { status: newStatus };
+
+    if (newStatus === 'IN_PROGRESS' && procedure.status === 'PLANNED') {
+      updateData.startedAt = new Date();
+      updateData.performedById = userId;
+    }
+    if (newStatus === 'COMPLETED') {
+      updateData.completedAt = new Date();
+    }
+    if (newStatus === 'IN_PROGRESS' && procedure.status === 'COMPLETED') {
+      // Rework cycle
+      updateData.reworkCount = procedure.reworkCount + 1;
+      updateData.completedAt = null;
+      updateData.reviewStatus = null;
+      updateData.reviewComment = null;
+      updateData.reviewedAt = null;
+      updateData.reviewedById = null;
+    }
+
+    const updated = await prisma.auditProcedure.update({
+      where: { id: Number(procedureId) },
+      data: updateData,
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating procedure status:', error);
+    res.status(500).json({ error: 'Erreur lors du changement de statut' });
+  }
+};

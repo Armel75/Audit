@@ -49,14 +49,14 @@ export default function Layout() {
 
   const navItems: NavItem[] = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
-    { path: '/dashboard-dg', icon: LayoutDashboard, label: 'Tableau de bord DG' },
+    { path: '/dashboard-dg', icon: LayoutDashboard, label: 'Tableau de bord DG', requiredPermissions: ['dashboard_dg:read'] },
     { path: '/plans', icon: Calendar, label: "Plans d'audit", requiredPermissions: ['audit_plan:read'] },
     { path: '/missions', icon: Briefcase, label: 'Missions', requiredPermissions: ['audit_mission:read'] },
     { path: '/missions/archive', icon: Archive, label: 'Archives missions', requiredPermissions: ['audit_mission:read'] },
-    { path: '/approvals', icon: CheckCircle, label: 'Approbations', requiredPermissions: ['audit_plan:approve', 'audit_program:approve', 'finding:validate', 'recommendation:validate'] },
-    { path: '/referential', icon: Database, label: 'Referentiel', requiredPermissions: ['department:read', 'risk:read', 'control:read', 'business_process:read'] },
-    { path: '/settings', icon: SettingsIcon, label: 'Parametres', requiredPermissions: ['settings:read', 'department:read'] },
-    { path: '/admin', icon: ShieldAlert, label: 'Administration', requiredPermissions: ['admin:access', 'tenant:read', 'user:read', 'role:read', 'permission:read', 'token:read'] },
+    { path: '/approvals', icon: CheckCircle, label: 'Approbations', requiredPermissions: ['approval:read'] },
+    { path: '/referential', icon: Database, label: 'Referentiel', requiredPermissions: ['referential:access'] },
+    { path: '/settings', icon: SettingsIcon, label: 'Parametres', requiredPermissions: ['settings:read'] },
+    { path: '/admin', icon: ShieldAlert, label: 'Administration', requiredPermissions: ['admin:access'] },
   ];
 
   const visibleNavItems = navItems.filter((item) => hasAnyPermission(item.requiredPermissions));

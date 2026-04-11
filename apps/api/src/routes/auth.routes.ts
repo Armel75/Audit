@@ -254,7 +254,9 @@ router.post('/register', async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 12); // Use cost 12 for better security
-    const role = await prisma.role.findFirst({ where: { name: 'Auditeur' } });
+    const role = await prisma.role.findFirst({
+      where: { name: { equals: 'Auditeur', mode: 'insensitive' } }
+    });
 
     if (!role) {
       return res.status(500).json({ error: 'Role introuvable' });

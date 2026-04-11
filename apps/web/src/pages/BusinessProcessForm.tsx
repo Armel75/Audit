@@ -25,12 +25,12 @@ export default function BusinessProcessForm() {
   useEffect(() => {
     apiFetch(`${API_BASE}/referential/auditable-entities`)
       .then(res => res.json())
-      .then(data => setEntities(data))
+      .then(data => { if (Array.isArray(data)) setEntities(data); })
       .catch(console.error);
 
     apiFetch(`${API_BASE}/settings/departments`)
       .then(res => res.json())
-      .then(data => setDepartments(data))
+      .then(data => { if (Array.isArray(data)) setDepartments(data); })
       .catch(console.error);
   }, []);
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, Trash2, CheckCircle, Clock, FileText, Target, List, User, Flag, Paperclip } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, CheckCircle, Clock, FileText, Target, List, User, Flag, Paperclip, Play, Square, AlertTriangle, RotateCcw } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -12,6 +12,44 @@ const programStatusLabels: Record<string, string> = {
   VALIDATED: 'Validé',
   CANCELLED: 'Annulé',
   CLOSED: 'Clôturé',
+};
+
+const procedureStatusLabels: Record<string, string> = {
+  PLANNED: 'Planifiée',
+  IN_PROGRESS: 'En cours',
+  BLOCKED: 'Bloquée',
+  COMPLETED: 'Terminée',
+};
+
+const procedureStatusConfig: Record<string, { bg: string; text: string; border: string }> = {
+  PLANNED: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200' },
+  IN_PROGRESS: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200' },
+  BLOCKED: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' },
+  COMPLETED: { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200' },
+};
+
+const procedureStatusIcon: Record<string, typeof Clock> = {
+  PLANNED: Clock,
+  IN_PROGRESS: Play,
+  BLOCKED: AlertTriangle,
+  COMPLETED: CheckCircle,
+};
+
+// Transitions autorisées par statut actuel
+const procedureTransitions: Record<string, { status: string; label: string; icon: typeof Play; tone: string }[]> = {
+  PLANNED: [
+    { status: 'IN_PROGRESS', label: 'Démarrer', icon: Play, tone: 'text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-200' },
+  ],
+  IN_PROGRESS: [
+    { status: 'COMPLETED', label: 'Terminer', icon: CheckCircle, tone: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-200' },
+    { status: 'BLOCKED', label: 'Bloquer', icon: AlertTriangle, tone: 'text-red-600 bg-red-50 hover:bg-red-100 border-red-200' },
+  ],
+  BLOCKED: [
+    { status: 'IN_PROGRESS', label: 'Reprendre', icon: Play, tone: 'text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-200' },
+  ],
+  COMPLETED: [
+    { status: 'IN_PROGRESS', label: 'Reprendre (rework)', icon: RotateCcw, tone: 'text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-200' },
+  ],
 };
 
 interface Procedure {
@@ -61,6 +99,7 @@ export default function AuditProgramDetails() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const canApproveProgram = user?.permissions?.includes('audit_program:approve') ?? false;
+  const canExecuteProcedure = user?.permissions?.includes('audit_procedure:execute') ?? false;
   const [program, setProgram] = useState<Program | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -164,6 +203,32 @@ export default function AuditProgramDetails() {
       alert(err.message);
     } finally {
       setSubmittingProc(false);
+    }
+  };
+
+  const handleProcedureStatusChange = async (procId: number, newStatus: string) => {
+    const labelMap: Record<string, string> = {
+      IN_PROGRESS: 'démarrer',
+      COMPLETED: 'terminer',
+      BLOCKED: 'bloquer',
+    };
+    const action = labelMap[newStatus] || 'modifier le statut de';
+    if (!confirm(`Voulez-vous vraiment ${action} cette procédure ?`)) return;
+
+    try {
+      const res = await apiFetch(`${API_BASE}/programs/procedures/${procId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Erreur lors du changement de statut');
+        return;
+      }
+      fetchProgram();
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
@@ -473,9 +538,16 @@ export default function AuditProgramDetails() {
                             {proc.sequenceNo}
                           </span>
                           <h4 className="text-base font-medium text-slate-900">{proc.title}</h4>
-                          <span className="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                            {proc.status}
-                          </span>
+                          {(() => {
+                            const cfg = procedureStatusConfig[proc.status] || procedureStatusConfig.PLANNED;
+                            const StatusIcon = procedureStatusIcon[proc.status] || Clock;
+                            return (
+                              <span className={`ml-3 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+                                <StatusIcon className="w-3 h-3" />
+                                {procedureStatusLabels[proc.status] || proc.status}
+                              </span>
+                            );
+                          })()}
                         </div>
                         
                         <div className="ml-9 space-y-3">
@@ -549,25 +621,46 @@ export default function AuditProgramDetails() {
                             </div>
                         </div>
                       </div>
-                      <div className="ml-4 flex space-x-2">
-                        <button
-                          onClick={() => openEditProcedureModal(proc)}
-                          disabled={!canEdit}
-                          title={!canEdit ? 'Modification impossible : programme approuvé ou mission en cours' : undefined}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProcedure(proc.id)}
-                          disabled={!canEdit}
-                          title={!canEdit ? 'Modification impossible : programme approuvé ou mission en courses' : undefined}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Supprimer
-                        </button>
+                      <div className="ml-4 flex flex-col gap-2">
+                        {/* Boutons de transition de statut */}
+                        {canExecuteProcedure && !['COMPLETED', 'CLOSED'].includes(program.status) && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {(procedureTransitions[proc.status] || []).map(t => {
+                              const TIcon = t.icon;
+                              return (
+                                <button
+                                  key={t.status}
+                                  onClick={() => handleProcedureStatusChange(proc.id, t.status)}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium border rounded-lg transition-colors ${t.tone}`}
+                                >
+                                  <TIcon className="w-3.5 h-3.5" />
+                                  {t.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {/* Boutons modifier / supprimer (structure) */}
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => openEditProcedureModal(proc)}
+                            disabled={!canEdit}
+                            title={!canEdit ? 'Modification impossible : programme approuvé ou mission en cours' : undefined}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                            Modifier
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProcedure(proc.id)}
+                            disabled={!canEdit}
+                            title={!canEdit ? 'Modification impossible : programme approuvé ou mission en cours' : undefined}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Supprimer
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </li>

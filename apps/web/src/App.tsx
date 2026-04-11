@@ -83,7 +83,7 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="dashboard-dg" element={<DashboardDG />} />
+            <Route path="dashboard-dg" element={<PermissionRoute requiredPermissions={['dashboard_dg:read']}><DashboardDG /></PermissionRoute>} />
             <Route path="plans" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlans /></PermissionRoute>} />
             <Route path="plans/:id" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlanDetails /></PermissionRoute>} />
             <Route path="missions" element={<PermissionRoute requiredPermissions={['audit_mission:read']}><Missions /></PermissionRoute>} />
@@ -94,9 +94,9 @@ export default function App() {
             <Route path="programs/:programId/procedures/new" element={<PermissionRoute requiredPermissions={['audit_procedure:create']}><ProcedureFormPage /></PermissionRoute>} />
             <Route path="findings/:id" element={<PermissionRoute requiredPermissions={['finding:read']}><FindingDetails /></PermissionRoute>} />
             <Route path="recommendations/:id" element={<PermissionRoute requiredPermissions={['recommendation:read']}><RecommendationDetails /></PermissionRoute>} />
-            <Route path="referential" element={<PermissionRoute requiredPermissions={['department:read', 'risk:read', 'control:read', 'business_process:read']}><Referential /></PermissionRoute>} />
+            <Route path="referential" element={<PermissionRoute requiredPermissions={['referential:access']}><Referential /></PermissionRoute>} />
             <Route path="settings" element={<PermissionRoute requiredPermissions={['settings:read']}><Settings /></PermissionRoute>} />
-            <Route path="admin" element={<PermissionRoute requiredPermissions={['admin:access', 'tenant:read', 'user:read', 'role:read', 'permission:read', 'token:read']}><AdminSettings /></PermissionRoute>} />
+            <Route path="admin" element={<PermissionRoute requiredPermissions={['admin:access']}><AdminSettings /></PermissionRoute>} />
             <Route path="users/:id" element={<PermissionRoute requiredPermissions={['user:read']}><UserDetail /></PermissionRoute>} />
             <Route path="/missions/new" element={<PermissionRoute requiredPermissions={['audit_mission:create']}><CreateMission /></PermissionRoute>} />
             <Route path="/missions/:id/edit" element={<PermissionRoute requiredPermissions={['audit_mission:update']}><MissionEdit /></PermissionRoute>} />
@@ -108,7 +108,7 @@ export default function App() {
             <Route path="/evidences" element={<PermissionRoute requiredPermissions={['evidence:read']}><Evidences /></PermissionRoute>} />
             <Route path="/evidences/create" element={<PermissionRoute requiredPermissions={['evidence:create']}><EvidenceCreate /></PermissionRoute>} />
             <Route path="/evidences/edit/:id" element={<PermissionRoute requiredPermissions={['evidence:create']}><EvidenceEdit /></PermissionRoute>} />
-            <Route path="/approvals" element={<PermissionRoute requiredPermissions={['audit_plan:approve', 'audit_program:approve', 'finding:validate', 'recommendation:validate']}><ApprovalCenter /></PermissionRoute>} />
+            <Route path="/approvals" element={<PermissionRoute requiredPermissions={['approval:read']}><ApprovalCenter /></PermissionRoute>} />
           </Route>
         </Routes>
       </AuthProvider>

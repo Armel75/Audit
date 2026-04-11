@@ -8,7 +8,8 @@ import {
   deleteAuditProgram,
   createAuditProcedure,
   updateAuditProcedure,
-  deleteAuditProcedure
+  deleteAuditProcedure,
+  updateProcedureStatus
 } from '../controllers/auditProgram.controller';
 
 const router = Router();
@@ -25,6 +26,7 @@ router.delete('/:id', requireAnyPermission(['audit_program:delete', 'audit_progr
 // Audit Procedures
 router.post('/:programId/procedures', requirePermission('audit_procedure:create'), createAuditProcedure);
 router.put('/procedures/:procedureId', requirePermission('audit_procedure:update'), updateAuditProcedure);
+router.patch('/procedures/:procedureId/status', requirePermission('audit_procedure:execute'), updateProcedureStatus);
 router.delete('/procedures/:procedureId', requireAnyPermission(['audit_procedure:delete', 'audit_procedure:update']), deleteAuditProcedure);
 
 export default router;

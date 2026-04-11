@@ -2,7 +2,7 @@ import RecommendationItem from './RecommendationItem';
 
 export default function RecommendationList({ recommendations = [], onRefresh }: any) {
 
-  if (!recommendations || recommendations.length === 0) {
+  if (!Array.isArray(recommendations) || recommendations.length === 0) {
     return (
       <div className="p-8 text-center text-sm text-slate-500">
         Aucune recommandation

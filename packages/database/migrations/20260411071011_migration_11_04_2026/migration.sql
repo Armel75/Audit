@@ -484,20 +484,37 @@ CREATE TABLE [dbo].[AuditProcedure] (
     [id] INT NOT NULL IDENTITY(1,1),
     [tenantId] INT NOT NULL,
     [programId] INT NOT NULL,
-    [missionId] INT NOT NULL,
-    [sequenceNo] INT NOT NULL CONSTRAINT [AuditProcedure_sequenceNo_df] DEFAULT 1,
-    [title] VARCHAR(4000) NOT NULL,
-    [procedureType] VARCHAR(100),
-    [description] VARCHAR(4000),
-    [expectedEvidence] VARCHAR(4000),
-    [status] VARCHAR(100) NOT NULL CONSTRAINT [AuditProcedure_status_df] DEFAULT 'PENDING',
-    [dueDate] DATETIME2,
     [programVersionId] INT NOT NULL,
-    [performedById] INT,
+    [sequenceNo] INT NOT NULL,
+    [code] VARCHAR(255),
+    [title] VARCHAR(4000) NOT NULL,
+    [description] VARCHAR(4000),
+    [procedureType] VARCHAR(100),
+    [dueDate] DATETIME2,
+    [priorityId] INT,
+    [controlId] INT,
+    [riskId] INT,
+    [businessProcessId] INT,
+    [expectedEvidence] VARCHAR(4000),
+    [status] VARCHAR(100) NOT NULL CONSTRAINT [AuditProcedure_status_df] DEFAULT 'PLANNED',
+    [plannedAt] DATETIME2,
+    [startedAt] DATETIME2,
     [completedAt] DATETIME2,
+    [assignedToId] INT,
+    [performedById] INT,
+    [reviewedById] INT,
+    [reviewStatus] VARCHAR(100),
+    [reviewComment] VARCHAR(4000),
+    [reviewedAt] DATETIME2,
+    [result] VARCHAR(100),
+    [issueDetected] BIT NOT NULL CONSTRAINT [AuditProcedure_issueDetected_df] DEFAULT 0,
+    [severity] VARCHAR(100),
+    [reworkCount] INT NOT NULL CONSTRAINT [AuditProcedure_reworkCount_df] DEFAULT 0,
+    [snapshot] VARCHAR(4000),
     [createdAt] DATETIME2 NOT NULL CONSTRAINT [AuditProcedure_createdAt_df] DEFAULT CURRENT_TIMESTAMP,
     [updatedAt] DATETIME2 NOT NULL,
-    CONSTRAINT [AuditProcedure_pkey] PRIMARY KEY CLUSTERED ([id])
+    CONSTRAINT [AuditProcedure_pkey] PRIMARY KEY CLUSTERED ([id]),
+    CONSTRAINT [AuditProcedure_programId_sequenceNo_key] UNIQUE NONCLUSTERED ([programId],[sequenceNo])
 );
 
 -- CreateTable
@@ -510,6 +527,7 @@ CREATE TABLE [dbo].[Finding] (
     [riskLevelId] INT,
     [riskLevelLegacy] VARCHAR(4000),
     [residualRiskLevelId] INT,
+    [procedureId] INT,
     [process] VARCHAR(4000),
     [cause] VARCHAR(4000),
     [impact] VARCHAR(4000),
@@ -656,6 +674,7 @@ CREATE TABLE [dbo].[Document] (
     [missionId] INT,
     [findingId] INT,
     [recommendationId] INT,
+    [procedureId] INT,
     [uploadedById] INT NOT NULL,
     [createdAt] DATETIME2 NOT NULL CONSTRAINT [Document_createdAt_df] DEFAULT CURRENT_TIMESTAMP,
     [deletedAt] DATETIME2,
@@ -699,7 +718,7 @@ CREATE TABLE [dbo].[Approval] (
     [missionId] INT,
     [findingId] INT,
     [recommendationId] INT,
-    [auditProgramVersionId] INT NOT NULL,
+    [auditProgramVersionId] INT,
     [auditProgramId] INT,
     [createdAt] DATETIME2 NOT NULL CONSTRAINT [Approval_createdAt_df] DEFAULT CURRENT_TIMESTAMP,
     [updatedAt] DATETIME2 NOT NULL,
@@ -890,10 +909,19 @@ CREATE NONCLUSTERED INDEX [AuditProgramScope_riskId_idx] ON [dbo].[AuditProgramS
 CREATE NONCLUSTERED INDEX [AuditCriteria_tenantId_programId_idx] ON [dbo].[AuditCriteria]([tenantId], [programId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [AuditProcedure_tenantId_missionId_idx] ON [dbo].[AuditProcedure]([tenantId], [missionId]);
+CREATE NONCLUSTERED INDEX [AuditProcedure_tenantId_programId_idx] ON [dbo].[AuditProcedure]([tenantId], [programId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [AuditProcedure_programId_sequenceNo_idx] ON [dbo].[AuditProcedure]([programId], [sequenceNo]);
+CREATE NONCLUSTERED INDEX [AuditProcedure_controlId_idx] ON [dbo].[AuditProcedure]([controlId]);
+
+-- CreateIndex
+CREATE NONCLUSTERED INDEX [AuditProcedure_riskId_idx] ON [dbo].[AuditProcedure]([riskId]);
+
+-- CreateIndex
+CREATE NONCLUSTERED INDEX [AuditProcedure_businessProcessId_idx] ON [dbo].[AuditProcedure]([businessProcessId]);
+
+-- CreateIndex
+CREATE NONCLUSTERED INDEX [AuditProcedure_status_idx] ON [dbo].[AuditProcedure]([status]);
 
 -- CreateIndex
 CREATE NONCLUSTERED INDEX [Finding_missionId_idx] ON [dbo].[Finding]([missionId]);
@@ -909,6 +937,9 @@ CREATE NONCLUSTERED INDEX [Finding_businessProcessId_idx] ON [dbo].[Finding]([bu
 
 -- CreateIndex
 CREATE NONCLUSTERED INDEX [Finding_controlId_idx] ON [dbo].[Finding]([controlId]);
+
+-- CreateIndex
+CREATE NONCLUSTERED INDEX [Finding_procedureId_idx] ON [dbo].[Finding]([procedureId]);
 
 -- CreateIndex
 CREATE NONCLUSTERED INDEX [FindingComment_findingId_createdAt_idx] ON [dbo].[FindingComment]([findingId], [createdAt]);
@@ -954,6 +985,9 @@ CREATE NONCLUSTERED INDEX [Document_findingId_idx] ON [dbo].[Document]([findingI
 
 -- CreateIndex
 CREATE NONCLUSTERED INDEX [Document_recommendationId_idx] ON [dbo].[Document]([recommendationId]);
+
+-- CreateIndex
+CREATE NONCLUSTERED INDEX [Document_procedureId_idx] ON [dbo].[Document]([procedureId]);
 
 -- CreateIndex
 CREATE NONCLUSTERED INDEX [Evidence_tenantId_evidenceType_idx] ON [dbo].[Evidence]([tenantId], [evidenceType]);
@@ -1157,7 +1191,7 @@ ALTER TABLE [dbo].[AuditProgram] ADD CONSTRAINT [AuditProgram_tenantId_fkey] FOR
 ALTER TABLE [dbo].[AuditProgram] ADD CONSTRAINT [AuditProgram_missionId_fkey] FOREIGN KEY ([missionId]) REFERENCES [dbo].[AuditMission]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[AuditProgram] ADD CONSTRAINT [AuditProgram_preparedById_fkey] FOREIGN KEY ([preparedById]) REFERENCES [dbo].[User]([id]) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE [dbo].[AuditProgram] ADD CONSTRAINT [AuditProgram_preparedById_fkey] FOREIGN KEY ([preparedById]) REFERENCES [dbo].[User]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
 ALTER TABLE [dbo].[AuditProgramVersion] ADD CONSTRAINT [AuditProgramVersion_tenantId_fkey] FOREIGN KEY ([tenantId]) REFERENCES [dbo].[Tenant]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
@@ -1202,16 +1236,31 @@ ALTER TABLE [dbo].[AuditCriteria] ADD CONSTRAINT [AuditCriteria_programId_fkey] 
 ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_tenantId_fkey] FOREIGN KEY ([tenantId]) REFERENCES [dbo].[Tenant]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_programId_fkey] FOREIGN KEY ([programId]) REFERENCES [dbo].[AuditProgram]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_programId_fkey] FOREIGN KEY ([programId]) REFERENCES [dbo].[AuditProgram]([id]) ON DELETE CASCADE ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_missionId_fkey] FOREIGN KEY ([missionId]) REFERENCES [dbo].[AuditMission]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_programVersionId_fkey] FOREIGN KEY ([programVersionId]) REFERENCES [dbo].[AuditProgramVersion]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_programVersionId_fkey] FOREIGN KEY ([programVersionId]) REFERENCES [dbo].[AuditProgramVersion]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
+ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_priorityId_fkey] FOREIGN KEY ([priorityId]) REFERENCES [dbo].[PriorityLevel]([id]) ON DELETE SET NULL ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_controlId_fkey] FOREIGN KEY ([controlId]) REFERENCES [dbo].[Control]([id]) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_riskId_fkey] FOREIGN KEY ([riskId]) REFERENCES [dbo].[Risk]([id]) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_businessProcessId_fkey] FOREIGN KEY ([businessProcessId]) REFERENCES [dbo].[BusinessProcess]([id]) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_assignedToId_fkey] FOREIGN KEY ([assignedToId]) REFERENCES [dbo].[User]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
 ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_performedById_fkey] FOREIGN KEY ([performedById]) REFERENCES [dbo].[User]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE [dbo].[AuditProcedure] ADD CONSTRAINT [AuditProcedure_reviewedById_fkey] FOREIGN KEY ([reviewedById]) REFERENCES [dbo].[User]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
 ALTER TABLE [dbo].[Finding] ADD CONSTRAINT [Finding_tenantId_fkey] FOREIGN KEY ([tenantId]) REFERENCES [dbo].[Tenant]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
@@ -1221,6 +1270,9 @@ ALTER TABLE [dbo].[Finding] ADD CONSTRAINT [Finding_riskLevelId_fkey] FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE [dbo].[Finding] ADD CONSTRAINT [Finding_residualRiskLevelId_fkey] FOREIGN KEY ([residualRiskLevelId]) REFERENCES [dbo].[RiskLevel]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE [dbo].[Finding] ADD CONSTRAINT [Finding_procedureId_fkey] FOREIGN KEY ([procedureId]) REFERENCES [dbo].[AuditProcedure]([id]) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE [dbo].[Finding] ADD CONSTRAINT [Finding_riskId_fkey] FOREIGN KEY ([riskId]) REFERENCES [dbo].[Risk]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
@@ -1332,6 +1384,9 @@ ALTER TABLE [dbo].[Document] ADD CONSTRAINT [Document_findingId_fkey] FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE [dbo].[Document] ADD CONSTRAINT [Document_recommendationId_fkey] FOREIGN KEY ([recommendationId]) REFERENCES [dbo].[Recommendation]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE [dbo].[Document] ADD CONSTRAINT [Document_procedureId_fkey] FOREIGN KEY ([procedureId]) REFERENCES [dbo].[AuditProcedure]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
 ALTER TABLE [dbo].[Document] ADD CONSTRAINT [Document_uploadedById_fkey] FOREIGN KEY ([uploadedById]) REFERENCES [dbo].[User]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;

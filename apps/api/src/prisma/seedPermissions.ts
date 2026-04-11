@@ -47,6 +47,12 @@ const permissions = [
   // ================= SETTINGS =================
   { code: 'settings:read', description: 'Acceder aux parametres' },
   { code: 'settings:update', description: 'Modifier les parametres' },
+  { code: 'audit_type:read', description: 'Voir les types d audit' },
+  { code: 'risk_level:read', description: 'Voir les niveaux de risque' },
+  { code: 'priority_level:read', description: 'Voir les niveaux de priorite' },
+
+  // ================= REFERENTIAL =================
+  { code: 'referential:access', description: 'Acceder au referentiel' },
 
   // ================= DEPARTMENT =================
   { code: 'department:create', description: 'Creer un departement' },
@@ -152,7 +158,8 @@ const permissions = [
   { code: 'glpi:manage', description: 'Gerer les liaisons GLPI' },
 
   // ================= DASHBOARD =================
-  { code: 'dashboard:read', description: 'Voir les tableaux de bord' },
+  { code: 'dashboard:read', description: 'Voir le tableau de bord' },
+  { code: 'dashboard_dg:read', description: 'Voir le tableau de bord DG' },
 
   // ================= TOKENS =================
   { code: 'token:read', description: 'Voir les tokens' },
