@@ -15,9 +15,11 @@ import {
   Sun,
   Moon,
   CheckCircle,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import ChangePasswordModal from './ChangePasswordModal';
 
 type NavItem = {
   path: string;
@@ -32,6 +34,7 @@ export default function Layout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { resolvedTheme, toggleTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -140,6 +143,19 @@ export default function Layout() {
 
           <div className="mb-3">
             <button
+              onClick={() => setShowChangePassword(true)}
+              className={`flex items-center ${
+                isCollapsed ? 'justify-center' : 'gap-3'
+              } px-3 py-2.5 w-full rounded-lg font-medium transition-colors
+              text-slate-400 hover:bg-slate-900 hover:text-slate-200`}
+            >
+              <Lock className="w-5 h-5" />
+              {!isCollapsed && 'Mot de passe'}
+            </button>
+          </div>
+
+          <div className="mb-3">
+            <button
               onClick={toggleTheme}
               className={`flex items-center ${
                 isCollapsed ? 'justify-center' : 'gap-3'
@@ -205,6 +221,11 @@ export default function Layout() {
           </div>
         </main>
       </div>
+
+      <ChangePasswordModal
+        isOpen={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+      />
     </div>
   );
 }

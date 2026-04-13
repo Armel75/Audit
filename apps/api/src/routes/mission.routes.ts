@@ -1,11 +1,17 @@
 import { Router } from 'express';
 import * as missionController from '../controllers/mission.controller';
+import * as missionExportController from '../controllers/missionExport.controller';
 import { requireAuth, requireAnyPermission, requirePermission } from '../middleware/auth.middleware';
 
 const router = Router();
 
 // Apply authentication to all mission routes
 router.use(requireAuth);
+
+// Filtrage multi-critères + Export
+router.post('/query', requirePermission('audit_mission:read'), missionExportController.queryMissions);
+router.post('/export/excel', requirePermission('audit_mission:read'), missionExportController.exportMissionsExcel);
+router.post('/export/pdf', requirePermission('audit_mission:read'), missionExportController.exportMissionsPdf);
 
 // Audit Mission
 router.get('/', requirePermission('audit_mission:read'), missionController.getMissions);
@@ -33,5 +39,11 @@ router.delete('/scopes/:scopeId', requirePermission('audit_mission:assign'), mis
 router.get('/:id/report', requirePermission('audit_mission:read'), missionController.getMissionReport);
 
 router.post('/:id/report/generate', requireAnyPermission(['audit_mission:update', 'document:upload']), missionController.generateMissionReport);
+
+// Ordre de Mission
+router.get('/:id/order', requirePermission('audit_mission:read'), missionController.generateMissionOrder);
+
+// Aggregated Tickets
+router.get('/:id/tickets', requirePermission('audit_mission:read'), missionController.getMissionTickets);
 
 export default router;

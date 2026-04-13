@@ -73,6 +73,7 @@ const permissions = [
   { code: 'audit_mission:update', description: 'Modifier une mission' },
   { code: 'audit_mission:delete', description: 'Supprimer une mission' },
   { code: 'audit_mission:assign', description: 'Assigner des membres a une mission' },
+  { code: 'audit_mission:filter', description: 'Filtrer les missions par pilote' },
 
   // ================= AUDIT PROGRAM =================
   { code: 'audit_program:create', description: 'Creer un programme d audit' },

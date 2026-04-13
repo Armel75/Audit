@@ -35,6 +35,35 @@ export const forgotPassword = async (req: Request, res: Response) => {
 };
 
 
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ error: "Ancien et nouveau mot de passe requis" });
+    }
+
+    const userId = req.user!.id;
+    const tenantId = req.user!.tenantId;
+
+    await AuthService.changePassword(userId, tenantId, oldPassword, newPassword);
+
+    return res.json({ message: "Mot de passe modifié avec succès" });
+  } catch (error: any) {
+    if (error.message === "WEAK_PASSWORD") {
+      return res.status(400).json({ error: "Le nouveau mot de passe doit contenir au moins 8 caractères" });
+    }
+    if (error.message === "INVALID_OLD_PASSWORD") {
+      return res.status(401).json({ error: "Ancien mot de passe incorrect" });
+    }
+    if (error.message === "SAME_PASSWORD") {
+      return res.status(400).json({ error: "Le nouveau mot de passe doit être différent de l'ancien" });
+    }
+    return res.status(500).json({ error: "Erreur serveur" });
+  }
+};
+
+
 export const resetPassword = async (req: Request, res: Response) => {
   try {
     const { token, newPassword } = req.body;

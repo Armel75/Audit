@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload, Users, Target, Clock, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload, Users, Target, Clock, Edit2, Trash2, CheckCircle, XCircle, Ticket, ScrollText } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import RecommendationList from '../components/RecommendationList';
 import RecommendationFormModal from '../components/RecommendationFormModal';
@@ -179,7 +179,7 @@ export default function MissionDetails() {
   const [error, setError] = useState<string | null>(null);
   //const [activeTab, setActiveTab] = useState<'details' | 'members' | 'scopes' | 'programs' | 'history'>('details');
   const [activeTab, setActiveTab] = useState<
-    'details' | 'members' | 'scopes' | 'programs' | 'history' | 'recommendations'
+    'details' | 'members' | 'scopes' | 'programs' | 'history' | 'recommendations' | 'tickets'
   >('members');
   // Modals state
   const [isFindingModalOpen, setIsFindingModalOpen] = useState(false);
@@ -190,6 +190,7 @@ export default function MissionDetails() {
   const [isScopeModalOpen, setIsScopeModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
+  const [generatingOrder, setGeneratingOrder] = useState(false);
   // Forms state
   const [statusForm, setStatusForm] = useState({ status: '', reason: '' });
   const [memberForm, setMemberForm] = useState({ userId: '', roleInMission: '', isLead: false, notes: '' });
@@ -207,6 +208,7 @@ export default function MissionDetails() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [missionTickets, setMissionTickets] = useState<any[]>([]);
   const [isRecommendationModalOpen, setIsRecommendationModalOpen] = useState(false);
   const [selectedFindingId, setSelectedFindingId] = useState<number | null>(null);
   const [selectedAction, setSelectedAction] = useState<any>(null);
@@ -237,9 +239,22 @@ export default function MissionDetails() {
       console.error(err);
     }
   };
+
+  const fetchMissionTickets = async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}/missions/${id}/tickets`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data)) setMissionTickets(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchMission();
     fetchRecommendations();
+    fetchMissionTickets();
     // Fetch users for members modal
     apiFetch(`${API_BASE}/users`)
       .then(res => res.json())
@@ -694,6 +709,32 @@ export default function MissionDetails() {
     }
   };
 
+  const handleDownloadMissionOrder = async () => {
+    try {
+      setGeneratingOrder(true);
+      const res = await apiFetch(`${API_BASE}/missions/${id}/order`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Erreur lors de la génération de l'ordre de mission");
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ordre-mission-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la génération de l'ordre de mission");
+    } finally {
+      setGeneratingOrder(false);
+    }
+  };
+
   const canRequestApproval =
   mission.status === 'UNDER_REVIEW' &&
   !mission.approvals?.some(a => a.decision === 'APPROVED');
@@ -794,6 +835,16 @@ export default function MissionDetails() {
                 Voir le rapport
               </button>
             )}
+            {/* Ordre de Mission */}
+            <button
+              onClick={handleDownloadMissionOrder}
+              disabled={generatingOrder}
+              className="inline-flex items-center gap-2 px-6 py-3 border border-emerald-200 hover:border-emerald-300 rounded-3xl text-sm font-semibold text-emerald-700 shadow-sm hover:shadow transition-all duration-200 active:scale-[0.97] bg-white hover:bg-emerald-50 disabled:opacity-60 disabled:cursor-wait"
+              title="Télécharger l'ordre de mission en PDF"
+            >
+              <ScrollText className="h-4 w-4" />
+              {generatingOrder ? 'Génération…' : 'Ordre de mission'}
+            </button>
           </div>
         </div>
       </div>
@@ -848,6 +899,16 @@ export default function MissionDetails() {
               } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
             Recommandations ({recommendations.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('tickets')}
+            className={`${activeTab === 'tickets'
+              ? 'border-indigo-500 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
+          >
+            <Ticket className="w-4 h-4 mr-2" />
+            Tickets GLPI ({missionTickets.length})
           </button>
           <button
             onClick={() => setActiveTab('history')}
@@ -1492,6 +1553,74 @@ export default function MissionDetails() {
             recommendations={recommendations}
             onRefresh={fetchRecommendations}
           />
+        </div>
+      )}
+      {activeTab === 'tickets' && (
+        <div className="bg-white shadow-sm border border-slate-100 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
+          <div className="px-8 py-6 border-b border-slate-100">
+            <h3 className="text-xl font-semibold leading-6 text-slate-900">Tickets GLPI liés</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Tickets rattachés via les recommandations de cette mission.
+            </p>
+          </div>
+
+          {missionTickets.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-sm">
+              Aucun ticket GLPI lié à cette mission.
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600 uppercase text-xs tracking-wide">
+                <tr>
+                  <th className="p-4 text-left">N° Ticket</th>
+                  <th className="p-4 text-left">Titre</th>
+                  <th className="p-4 text-left">Statut</th>
+                  <th className="p-4 text-left">Priorité</th>
+                  <th className="p-4 text-left">Demandeur</th>
+                  <th className="p-4 text-left">Assigné à</th>
+                  <th className="p-4 text-left">Constat</th>
+                  <th className="p-4 text-left">Recommandation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {missionTickets.map((link: any) => {
+                  const t = link.ticket;
+                  const statusColors: Record<string, string> = {
+                    OPEN: 'bg-blue-100 text-blue-800',
+                    PENDING: 'bg-amber-100 text-amber-800',
+                    SOLVED: 'bg-emerald-100 text-emerald-800',
+                    CLOSED: 'bg-slate-100 text-slate-800',
+                    ASSIGNED: 'bg-indigo-100 text-indigo-800',
+                    PLANNED: 'bg-purple-100 text-purple-800',
+                  };
+                  return (
+                    <tr key={link.id} className="border-t hover:bg-slate-50 transition">
+                      <td className="p-4 font-mono text-slate-700">
+                        {t?.ticketNumber || t?.glpiId || '-'}
+                      </td>
+                      <td className="p-4 font-medium text-slate-800 max-w-xs truncate">
+                        {t?.title || '-'}
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[t?.status] || 'bg-slate-100 text-slate-700'}`}>
+                          {t?.status || '-'}
+                        </span>
+                      </td>
+                      <td className="p-4 text-slate-600">{t?.priority || '-'}</td>
+                      <td className="p-4 text-slate-600">{t?.requesterGlpiUser?.fullName || '-'}</td>
+                      <td className="p-4 text-slate-600">{t?.assigneeGlpiUser?.fullName || '-'}</td>
+                      <td className="p-4 text-slate-600 max-w-[150px] truncate" title={link.recommendation?.finding?.title}>
+                        {link.recommendation?.finding?.title || '-'}
+                      </td>
+                      <td className="p-4 text-slate-600 max-w-[150px] truncate" title={link.recommendation?.title}>
+                        {link.recommendation?.title || '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
       {/* Modals */}

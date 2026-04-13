@@ -7,7 +7,9 @@ import * as missionService from '../services/mission.service';
 import {
   getMissionReportData,
   buildReportHTML,
-  generatePDF
+  generatePDF,
+  getMissionOrderData,
+  buildMissionOrderHTML
 } from '../services/report.service';
 
 import { DocumentService } from '../services/document.service';
@@ -74,10 +76,9 @@ export const getMissions = async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;    
     const skip = (page - 1) * limit;
 
-    // ✅ NOUVEAU : paramètre de filtre
     const type = req.query.type as string; // 'active' | 'archive'
+    const leaderId = req.query.leaderId as string;
 
-    // ✅ NOUVEAU : construction dynamique du where
     const where: any = { tenantId };
 
     if (type === 'active') {
@@ -86,6 +87,10 @@ export const getMissions = async (req: Request, res: Response) => {
 
     if (type === 'archive') {
       where.status = 'CLOSED';
+    }
+
+    if (leaderId) {
+      where.leaderId = parseInt(leaderId);
     }
 
     const [missions, total] = await Promise.all([
@@ -952,6 +957,80 @@ export const generateMissionReport = async (req: Request, res: Response) => {
       error: 'Erreur génération rapport',
       details: message
     });
+  }
+};
+
+// ==========================================
+// ORDRE DE MISSION (PDF download)
+// ==========================================
+export const generateMissionOrder = async (req: Request, res: Response) => {
+  try {
+    const missionId = Number(req.params.id);
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Non autorisé' });
+    }
+
+    const mission = await getMissionOrderData(missionId, tenantId);
+
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission introuvable' });
+    }
+
+    const html = buildMissionOrderHTML(mission);
+    const pdfBuffer = await generatePDF(html);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=ordre-mission-${missionId}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Error generating mission order:', error);
+    res.status(500).json({ error: "Erreur lors de la génération de l'ordre de mission" });
+  }
+};
+
+// ==========================================
+// AGGREGATED TICKETS (read-only)
+// ==========================================
+export const getMissionTickets = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
+
+    const missionId = parseInt(req.params.id);
+
+    const links = await prisma.recommendationTicket.findMany({
+      where: {
+        tenantId,
+        recommendation: {
+          finding: { missionId }
+        }
+      },
+      include: {
+        ticket: {
+          include: {
+            requesterGlpiUser: { select: { id: true, fullName: true } },
+            assigneeGlpiUser: { select: { id: true, fullName: true } }
+          }
+        },
+        recommendation: {
+          select: {
+            id: true,
+            title: true,
+            finding: {
+              select: { id: true, title: true }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(links);
+  } catch (error: any) {
+    console.error('Error fetching mission tickets:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des tickets' });
   }
 };
 

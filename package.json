@@ -18,7 +18,8 @@
     "clean": "rm -rf apps/*/dist"
   },
   "dependencies": {
-    "@google/genai": "^1.29.0"
+    "@google/genai": "^1.29.0",
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

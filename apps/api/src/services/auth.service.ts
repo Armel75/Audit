@@ -185,6 +185,44 @@ export class AuthService {
     return crypto.createHash('sha256').update(plainToken).digest('hex');
   }
 
+  static async changePassword(userId: number, tenantId: number, oldPassword: string, newPassword: string) {
+    if (!newPassword || newPassword.length < 8) {
+      throw new Error("WEAK_PASSWORD");
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { id: userId, tenantId }
+    });
+
+    if (!user) {
+      throw new Error("USER_NOT_FOUND");
+    }
+
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!isOldPasswordValid) {
+      throw new Error("INVALID_OLD_PASSWORD");
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, user.passwordHash);
+    if (isSamePassword) {
+      throw new Error("SAME_PASSWORD");
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { passwordHash: hashedPassword }
+      });
+
+      // Révoquer tous les refresh tokens → force re-login sur les autres sessions
+      await tx.refreshToken.deleteMany({
+        where: { userId }
+      });
+    });
+  }
+
   static async resetPassword(token: string, newPassword: string) {
     if (!newPassword || newPassword.length < 8) {
       throw new Error("WEAK_PASSWORD");
