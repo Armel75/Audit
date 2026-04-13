@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import ComboBox from '../components/ComboBox';
 import { useParams, Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload, Users, Target, Clock, Edit2, Trash2, CheckCircle, XCircle, Ticket, ScrollText } from 'lucide-react';
 import { apiFetch } from '../lib/api';
@@ -172,6 +173,8 @@ const missionTransitions: Record<
 };
 
 export default function MissionDetails() {
+    // Pour la recherche d'entité auditable dans le formulaire
+    const [entitySearchText, setEntitySearchText] = useState("");
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [mission, setMission] = useState<Mission | null>(null);
@@ -600,11 +603,30 @@ export default function MissionDetails() {
     mission.programs?.some(p => p.status === 'APPROVED');
   //const currentAction = missionTransitions[mission.status];
   const currentActions = missionTransitions[mission.status] || [];
-  const canUpdateMission = user?.permissions?.includes('audit_mission:update') ?? false;
+  // Permissions granulaires par action/étape
+  const canLaunchMission = user?.permissions?.includes('audit_mission:launch') ?? false;
+  const canApproveMission = user?.permissions?.includes('audit_mission:approve') ?? false;
+  const canSubmitReview = user?.permissions?.includes('audit_mission:submit_review') ?? false;
+  const canRollbackMission = user?.permissions?.includes('audit_mission:rollback') ?? false;
   const canDeleteMission = user?.permissions?.includes('audit_mission:delete') ?? false;
-  const visibleActions = currentActions.filter(action =>
-    action.next === 'CANCELLED' ? canDeleteMission : canUpdateMission
-  );
+  const canCancelMission = user?.permissions?.includes('audit_mission:cancel') ?? false;
+
+  // Map action.next à la permission requise
+  const actionPermissionMap: Record<string, boolean> = {
+    'READY': canLaunchMission, // ou une permission dédiée pour finaliser cadrage
+    'IN_PROGRESS': canLaunchMission,
+    'UNDER_REVIEW': canSubmitReview,
+    'APPROVED': canApproveMission,
+    'CLOSED': canApproveMission, // ou une permission dédiée si besoin
+    'PLANNED': canRollbackMission,
+    'CANCELLED': canCancelMission || canDeleteMission,
+  };
+
+  // Affichage dynamique selon la permission requise pour chaque action
+  const visibleActions = currentActions.filter(action => {
+    const perm = actionPermissionMap[action.next];
+    return perm === undefined ? false : perm;
+  });
   const canCreateFinding = mission.status === 'IN_PROGRESS';
   const canViewReport = ['UNDER_REVIEW', 'APPROVED', 'CLOSED'].includes(mission.status);
   const canEditCadrage = ['PLANNED', 'READY'].includes(mission.status);
@@ -1206,7 +1228,7 @@ export default function MissionDetails() {
                         </div>
                       </div>
                       {/* 🔥 ACTION */}
-                      {approval.decision === 'PENDING' && (
+                      {approval.decision === 'PENDING' && user?.permissions?.includes('audit_mission:approve') && (
                         <button
                           onClick={() => handleApprove(approval.id)}
                           className="text-xs px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-3xl font-medium shadow-sm hover:shadow transition-all duration-200 active:scale-95"
@@ -1393,8 +1415,16 @@ export default function MissionDetails() {
                   <div className="flex items-center gap-x-4">
                     {program.status === 'DRAFT' && (
                       <button
-                        onClick={() => handleRequestProgramApproval(program.id)}
-                        className="text-sm px-5 py-2.5 bg-indigo-600 text-white rounded-3xl hover:bg-indigo-700 font-medium shadow-sm transition-all duration-200 active:scale-95"
+                        onClick={() => {
+                          if (program._count.procedures === 0) {
+                            alert("Ajoutez au moins une procédure avant de demander l'approbation du programme.");
+                            return;
+                          }
+                          handleRequestProgramApproval(program.id);
+                        }}
+                        className={`text-sm px-5 py-2.5 rounded-3xl font-medium shadow-sm transition-all duration-200 active:scale-95 
+                          ${program._count.procedures === 0 ? 'bg-slate-300 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                        disabled={program._count.procedures === 0}
                       >
                         Demander validation
                       </button>
@@ -1471,20 +1501,11 @@ export default function MissionDetails() {
                           <div className="whitespace-nowrap text-right text-sm text-slate-500 flex flex-col items-end gap-3">
                             {new Date(history.changedAt).toLocaleString('fr-FR')}
                             <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => {
-                                  setEditingHistory(history);
-                                  setHistoryForm({ reason: history.reason || '' });
-                                  setIsHistoryModalOpen(true);
-                                }}
-                                className="text-slate-400 hover:text-blue-600 transition-colors p-1"
-                              >
+                              {/* Boutons désactivés */}
+                              <button disabled className="text-slate-200 cursor-not-allowed p-1">
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button
-                                onClick={() => handleDeleteHistory(history.id)}
-                                className="text-slate-400 hover:text-red-600 transition-colors p-1"
-                              >
+                              <button disabled className="text-slate-200 cursor-not-allowed p-1">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -1841,19 +1862,16 @@ export default function MissionDetails() {
                       <label className="block text-sm font-semibold text-slate-900 mb-2">
                         Entité auditable <span className="text-red-500">*</span>
                       </label>
-                      <select
+                      <ComboBox
+                        options={entities.map(e => ({
+                          label: `${e.name} (${e.code}) - ${e.entityType}`,
+                          value: String(e.id)
+                        }))}
                         value={scopeForm.auditableEntityId}
-                        onChange={(e) => setScopeForm({ ...scopeForm, auditableEntityId: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300"
+                        onChange={val => setScopeForm({ ...scopeForm, auditableEntityId: val })}
+                        placeholder="Rechercher une entité..."
                         required
-                      >
-                        <option value="">Sélectionner une entité à auditer</option>
-                        {entities.map(e => (
-                          <option key={e.id} value={e.id}>
-                            {e.name} ({e.code}) - {e.entityType}
-                          </option>
-                        ))}
-                      </select>
+                      />
                       <p className="text-xs text-slate-500 mt-2">Choisissez l'entité qui sera incluse dans le périmètre d'audit</p>
                     </div>
 

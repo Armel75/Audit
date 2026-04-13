@@ -400,8 +400,18 @@ export default function AuditProgramDetails() {
               {/* DEMANDER VALIDATION */}
               {program.status === 'DRAFT' && !hasPendingApproval && (
                 <button
-                  onClick={requestApproval}
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+                  onClick={() => {
+                    if (!program.procedures || program.procedures.length === 0) {
+                      alert("Ajoutez au moins une procédure avant de demander l'approbation du programme.");
+                      return;
+                    }
+                    requestApproval();
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 
+                    ${!program.procedures || program.procedures.length === 0 
+                      ? 'bg-slate-300 text-slate-400 cursor-not-allowed' 
+                      : 'text-white bg-indigo-600 hover:bg-indigo-700'}`}
+                  disabled={!program.procedures || program.procedures.length === 0}
                 >
                   Demander validation
                 </button>

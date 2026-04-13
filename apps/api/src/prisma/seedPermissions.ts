@@ -69,11 +69,17 @@ const permissions = [
 
   // ================= AUDIT MISSION =================
   { code: 'audit_mission:create', description: 'Creer une mission' },
-  { code: 'audit_mission:read', description: 'Voir les missions' },
+  { code: 'audit_mission:read', description: 'Voir les missions assignees' },
+  { code: 'audit_mission:read_all', description: 'Voir toutes les missions' },
   { code: 'audit_mission:update', description: 'Modifier une mission' },
   { code: 'audit_mission:delete', description: 'Supprimer une mission' },
   { code: 'audit_mission:assign', description: 'Assigner des membres a une mission' },
   { code: 'audit_mission:filter', description: 'Filtrer les missions par pilote' },
+  // Permissions granulaires pour les actions critiques sur les missions
+  { code: 'audit_mission:launch', description: 'Lancer une mission' },
+  { code: 'audit_mission:submit_review', description: 'Soumettre une mission en revue' },
+  { code: 'audit_mission:rollback', description: 'Revenir à une étape précédente de la mission' },
+  { code: 'audit_mission:cancel', description: 'Annuler une mission (statut annulé)' },
 
   // ================= AUDIT PROGRAM =================
   { code: 'audit_program:create', description: 'Creer un programme d audit' },

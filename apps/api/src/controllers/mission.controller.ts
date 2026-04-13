@@ -17,6 +17,25 @@ import { DocumentService } from '../services/document.service';
 // AUDIT MISSION
 // ==========================================
 
+/**
+ * Returns a Prisma WHERE filter that restricts missions to those
+ * where the user is leader or an active member.
+ * Returns null if the user has read_all (no restriction needed).
+ */
+function getMissionAccessFilter(user: Express.Request['user']): any | null {
+  if (!user) return null;
+  const perms = user.permissions.map((p: string) => p.toLowerCase());
+  console.log('[MISSION ACCESS] userId:', user.id, 'permissions:', perms);
+  console.log('[MISSION ACCESS] has read_all:', perms.includes('audit_mission:read_all'));
+  if (perms.includes('audit_mission:read_all')) return null;
+  return {
+    OR: [
+      { leaderId: user.id },
+      { members: { some: { userId: user.id, assignmentStatus: 'ACTIVE' } } }
+    ]
+  };
+}
+
 // export const getMissions = async (req: Request, res: Response) => {
 //   try {
 //     const tenantId = req.user?.tenantId;
@@ -93,6 +112,12 @@ export const getMissions = async (req: Request, res: Response) => {
       where.leaderId = parseInt(leaderId);
     }
 
+    // Permission-based filtering: read_all sees everything, read sees only assigned
+    const accessFilter = getMissionAccessFilter(req.user);
+    if (accessFilter) {
+      where.AND = [...(where.AND || []), accessFilter];
+    }
+
     const [missions, total] = await Promise.all([
       prisma.auditMission.findMany({
         where,
@@ -142,8 +167,16 @@ export const getMission = async (req: Request, res: Response) => {
 
     const { id } = req.params;
 
+    const findWhere: any = { id: parseInt(id), tenantId };
+
+    // Permission-based filtering: read_all sees everything, read sees only assigned
+    const accessFilter = getMissionAccessFilter(req.user);
+    if (accessFilter) {
+      findWhere.AND = [accessFilter];
+    }
+
     const mission = await prisma.auditMission.findFirst({
-      where: { id: parseInt(id), tenantId },
+      where: findWhere,
       include: {
         leader: {
           select: { id: true, firstName: true, lastName: true, email: true }
@@ -865,8 +898,14 @@ export const getMissionReport = async (req: Request, res: Response) => {
 
     const { id } = req.params;
 
+    const reportWhere: any = { id: parseInt(id), tenantId };
+    const accessFilter = getMissionAccessFilter(req.user);
+    if (accessFilter) {
+      reportWhere.AND = [accessFilter];
+    }
+
     const mission = await prisma.auditMission.findFirst({
-      where: { id: parseInt(id), tenantId },
+      where: reportWhere,
       include: {
         leader: {
           select: { id: true, firstName: true, lastName: true, email: true }
@@ -909,6 +948,16 @@ export const generateMissionReport = async (req: Request, res: Response) => {
 
     if (!tenantId || !userId) {
       return res.status(401).json({ error: 'Non autorisé' });
+    }
+
+    // Permission-based access check
+    const accessFilter = getMissionAccessFilter(req.user);
+    if (accessFilter) {
+      const allowed = await prisma.auditMission.findFirst({
+        where: { id: missionId, tenantId, AND: [accessFilter] },
+        select: { id: true }
+      });
+      if (!allowed) return res.status(403).json({ error: 'Accès non autorisé à cette mission' });
     }
 
     // 1. récupérer données
@@ -972,6 +1021,16 @@ export const generateMissionOrder = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Non autorisé' });
     }
 
+    // Permission-based access check
+    const accessFilter = getMissionAccessFilter(req.user);
+    if (accessFilter) {
+      const allowed = await prisma.auditMission.findFirst({
+        where: { id: missionId, tenantId, AND: [accessFilter] },
+        select: { id: true }
+      });
+      if (!allowed) return res.status(403).json({ error: 'Accès non autorisé à cette mission' });
+    }
+
     const mission = await getMissionOrderData(missionId, tenantId);
 
     if (!mission) {
@@ -999,6 +1058,16 @@ export const getMissionTickets = async (req: Request, res: Response) => {
     if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
 
     const missionId = parseInt(req.params.id);
+
+    // Permission-based access check
+    const accessFilter = getMissionAccessFilter(req.user);
+    if (accessFilter) {
+      const allowed = await prisma.auditMission.findFirst({
+        where: { id: missionId, tenantId, AND: [accessFilter] },
+        select: { id: true }
+      });
+      if (!allowed) return res.status(403).json({ error: 'Accès non autorisé à cette mission' });
+    }
 
     const links = await prisma.recommendationTicket.findMany({
       where: {

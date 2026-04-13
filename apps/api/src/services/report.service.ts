@@ -14,6 +14,7 @@ type MissionReport = Prisma.AuditMissionGetPayload<{
         recos: true;
       };
     };
+    plan: true;
   };
 }>;
 // type RiskLevel = {
@@ -70,206 +71,251 @@ export const getMissionReportData = async (missionId: number, tenantId: number) 
 
 
 //export const buildReportHTML = (mission: any) => {
+
 export const buildReportHTML = (mission: MissionReport) => {
-    let logoSrc = '';
-    try {
-        const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
-        const logoBase64 = fs.readFileSync(logoFullPath).toString('base64');
-        logoSrc = `data:image/png;base64,${logoBase64}`;
-    } catch (e) {
-        console.warn('Logo not found, skipping...');
-    }
+  let logoSrc = '';
+  try {
+    const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
+    const logoBase64 = fs.readFileSync(logoFullPath).toString('base64');
+    logoSrc = `data:image/png;base64,${logoBase64}`;
+  } catch (e) {
+    // pas de logo → on continue sans
+  }
 
-    const findings = mission?.findings || [];
-    //const findings: Finding[] = mission?.findings ?? [];
+  const findings = mission?.findings || [];
+  const recos = findings.flatMap(f => f.recos || []);
+  const nbCritique = findings.filter(f => f.riskLevel?.name?.toLowerCase() === 'critique').length;
+  const nbMajeur = findings.filter(f => f.riskLevel?.name?.toLowerCase() === 'majeur').length;
+  const nbMineur = findings.filter(f => f.riskLevel?.name?.toLowerCase() === 'mineur').length;
+  const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-  return `
-  <html>
-  <head>
-    <style>
-      body {
-        font-family: Arial;
-        font-size: 12px;
-        line-height: 1.5;
-        padding: 40px;
-      }
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: #1e293b; font-size: 11.5px; line-height: 1.55; }
 
-      h1, h2, h3 {
-        text-align: center;
-      }
+  /* Bandeau haut */
+  .top-band { background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%); color: white; padding: 28px 40px 22px; position: relative; overflow: hidden; }
+  .top-band .logo-row { display: flex; align-items: center; justify-content: space-between; }
+  .top-band .logo-row img { height: 60px; }
+  .top-band .info { text-align: right; }
+  .top-band .title { font-size: 24px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-top: 18px; }
+  .top-band .desc { font-size: 13px; margin-top: 8px; color: #e0e7ff; }
+  .top-band .meta { display: flex; gap: 24px; margin-top: 18px; font-size: 12px; }
+  .top-band .meta-item { background: rgba(255,255,255,0.13); border-radius: 16px; padding: 7px 18px; font-weight: 600; }
 
-      .logo {
-        text-align: center;
-        margin-bottom: 20px;
-      }
+  /* Synthèse */
+  .synthese { display: flex; gap: 32px; justify-content: center; margin: 32px 0 18px; }
+  .synthese-card { background: #f1f5f9; border-radius: 12px; padding: 18px 28px; text-align: center; box-shadow: 0 2px 8px #0001; }
+  .synthese-card .label { font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+  .synthese-card .value { font-size: 22px; font-weight: 700; color: #3b82f6; }
 
-      .section {
-        margin-top: 30px;
-      }
+  /* Sections */
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #0f172a; padding-bottom: 6px; border-bottom: 2px solid #6366f1; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .section-title .dot { width: 8px; height: 8px; border-radius: 50%; background: #6366f1; }
+  .section-desc { font-size: 12px; color: #475569; line-height: 1.6; }
 
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-      }
+  /* Tableaux */
+  table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+  th { background: #f1f5f9; color: #334155; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 9px 12px; text-align: left; border-bottom: 2px solid #cbd5e1; }
+  td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #475569; }
+  tr:nth-child(even) td { background: #f8fafc; }
 
-      th, td {
-        border: 1px solid #000;
-        padding: 6px;
-        text-align: left;
-      }
+  /* Reco badge */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: #e0e7ff; color: #3730a3; margin-left: 8px; }
 
-      .small {
-        font-size: 11px;
-      }
-    </style>
-  </head>
+  /* Zone signatures */
+  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px; padding-top: 20px; border-top: 2px solid #e2e8f0; }
+  .sig-block { text-align: center; }
+  .sig-block .sig-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; font-weight: 700; margin-bottom: 6px; }
+  .sig-block .sig-name { font-size: 12px; font-weight: 600; color: #1e293b; }
+  .sig-block .sig-line { margin-top: 50px; border-top: 1px solid #94a3b8; width: 200px; margin-left: auto; margin-right: auto; }
+  .sig-block .sig-label { font-size: 9px; color: #94a3b8; margin-top: 4px; }
 
-  <body>
+  /* Pied de page */
+  .footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 40px; text-align: center; font-size: 8.5px; color: #94a3b8; margin-top: 40px; }
+</style>
+</head>
+<body>
 
-    <!-- LOGO -->
-    <div class="logo">
-      <img src="${logoSrc}" height="80"/>
+  <!-- Bandeau supérieur -->
+  <div class="top-band">
+    <div class="logo-row">
+      ${logoSrc ? `<img src="${logoSrc}" alt="Logo" />` : `<div style="height:60px"></div>`}
+      <div class="info">
+        <div style="font-size:13px; font-weight:600;">Rapport généré le ${today}</div>
+      </div>
+    </div>
+    <div class="title">RAPPORT D&#39;AUDIT</div>
+    <div class="desc">${mission.title || ''}</div>
+    <div class="meta">
+      <div class="meta-item"><b>Chef de mission :</b> ${mission.leader?.firstName || ''} ${mission.leader?.lastName || ''}</div>
+      <div class="meta-item"><b>Plan :</b> ${mission.plan?.title || '-'} (${mission.plan?.year || '-'})</div>
+      <div class="meta-item"><b>Période :</b> ${mission.startDate ? new Date(mission.startDate).toLocaleDateString('fr-FR') : '-'} - ${mission.endDate ? new Date(mission.endDate).toLocaleDateString('fr-FR') : '-'}</div>
+      <div class="meta-item"><b>Nb. constats :</b> ${findings.length}</div>
+    </div>
+  </div>
+
+  <!-- Synthèse visuelle -->
+  <div class="synthese">
+    <div class="synthese-card">
+      <div class="label">Constats</div>
+      <div class="value">${findings.length}</div>
+    </div>
+    <div class="synthese-card">
+      <div class="label">Recommandations</div>
+      <div class="value">${recos.length}</div>
+    </div>
+    <div class="synthese-card">
+      <div class="label">Critiques</div>
+      <div class="value">${nbCritique}</div>
+    </div>
+    <div class="synthese-card">
+      <div class="label">Majeurs</div>
+      <div class="value">${nbMajeur}</div>
+    </div>
+    <div class="synthese-card">
+      <div class="label">Mineurs</div>
+      <div class="value">${nbMineur}</div>
+    </div>
+  </div>
+
+  <!-- Sections -->
+  <div class="content" style="padding: 24px 40px 30px;">
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Contexte de la mission</div>
+      <p class="section-desc">${mission.description || '-'}</p>
     </div>
 
-    <!-- TITRE -->
-    <h1>RAPPORT D'AUDIT INTERNE</h1>
-
-    <!-- INFOS -->
     <div class="section">
-      <p><strong>Mission :</strong> ${mission.title}</p>
-      <p><strong>Auditeur :</strong> ${mission.leader?.firstName} ${mission.leader?.lastName}</p>
-      <p><strong>Date :</strong> ${new Date().toLocaleDateString()}</p>
+      <div class="section-title"><span class="dot"></span> Objectifs de l'audit</div>
+      <p class="section-desc">${mission.objective || '-'}</p>
     </div>
 
-    <!-- CONTEXTE -->
     <div class="section">
-      <h2>1. CONTEXTE DE LA MISSION</h2>
-      <p>${mission.description || '-'}</p>
+      <div class="section-title"><span class="dot"></span> Périmètre de l'audit</div>
+      <p class="section-desc">${mission.scopeDescription || '-'}</p>
     </div>
 
-    <!-- OBJECTIFS -->
     <div class="section">
-      <h2>2. OBJECTIFS DE L'AUDIT</h2>
-      <p>${mission.objective || '-'}</p>
+      <div class="section-title"><span class="dot"></span> Méthodologie</div>
+      <p class="section-desc">${mission.methodology || '-'}</p>
     </div>
 
-    <!-- PERIMETRE -->
+    <!-- Tableau des constats -->
     <div class="section">
-      <h2>3. PERIMETRE DE L'AUDIT</h2>
-      <p>${mission.scopeDescription || '-'}</p>
-    </div>
-
-    <!-- METHODO -->
-    <div class="section">
-      <h2>4. METHODOLOGIE</h2>
-      <p>${mission.methodology || '-'}</p>
-    </div>
-
-    <!-- CONSTATS -->
-    <div class="section">
-      <h2>5. SYNTHESE DES CONSTATS</h2>
-
+      <div class="section-title"><span class="dot"></span> Synthèse des constats</div>
       <table>
-        <tr>
-          <th>#</th>
-          <th>Constat</th>
-          <th>Niveau de risque</th>
-          <th>Impact</th>
-        </tr>
-
-        ${findings.flatMap(f => f.recos).map((r, i) => `
-        <tr>
-            <td>${i + 1}</td>
-            <td>${r.title}</td>
-            <td>${r.assigneeName ?? '-'}</td>
-            <td>${new Date(r.targetDate).toLocaleDateString()}</td>
-        </tr>
-        `).join('')}
-
-      </table>
-    </div>
-
-    <!-- ANALYSE RISQUES -->
-    <div class="section">
-      <h2>6. ANALYSE DES RISQUES</h2>
-
-      <p>
-        Nombre de constats : ${findings.length}
-      </p>
-
-      <p>
-        Risques critiques :
-        ${findings.filter(f => f.riskLevel?.name === 'critique').length}
-      </p>
-    </div>
-
-    <!-- RECOMMANDATIONS -->
-    <div class="section">
-      <h2>7. RECOMMANDATIONS</h2>
-
-      <table>
-        <tr>
-          <th>#</th>
-          <th>Recommandation</th>
-          <th>Responsable</th>
-          <th>Délai</th>
-        </tr>
-
-        ${findings.flatMap(f => f.recos || []).map((r, i) => `
+        <thead>
           <tr>
-            <td>${i + 1}</td>
-            <td>${r.title}</td>
-            <td>${r.assigneeName || '-'}</td>
-            <td>${r.targetDate ? new Date(r.targetDate).toLocaleDateString() : '-'}</td>
+            <th>#</th>
+            <th>Constat</th>
+            <th>Niveau de risque</th>
+            <th>Impact</th>
           </tr>
-        `).join('')}
-
+        </thead>
+        <tbody>
+          ${findings.map((f, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${f.title || '-'}</td>
+              <td>${f.riskLevel?.name || '-'}</td>
+              <td>${f.impact || '-'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
       </table>
     </div>
 
-    <!-- PLAN ACTION -->
+    <!-- Tableau des recommandations -->
     <div class="section">
-      <h2>8. PLAN D'ACTION</h2>
-
+      <div class="section-title"><span class="dot"></span> Recommandations</div>
       <table>
-        <tr>
-          <th>Action</th>
-          <th>Responsable</th>
-          <th>Date prévue</th>
-          <th>Statut</th>
-        </tr>
-
-        ${findings.flatMap(f => f.recos || []).map(r => `
+        <thead>
           <tr>
-            <td>${r.title}</td>
-            <td>${r.assigneeName || '-'}</td>
-            <td>${r.targetDate ? new Date(r.targetDate).toLocaleDateString() : '-'}</td>
-            <td>${r.status}</td>
+            <th>#</th>
+            <th>Recommandation</th>
+            <th>Responsable</th>
+            <th>Délai</th>
+            <th>Statut</th>
           </tr>
-        `).join('')}
-
+        </thead>
+        <tbody>
+          ${recos.map((r, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${r.title || '-'}</td>
+              <td>${r.assigneeName || '-'}</td>
+              <td>${r.targetDate ? new Date(r.targetDate).toLocaleDateString('fr-FR') : '-'}</td>
+              <td><span class="badge">${r.status || '-'}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
       </table>
     </div>
 
-    <!-- CONCLUSION -->
+    <!-- Plan d'action -->
     <div class="section">
-      <h2>9. CONCLUSION</h2>
-      <p>
-        Les recommandations permettront de réduire les risques identifiés.
-      </p>
+      <div class="section-title"><span class="dot"></span> Plan d'action</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>Responsable</th>
+            <th>Date prévue</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${recos.map(r => `
+            <tr>
+              <td>${r.title || '-'}</td>
+              <td>${r.assigneeName || '-'}</td>
+              <td>${r.targetDate ? new Date(r.targetDate).toLocaleDateString('fr-FR') : '-'}</td>
+              <td><span class="badge">${r.status || '-'}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
     </div>
 
-    <!-- VALIDATION -->
+    <!-- Conclusion -->
     <div class="section">
-      <h2>10. VALIDATION</h2>
-      <p>Auditeur : ________________________</p>
-      <p>Chef Service Audit : ________________________</p>
+      <div class="section-title"><span class="dot"></span> Conclusion</div>
+      <p class="section-desc">Les recommandations permettront de réduire les risques identifiés.</p>
     </div>
 
-  </body>
-  </html>
-  `;
+    <!-- Signatures -->
+    <div class="signatures">
+      <div class="sig-block">
+        <div class="sig-title">Auditeur</div>
+        <div class="sig-name">${mission.leader?.firstName || ''} ${mission.leader?.lastName || ''}</div>
+        <div class="sig-line"></div>
+        <div class="sig-label">Signature</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-title">Chef Service Audit</div>
+        <div class="sig-name">________________________</div>
+        <div class="sig-line"></div>
+        <div class="sig-label">Signature</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Pied de page -->
+  <div class="footer">
+    Rapport généré automatiquement le ${today} — Ce document est confidentiel et destiné exclusivement aux parties mentionnées.
+  </div>
+
+</body>
+</html>`;
 };
 
 

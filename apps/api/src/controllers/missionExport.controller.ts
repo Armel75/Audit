@@ -105,7 +105,7 @@ function toPrismaCondition(f: FilterItem): any {
 // =====================================================
 // Construit le where Prisma complet
 // =====================================================
-function buildWhere(body: QueryBody, tenantId: number): any {
+function buildWhere(body: QueryBody, tenantId: number, accessFilter?: any): any {
   const base: any = { tenantId };
 
   if (body.mode === 'active') base.status = { not: 'CLOSED' };
@@ -113,13 +113,35 @@ function buildWhere(body: QueryBody, tenantId: number): any {
 
   const conditions = body.filters.map(toPrismaCondition).filter((c) => Object.keys(c).length > 0);
 
-  if (conditions.length === 0) return base;
+  // Merge access filter (permission-based restriction)
+  const allConditions = accessFilter ? [accessFilter, ...conditions] : conditions;
 
-  if (body.logic === 'OR') {
-    return { AND: [base, { OR: conditions }] };
+  if (allConditions.length === 0) return base;
+
+  if (body.logic === 'OR' && conditions.length > 0) {
+    const parts: any[] = [base];
+    if (accessFilter) parts.push(accessFilter);
+    parts.push({ OR: conditions });
+    return { AND: parts };
   }
 
-  return { AND: [base, ...conditions] };
+  return { AND: [base, ...allConditions] };
+}
+
+/**
+ * Returns a Prisma WHERE filter for mission access based on user permissions.
+ * Returns null if user has read_all (no restriction).
+ */
+function getMissionAccessFilter(user: Express.Request['user']): any | null {
+  if (!user) return null;
+  const perms = user.permissions.map((p: string) => p.toLowerCase());
+  if (perms.includes('audit_mission:read_all')) return null;
+  return {
+    OR: [
+      { leaderId: user.id },
+      { members: { some: { userId: user.id, assignmentStatus: 'ACTIVE' } } }
+    ]
+  };
 }
 
 const INCLUDE_MISSIONS = {
@@ -142,7 +164,8 @@ export const queryMissions = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Payload invalide' });
     }
 
-    const where = buildWhere(body, tenantId);
+    const accessFilter = getMissionAccessFilter(req.user);
+    const where = buildWhere(body, tenantId, accessFilter ?? undefined);
 
     const missions = await prisma.auditMission.findMany({
       where,
@@ -170,7 +193,8 @@ export const exportMissionsExcel = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Payload invalide' });
     }
 
-    const where = buildWhere(body, tenantId);
+    const accessFilter = getMissionAccessFilter(req.user);
+    const where = buildWhere(body, tenantId, accessFilter ?? undefined);
 
     const missions = await prisma.auditMission.findMany({
       where,
@@ -269,7 +293,8 @@ export const exportMissionsPdf = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Payload invalide' });
     }
 
-    const where = buildWhere(body, tenantId);
+    const accessFilter = getMissionAccessFilter(req.user);
+    const where = buildWhere(body, tenantId, accessFilter ?? undefined);
 
     const missions = await prisma.auditMission.findMany({
       where,

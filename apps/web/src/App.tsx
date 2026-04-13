@@ -86,10 +86,10 @@ export default function App() {
             <Route path="dashboard-dg" element={<PermissionRoute requiredPermissions={['dashboard_dg:read']}><DashboardDG /></PermissionRoute>} />
             <Route path="plans" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlans /></PermissionRoute>} />
             <Route path="plans/:id" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlanDetails /></PermissionRoute>} />
-            <Route path="missions" element={<PermissionRoute requiredPermissions={['audit_mission:read']}><Missions /></PermissionRoute>} />
-            <Route path="missions/archive" element={<PermissionRoute requiredPermissions={['audit_mission:read']}><Missions mode="archive" /></PermissionRoute>} />
-            <Route path="missions/:id" element={<PermissionRoute requiredPermissions={['audit_mission:read']}><MissionDetails /></PermissionRoute>} />
-            <Route path="missions/:id/report" element={<PermissionRoute requiredPermissions={['audit_mission:read']}><MissionReport /></PermissionRoute>} />
+            <Route path="missions" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><Missions /></PermissionRoute>} />
+            <Route path="missions/archive" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><Missions mode="archive" /></PermissionRoute>} />
+            <Route path="missions/:id" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><MissionDetails /></PermissionRoute>} />
+            <Route path="missions/:id/report" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><MissionReport /></PermissionRoute>} />
             <Route path="programs/:id" element={<PermissionRoute requiredPermissions={['audit_program:read']}><AuditProgramDetails /></PermissionRoute>} />
             <Route path="programs/:programId/procedures/new" element={<PermissionRoute requiredPermissions={['audit_procedure:create']}><ProcedureFormPage /></PermissionRoute>} />
             <Route path="findings/:id" element={<PermissionRoute requiredPermissions={['finding:read']}><FindingDetails /></PermissionRoute>} />

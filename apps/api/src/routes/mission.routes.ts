@@ -9,13 +9,13 @@ const router = Router();
 router.use(requireAuth);
 
 // Filtrage multi-critères + Export
-router.post('/query', requirePermission('audit_mission:read'), missionExportController.queryMissions);
-router.post('/export/excel', requirePermission('audit_mission:read'), missionExportController.exportMissionsExcel);
-router.post('/export/pdf', requirePermission('audit_mission:read'), missionExportController.exportMissionsPdf);
+router.post('/query', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionExportController.queryMissions);
+router.post('/export/excel', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionExportController.exportMissionsExcel);
+router.post('/export/pdf', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionExportController.exportMissionsPdf);
 
 // Audit Mission
-router.get('/', requirePermission('audit_mission:read'), missionController.getMissions);
-router.get('/:id', requirePermission('audit_mission:read'), missionController.getMission);
+router.get('/', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.getMissions);
+router.get('/:id', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.getMission);
 router.post('/', requirePermission('audit_mission:create'), missionController.createMission);
 router.put('/:id', requirePermission('audit_mission:update'), missionController.updateMission);
 router.delete('/:id', requireAnyPermission(['audit_mission:delete', 'audit_mission:update']), missionController.deleteMission);
@@ -36,14 +36,14 @@ router.put('/scopes/:scopeId', requirePermission('audit_mission:assign'), missio
 router.delete('/scopes/:scopeId', requirePermission('audit_mission:assign'), missionController.removeMissionScope);
 
 // Reports
-router.get('/:id/report', requirePermission('audit_mission:read'), missionController.getMissionReport);
+router.get('/:id/report', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.getMissionReport);
 
 router.post('/:id/report/generate', requireAnyPermission(['audit_mission:update', 'document:upload']), missionController.generateMissionReport);
 
 // Ordre de Mission
-router.get('/:id/order', requirePermission('audit_mission:read'), missionController.generateMissionOrder);
+router.get('/:id/order', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.generateMissionOrder);
 
 // Aggregated Tickets
-router.get('/:id/tickets', requirePermission('audit_mission:read'), missionController.getMissionTickets);
+router.get('/:id/tickets', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.getMissionTickets);
 
 export default router;

@@ -276,6 +276,7 @@ export default function Referential() {
                     <option value="DIRECTION">Direction</option>
                     <option value="AGENCE">Agence</option>
                     <option value="PROJET">Projet</option>
+                    <option value="PROCESSUS">Processus</option>
                   </select>
                 </div>
                 <div>
