@@ -137,16 +137,28 @@ export default function MissionReport() {
       });
 
       if (!res.ok) {
-        throw new Error('Erreur génération PDF');
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Erreur génération rapport");
+        return;
       }
 
-      const doc = await res.json();
+      const blob = await res.blob(); // ✅ CORRECTION ICI
 
-      await downloadFile(doc.id, doc.originalName);
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rapport-mission-${id}.pdf`;
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(url);
 
     } catch (err) {
       console.error(err);
-      alert('Erreur lors de la génération du PDF');
+      alert("Erreur génération rapport");
     }
   };
 

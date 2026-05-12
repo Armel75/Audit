@@ -31,109 +31,10 @@ export function validateMissionStart(mission: any) {
     throw new Error('Programme non validé');
   }
 
-  const hasProcedures = mission.programs?.some(
-    (p: any) => p.procedures?.length > 0
-  );
-
-  if (!hasProcedures) {
-    throw new Error('Aucune procédure définie');
-  }
-
   if (!mission.startDate || !mission.endDate) {
     throw new Error('Dates obligatoires');
   }
 }
-
-// 🔵 EXISTANT AMÉLIORÉ SANS CASSER
-// export async function updateMissionStatus(
-//   missionId: number,
-//   newStatus: MissionStatus,
-//   user: any
-// ) {
-//   const mission = await prisma.auditMission.findUnique({
-//     where: { id: missionId },
-//     include: {
-//       findings: true,
-//       scopes: true,
-//       members: true,
-//       programs: {
-//         include: { procedures: true }
-//       }
-//     }
-//   });
-
-//   if (!mission) throw new Error('Mission introuvable');
-
-//   // 🔒 1. Vérifier transition
-//   if (!canTransition(mission.status, newStatus, missionWorkflow)) {
-//     throw new Error(`Transition interdite: ${mission.status} → ${newStatus}`);
-//   }
-
-//   // 🔴 NOUVEAU — gestion CANCELLED
-//   if (newStatus === MISSION_STATUS.CANCELLED) {
-//     // aucune contrainte métier
-//     // mais on peut log ou tracer plus tard
-//   }
-
-//   // 🔴 NOUVEAU — READY / IN_PROGRESS
-//     if (
-//       newStatus === MISSION_STATUS.READY ||
-//       newStatus === MISSION_STATUS.IN_PROGRESS
-//     ){
-//     if (!isMissionReady(mission)) {
-//       throw new Error('Mission non prête : cadrage incomplet');
-//     }
-//   }
-
-//   if (newStatus === MISSION_STATUS.IN_PROGRESS) {
-//     validateMissionStart(mission);
-//   }
-
-//   // 🔒 2. Règles métier EXISTANTES
-
-//   if (newStatus === MISSION_STATUS.UNDER_REVIEW) {
-//     if (mission.findings.length === 0) {
-//       throw new Error('Aucun constat pour cette mission');
-//     }
-//   }
-
-//   if (newStatus === MISSION_STATUS.CLOSED) {
-//     const pendingRecos = await prisma.recommendation.count({
-//       where: {
-//         finding: { missionId },
-//         status: { not: 'VALIDATED' }
-//       }
-//     });
-
-//     if (pendingRecos > 0) {
-//       throw new Error('Recommandations non validées');
-//     }
-//   }
-
-//   // 🔒 3. Rôle
-//   if (newStatus === MISSION_STATUS.APPROVED) {
-//     if (!user.permissions?.includes('MISSION_APPROVE')) {
-//       throw new Error("Permission refusée");
-//     }
-//   }
-//   // 🔒 4. Update + historique
-//   const updated = await prisma.auditMission.update({
-//     where: { id: missionId },
-//     data: { status: newStatus }
-//   });
-
-//   await prisma.missionStatusHistory.create({
-//     data: {
-//       tenantId: mission.tenantId,
-//       missionId,
-//       previousStatus: mission.status,
-//       newStatus,
-//       changedById: user.id
-//     }
-//   });
-
-//   return updated;
-// }
 
 
 export async function updateMissionStatus(
@@ -244,8 +145,8 @@ export async function updateMissionStatus(
   }
 
   // 🔒 5. RÔLES
-  if (newStatus === MISSION_STATUS.APPROVED) {
-    if (!user.permissions?.includes('MISSION_APPROVE')) {
+    if (newStatus === MISSION_STATUS.APPROVED) {
+    if (!user.permissions?.includes('audit_mission:approve')) {
       throw new Error("Permission refusée");
     }
   }

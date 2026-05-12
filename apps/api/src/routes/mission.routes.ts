@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as missionController from '../controllers/mission.controller';
 import * as missionExportController from '../controllers/missionExport.controller';
+import * as missionConclusionController from '../controllers/missionConclusion.controller';
 import { requireAuth, requireAnyPermission, requirePermission } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -15,13 +16,14 @@ router.post('/export/pdf', requireAnyPermission(['audit_mission:read', 'audit_mi
 
 // Audit Mission
 router.get('/', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.getMissions);
+router.get('/external-participants', requirePermission('audit_mission:assign'), missionController.getExternalParticipants);
 router.get('/:id', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.getMission);
 router.post('/', requirePermission('audit_mission:create'), missionController.createMission);
 router.put('/:id', requirePermission('audit_mission:update'), missionController.updateMission);
 router.delete('/:id', requireAnyPermission(['audit_mission:delete', 'audit_mission:update']), missionController.deleteMission);
 
 // Mission Status
-router.patch('/:id/status', requirePermission('audit_mission:update'), missionController.updateMissionStatus);
+router.patch('/:id/status', missionController.updateMissionStatus);
 router.put('/history/:historyId', requirePermission('audit_mission:update'), missionController.updateMissionStatusHistory);
 router.delete('/history/:historyId', requirePermission('audit_mission:update'), missionController.deleteMissionStatusHistory);
 
@@ -45,5 +47,8 @@ router.get('/:id/order', requireAnyPermission(['audit_mission:read', 'audit_miss
 
 // Aggregated Tickets
 router.get('/:id/tickets', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.getMissionTickets);
+
+// Mission Conclusion
+router.put('/:id/conclusion', requirePermission('audit_mission:read'), missionConclusionController.updateMissionConclusion);
 
 export default router;

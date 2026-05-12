@@ -16,6 +16,7 @@ model Tenant {
 
   users                       User[]
   glpiUsers                   GLPIUser[]
+  externalParticipants        ExternalParticipant[]
   tickets                     Ticket[]
 
   plans                       AuditPlan[]
@@ -57,6 +58,7 @@ model Tenant {
 
   documents                   Document[]
   evidences                   Evidence[]
+  evidenceDocuments           EvidenceDocument[]
   approvals                   Approval[]
   notifications               Notification[]
   userDepartments             UserDepartment[]
@@ -301,6 +303,7 @@ model GLPIUser {
   assignedRecommendations Recommendation[] @relation("RecommendationAssigneeGLPIUser")
   requestedTickets       Ticket[]          @relation("TicketRequesterGLPIUser")
   assignedTickets        Ticket[]          @relation("TicketAssigneeGLPIUser")
+  missionMemberships     AuditMissionMember[]
 
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
@@ -309,6 +312,28 @@ model GLPIUser {
   @@index([tenantId, email])
   @@index([tenantId, login])
   @@index([tenantId, status])
+}
+
+model ExternalParticipant {
+  id               Int                @id @default(autoincrement())
+  tenantId         Int
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  fullName         String             @db.VarChar(4000)
+  email            String?            @db.VarChar(255)
+  phone            String?            @db.VarChar(255)
+  organization     String?            @db.VarChar(4000)
+  title            String?            @db.VarChar(4000)
+  notes            String?            @db.VarChar(4000)
+  isActive         Boolean            @default(true)
+
+  missionMemberships AuditMissionMember[]
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([tenantId, isActive])
+  @@index([tenantId, fullName])
 }
 
 model Ticket {
@@ -613,7 +638,7 @@ model AuditMission {
   objective        String?               @db.VarChar(4000)
   scopeDescription String?               @db.VarChar(4000)
   methodology      String?               @db.VarChar(4000)
-
+  conclusion       String?               @db.NVarChar(Max)
   startDate        DateTime?
   endDate          DateTime?
   status           String                @default("PLANNED") @db.VarChar(100)
@@ -653,8 +678,16 @@ model AuditMissionMember {
   missionId        Int
   mission          AuditMission @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
-  userId           Int
-  user             User         @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  memberType       String       @default("INTERNAL_USER") @db.VarChar(50)
+
+  userId           Int?
+  user             User?        @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  glpiUserId       Int?
+  glpiUser         GLPIUser?    @relation(fields: [glpiUserId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  externalParticipantId Int?
+  externalParticipant   ExternalParticipant? @relation(fields: [externalParticipantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   roleInMission    String       @db.VarChar(100)
   assignmentStatus String       @default("ACTIVE") @db.VarChar(100)
@@ -665,7 +698,8 @@ model AuditMissionMember {
 
   @@index([tenantId, missionId])
   @@index([userId, assignmentStatus])
-  @@unique([missionId, userId, roleInMission])
+  @@index([glpiUserId, assignmentStatus])
+  @@index([externalParticipantId, assignmentStatus])
 }
 
 model AuditMissionScope {
@@ -1242,6 +1276,7 @@ model Document {
   uploadedBy       User             @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   evidences        Evidence[]
+  evidenceDocuments EvidenceDocument[]
 
   createdAt        DateTime         @default(now())
   deletedAt        DateTime?
@@ -1268,6 +1303,7 @@ model Evidence {
 
   documentId         Int?
   document           Document?       @relation(fields: [documentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  evidenceDocuments  EvidenceDocument[]
 
   missionId          Int?
   mission            AuditMission?   @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
@@ -1291,6 +1327,24 @@ model Evidence {
   @@index([findingId])
   @@index([recommendationId])
   @@index([procedureId])
+}
+
+model EvidenceDocument {
+  id         Int      @id @default(autoincrement())
+  tenantId   Int
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  evidenceId Int
+  evidence   Evidence @relation(fields: [evidenceId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  documentId Int
+  document   Document @relation(fields: [documentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  createdAt  DateTime @default(now())
+
+  @@unique([evidenceId, documentId])
+  @@index([tenantId, evidenceId])
+  @@index([documentId])
 }
 
 // ================= GOUVERNANCE / APPROBATION / NOTIFICATIONS =================

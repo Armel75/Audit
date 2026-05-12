@@ -164,6 +164,12 @@ export default function RecommendationFormModal({
       return;
     }
 
+    // ✅ Validation affectation (au moins un des 3)
+    if (!assigneeUserId && !assigneeGlpiUserId && !assigneeName.trim()) {
+      setError("Au moins un responsable doit être renseigné (interne, GLPI ou externe)");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 

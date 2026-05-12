@@ -17,12 +17,15 @@ interface Finding {
 }
 interface MissionMember {
   id: number;
+  memberType?: 'INTERNAL_USER' | 'GLPI_USER' | 'EXTERNAL_PARTICIPANT' | string;
   roleInMission: string;
   assignmentStatus: string;
   isLead: boolean;
   notes: string | null;
   assignedAt: string;
-  user: { id: number; firstName: string; lastName: string; email: string };
+  user?: { id: number; firstName: string; lastName: string; email: string } | null;
+  glpiUser?: { id: number; fullName?: string | null; email?: string | null; entityName?: string | null } | null;
+  externalParticipant?: { id: number; fullName: string; email?: string | null; organization?: string | null; title?: string | null } | null;
 }
 interface MissionScope {
   id: number;
@@ -196,7 +199,20 @@ export default function MissionDetails() {
   const [generatingOrder, setGeneratingOrder] = useState(false);
   // Forms state
   const [statusForm, setStatusForm] = useState({ status: '', reason: '' });
-  const [memberForm, setMemberForm] = useState({ userId: '', roleInMission: '', isLead: false, notes: '' });
+  const [memberForm, setMemberForm] = useState({
+    memberType: 'INTERNAL_USER',
+    userId: '',
+    glpiUserId: '',
+    externalParticipantId: '',
+    externalFullName: '',
+    externalEmail: '',
+    externalPhone: '',
+    externalOrganization: '',
+    externalTitle: '',
+    roleInMission: '',
+    isLead: false,
+    notes: ''
+  });
   const [scopeForm, setScopeForm] = useState({ auditableEntityId: '', scopeRole: '', criticality: '', notes: '' });
   const [editingScope, setEditingScope] = useState<MissionScope | null>(null);
   const [historyForm, setHistoryForm] = useState({ reason: '' });
@@ -207,6 +223,8 @@ export default function MissionDetails() {
   const [editProgramForm, setEditProgramForm] = useState({ title: '', programType: '', objective: '', scopeDescription: '', plannedStartDate: '', plannedEndDate: '' });
   // Data for selects
   const [users, setUsers] = useState<any[]>([]);
+  const [glpiUsers, setGlpiUsers] = useState<any[]>([]);
+  const [externalParticipants, setExternalParticipants] = useState<any[]>([]);
   const [entities, setEntities] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -215,6 +233,8 @@ export default function MissionDetails() {
   const [isRecommendationModalOpen, setIsRecommendationModalOpen] = useState(false);
   const [selectedFindingId, setSelectedFindingId] = useState<number | null>(null);
   const [selectedAction, setSelectedAction] = useState<any>(null);
+  const [conclusionText, setConclusionText] = useState('');
+  const [isConclusionSubmitted, setIsConclusionSubmitted] = useState(false);
   const API_BASE = import.meta.env.VITE_API_URL;
 
   const fetchMission = () => {
@@ -225,6 +245,8 @@ export default function MissionDetails() {
       })
       .then(data => {
         setMission(data);
+        setConclusionText(data.conclusion || '');
+        setIsConclusionSubmitted(!!data.conclusion);
         setLoading(false);
       })
       .catch(err => {
@@ -263,6 +285,26 @@ export default function MissionDetails() {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setUsers(data);
+      })
+      .catch(console.error);
+
+    apiFetch(`${API_BASE}/glpi/users`)
+      .then(res => {
+        if (!res.ok) return [];
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) setGlpiUsers(data);
+      })
+      .catch(console.error);
+
+    apiFetch(`${API_BASE}/missions/external-participants`)
+      .then(res => {
+        if (!res.ok) return [];
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) setExternalParticipants(data);
       })
       .catch(console.error);
     // Fetch entities for scope modal
@@ -323,14 +365,57 @@ export default function MissionDetails() {
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload: any = {
+        memberType: memberForm.memberType,
+        roleInMission: memberForm.roleInMission,
+        isLead: memberForm.isLead,
+        notes: memberForm.notes
+      };
+
+      if (memberForm.memberType === 'INTERNAL_USER') {
+        payload.userId = memberForm.userId;
+      }
+
+      if (memberForm.memberType === 'GLPI_USER') {
+        payload.glpiUserId = memberForm.glpiUserId;
+      }
+
+      if (memberForm.memberType === 'EXTERNAL_PARTICIPANT') {
+        if (memberForm.externalParticipantId) {
+          payload.externalParticipantId = memberForm.externalParticipantId;
+        } else {
+          payload.externalParticipant = {
+            fullName: memberForm.externalFullName,
+            email: memberForm.externalEmail,
+            phone: memberForm.externalPhone,
+            organization: memberForm.externalOrganization,
+            title: memberForm.externalTitle,
+            notes: memberForm.notes,
+          };
+        }
+      }
+
       const response = await apiFetch(`${API_BASE}/missions/${id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(memberForm),
+        body: JSON.stringify(payload),
       });
       if (response.ok) {
         setIsMemberModalOpen(false);
-        setMemberForm({ userId: '', roleInMission: '', isLead: false, notes: '' });
+        setMemberForm({
+          memberType: 'INTERNAL_USER',
+          userId: '',
+          glpiUserId: '',
+          externalParticipantId: '',
+          externalFullName: '',
+          externalEmail: '',
+          externalPhone: '',
+          externalOrganization: '',
+          externalTitle: '',
+          roleInMission: '',
+          isLead: false,
+          notes: ''
+        });
         fetchMission();
       } else {
         const err = await response.json();
@@ -356,6 +441,26 @@ export default function MissionDetails() {
     } catch (error) {
       console.error('Failed to remove member', error);
     }
+  };
+
+  const getMemberDisplayName = (member: MissionMember) => {
+    if (member.user) {
+      return `${member.user.firstName} ${member.user.lastName}`;
+    }
+    if (member.glpiUser) {
+      return member.glpiUser.fullName || member.glpiUser.email || 'Utilisateur GLPI';
+    }
+    if (member.externalParticipant) {
+      return member.externalParticipant.fullName;
+    }
+    return 'Membre';
+  };
+
+  const getMemberDisplayEmail = (member: MissionMember) => {
+    if (member.user?.email) return member.user.email;
+    if (member.glpiUser?.email) return member.glpiUser.email;
+    if (member.externalParticipant?.email) return member.externalParticipant.email;
+    return null;
   };
 
   const handleAddScope = async (e: React.FormEvent) => {
@@ -731,26 +836,66 @@ export default function MissionDetails() {
     }
   };
 
+
   const handleDownloadMissionOrder = async () => {
     try {
       setGeneratingOrder(true);
+
+      console.log('🚀 Download mission order start', { id });
+
       const res = await apiFetch(`${API_BASE}/missions/${id}/order`);
+
+      console.log('📡 Response status:', res.status);
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Erreur lors de la génération de l'ordre de mission");
+        let errorData: any = {};
+        try {
+          errorData = await res.json();
+        } catch (e) {
+          console.warn('⚠️ Failed to parse error JSON');
+        }
+
+        console.error('❌ API Error:', {
+          status: res.status,
+          error: errorData,
+        });
+
+        alert(errorData.error || "Erreur lors de la génération de l'ordre de mission");
         return;
       }
+
       const blob = await res.blob();
+
+      console.log('📦 Blob size:', blob.size);
+
+      if (!blob || blob.size === 0) {
+        console.error('❌ Empty PDF received');
+        //alert("Le fichier généré est vide");
+        return;
+      }
+
       const url = window.URL.createObjectURL(blob);
+
+      console.log('🔗 Blob URL created:', url);
+
       const a = document.createElement('a');
       a.href = url;
       a.download = `ordre-mission-${id}.pdf`;
+
       document.body.appendChild(a);
       a.click();
       a.remove();
+
       window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
+
+      console.log('✅ Download triggered');
+
+    } catch (err: any) {
+      console.error('💥 Front error:', {
+        message: err?.message,
+        stack: err?.stack,
+      });
+
       alert("Erreur lors de la génération de l'ordre de mission");
     } finally {
       setGeneratingOrder(false);
@@ -1273,10 +1418,13 @@ export default function MissionDetails() {
                 <li key={member.id} className="px-8 py-6 flex items-center justify-between group hover:bg-slate-50 transition-all duration-200">
                   <div className="flex-1">
                     <p className="text-base font-semibold text-slate-900 flex items-center">
-                      {member.user.firstName} {member.user.lastName}
+                      {getMemberDisplayName(member)}
                       {member.isLead && <span className="ml-3 px-3 py-0.5 rounded-3xl text-xs font-medium bg-indigo-100 text-indigo-700">Lead</span>}
                     </p>
-                    <p className="text-sm text-slate-500 mt-px">{member.user.email} • Rôle: {member.roleInMission}</p>
+                    <p className="text-sm text-slate-500 mt-px">
+                      {getMemberDisplayEmail(member) ? `${getMemberDisplayEmail(member)} • ` : ''}
+                      Rôle: {member.roleInMission}
+                    </p>
                     {member.notes && (
                       <p className="text-sm text-slate-600 mt-2 italic">Notes: {member.notes}</p>
                     )}
@@ -1413,18 +1561,10 @@ export default function MissionDetails() {
                   </div>
                   {/* RIGHT */}
                   <div className="flex items-center gap-x-4">
-                    {program.status === 'DRAFT' && (
+                                        {program.status === 'DRAFT' && (
                       <button
-                        onClick={() => {
-                          if (program._count.procedures === 0) {
-                            alert("Ajoutez au moins une procédure avant de demander l'approbation du programme.");
-                            return;
-                          }
-                          handleRequestProgramApproval(program.id);
-                        }}
-                        className={`text-sm px-5 py-2.5 rounded-3xl font-medium shadow-sm transition-all duration-200 active:scale-95 
-                          ${program._count.procedures === 0 ? 'bg-slate-300 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-                        disabled={program._count.procedures === 0}
+                        onClick={() => handleRequestProgramApproval(program.id)}
+                        className="text-sm px-5 py-2.5 rounded-3xl font-medium shadow-sm transition-all duration-200 active:scale-95 bg-indigo-600 text-white hover:bg-indigo-700"
                       >
                         Demander validation
                       </button>
@@ -1574,8 +1714,66 @@ export default function MissionDetails() {
             recommendations={recommendations}
             onRefresh={fetchRecommendations}
           />
+          
+          {/* Bloc Conclusion */}
+          <div className="mt-8 p-6 bg-gradient-to-r from-slate-50 to-indigo-50 rounded-3xl border border-indigo-100">
+            <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <ScrollText className="w-5 h-5 text-indigo-500" />
+              Conclusion de la mission
+            </h4>
+            <textarea
+              value={conclusionText}
+              onChange={(e) => setConclusionText(e.target.value)}
+              rows={6}
+              className={`w-full p-4 rounded-2xl border-2 focus:ring-2 focus:ring-indigo-200 resize-vertical shadow-sm transition-all duration-200 ${
+                mission.status === 'IN_PROGRESS' && !isConclusionSubmitted
+                  ? 'border-indigo-300 focus:border-indigo-500 focus:outline-none'
+                  : 'bg-slate-100 border-slate-300 cursor-not-allowed'
+              }`}
+              placeholder="Saisissez la conclusion générale de la mission d'audit..."
+              disabled={mission.status !== 'IN_PROGRESS' || isConclusionSubmitted}
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={async () => {
+                  if (!conclusionText.trim()) return alert('Conclusion requise');
+                  try {
+                    const res = await apiFetch(`${API_BASE}/missions/${id}/conclusion`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ conclusion: conclusionText })
+                    });
+                    if (res.ok) {
+                      setIsConclusionSubmitted(true);
+                      fetchMission();
+                      alert('Conclusion soumise');
+                    } else {
+                      const err = await res.json();
+                      alert(err.error);
+                    }
+                  } catch (err) {
+                    alert('Erreur soumission');
+                  }
+                }}
+                disabled={mission.status !== 'IN_PROGRESS' || isConclusionSubmitted || !conclusionText.trim()}
+                className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all disabled:bg-slate-400 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-[0.97]"
+              >
+                Soumettre la conclusion
+              </button>
+              <button
+                onClick={() => {
+                  setIsConclusionSubmitted(false);
+                }}
+                disabled={!isConclusionSubmitted || mission.status !== 'IN_PROGRESS'}
+                className="px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-xl font-semibold transition-all disabled:bg-slate-400 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-[0.97]"
+              >
+                Modifier la conclusion
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
       {activeTab === 'tickets' && (
         <div className="bg-white shadow-sm border border-slate-100 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
           <div className="px-8 py-6 border-b border-slate-100">
@@ -1759,19 +1957,139 @@ export default function MissionDetails() {
               <form onSubmit={handleAddMember} className="px-8 py-6 space-y-6">
                 <div className="grid gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Utilisateur *</label>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Type de membre *</label>
                     <select
-                      value={memberForm.userId}
-                      onChange={(e) => setMemberForm({ ...memberForm, userId: e.target.value })}
+                      value={memberForm.memberType}
+                      onChange={(e) =>
+                        setMemberForm({
+                          ...memberForm,
+                          memberType: e.target.value,
+                          userId: '',
+                          glpiUserId: '',
+                          externalParticipantId: '',
+                          externalFullName: '',
+                          externalEmail: '',
+                          externalPhone: '',
+                          externalOrganization: '',
+                          externalTitle: ''
+                        })
+                      }
                       className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                       required
                     >
-                      <option value="">Sélectionner un utilisateur</option>
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
-                      ))}
+                      <option value="INTERNAL_USER">Utilisateur interne</option>
+                      <option value="GLPI_USER">Utilisateur GLPI</option>
+                      <option value="EXTERNAL_PARTICIPANT">Participant externe</option>
                     </select>
-                    <p className="mt-2 text-xs text-slate-500">Sélectionnez l'utilisateur à ajouter à la mission.</p>
+                  </div>
+
+                  {memberForm.memberType === 'INTERNAL_USER' && (
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">Utilisateur *</label>
+                      <select
+                        value={memberForm.userId}
+                        onChange={(e) => setMemberForm({ ...memberForm, userId: e.target.value })}
+                        className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                        required
+                      >
+                        <option value="">Sélectionner un utilisateur</option>
+                        {users.map(u => (
+                          <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
+                        ))}
+                      </select>
+                      <p className="mt-2 text-xs text-slate-500">Sélectionnez l'utilisateur interne à ajouter à la mission.</p>
+                    </div>
+                  )}
+
+                  {memberForm.memberType === 'GLPI_USER' && (
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">Utilisateur GLPI *</label>
+                      <select
+                        value={memberForm.glpiUserId}
+                        onChange={(e) => setMemberForm({ ...memberForm, glpiUserId: e.target.value })}
+                        className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                        required
+                      >
+                        <option value="">Sélectionner un utilisateur GLPI</option>
+                        {glpiUsers.map(u => (
+                          <option key={u.id} value={u.id}>{u.fullName || u.email || `GLPI#${u.id}`}</option>
+                        ))}
+                      </select>
+                      <p className="mt-2 text-xs text-slate-500">Sélectionnez un utilisateur référencé depuis GLPI.</p>
+                    </div>
+                  )}
+
+                  {memberForm.memberType === 'EXTERNAL_PARTICIPANT' && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-900 mb-2">Participant externe existant</label>
+                        <select
+                          value={memberForm.externalParticipantId}
+                          onChange={(e) => setMemberForm({ ...memberForm, externalParticipantId: e.target.value })}
+                          className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                        >
+                          <option value="">Nouveau participant externe</option>
+                          {externalParticipants.map(p => (
+                            <option key={p.id} value={p.id}>{p.fullName}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {!memberForm.externalParticipantId && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-900 mb-2">Nom complet *</label>
+                            <input
+                              type="text"
+                              value={memberForm.externalFullName}
+                              onChange={(e) => setMemberForm({ ...memberForm, externalFullName: e.target.value })}
+                              className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-900 mb-2">Email</label>
+                            <input
+                              type="email"
+                              value={memberForm.externalEmail}
+                              onChange={(e) => setMemberForm({ ...memberForm, externalEmail: e.target.value })}
+                              className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-900 mb-2">Téléphone</label>
+                            <input
+                              type="text"
+                              value={memberForm.externalPhone}
+                              onChange={(e) => setMemberForm({ ...memberForm, externalPhone: e.target.value })}
+                              className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-900 mb-2">Organisation</label>
+                            <input
+                              type="text"
+                              value={memberForm.externalOrganization}
+                              onChange={(e) => setMemberForm({ ...memberForm, externalOrganization: e.target.value })}
+                              className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-900 mb-2">Fonction</label>
+                            <input
+                              type="text"
+                              value={memberForm.externalTitle}
+                              onChange={(e) => setMemberForm({ ...memberForm, externalTitle: e.target.value })}
+                              className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  <div>
+                    <p className="mt-2 text-xs text-slate-500">Sélectionnez la source du membre à ajouter à la mission.</p>
                   </div>
 
                   <div>

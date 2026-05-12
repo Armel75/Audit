@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { apiFetch } from '../lib/api';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -12,6 +12,8 @@ import {
   ShieldAlert,
   AlertTriangle,
   Loader2,
+  Paperclip,
+  X,
 } from 'lucide-react';
 
 const inputCls =
@@ -31,9 +33,11 @@ export default function EvidenceCreate() {
   const [source, setSource] = useState('');
   const [collectionDate, setCollectionDate] = useState('');
   const [isSensitive, setIsSensitive] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const API_BASE = import.meta.env.VITE_API_URL;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,6 +46,7 @@ export default function EvidenceCreate() {
     setError(null);
 
     try {
+      // Step 1: Create evidence with metadata
       const res = await apiFetch(`${API_BASE}/evidences`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,6 +64,27 @@ export default function EvidenceCreate() {
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Erreur');
+      }
+
+      const evidence = await res.json();
+
+      // Step 2: Upload file(s) if selected
+      if (selectedFiles.length > 0) {
+        const formData = new FormData();
+        for (const file of selectedFiles) {
+          formData.append('files', file);
+        }
+
+        const uploadRes = await apiFetch(`${API_BASE}/evidences/${evidence.id}/upload`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!uploadRes.ok) {
+          const uploadErr = await uploadRes.json();
+          console.error('File upload error (evidence still created):', uploadErr);
+          throw new Error(uploadErr.error || 'Erreur lors de l\'upload des fichiers');
+        }
       }
 
       navigate(-1);
@@ -222,6 +248,63 @@ export default function EvidenceCreate() {
                   </label>
                 </div>
               </div>
+            </div>
+          </section>
+
+          <div className="border-t border-slate-100" />
+
+          {/* Section 3 : Piece jointe */}
+          <section>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-5">Piece jointe (optionnel)</h2>
+            <div className="space-y-5">
+              <div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) {
+                      setSelectedFiles((prev) => [...prev, ...files]);
+                    }
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-600 hover:border-teal-400 hover:text-teal-600 transition-all"
+                >
+                  <Paperclip className="w-5 h-5" />
+                  <span className="text-sm font-medium">Ajouter des pieces jointes</span>
+                </button>
+                <p className="text-xs text-slate-400 mt-2 text-center">PDF, Word, Excel, images (max 20 MB/fichier)</p>
+              </div>
+
+              {selectedFiles.length > 0 && (
+                <div className="space-y-2">
+                  {selectedFiles.map((file, index) => (
+                    <div key={`${file.name}-${index}`} className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Paperclip className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-emerald-900 truncate">{file.name}</p>
+                          <p className="text-xs text-emerald-600">{(file.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFiles((prev) => prev.filter((_, i) => i !== index))}
+                        className="inline-flex items-center justify-center p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-600 transition-all"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
 

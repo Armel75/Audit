@@ -369,7 +369,8 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
       orderBy: { _count: { id: 'desc' } },
       take: 5,
     });
-    const auditorUserIds = auditorLoad.map((a: any) => a.userId);
+    // Securise: filtre les null/undefined et force tableau d'entiers
+    const auditorUserIds = auditorLoad.map((a: any) => a.userId).filter((id: any) => typeof id === 'number' && !isNaN(id));
     const auditorUsers = auditorUserIds.length > 0
       ? await prisma.user.findMany({ where: { id: { in: auditorUserIds } }, select: { id: true, firstName: true, lastName: true } })
       : [];

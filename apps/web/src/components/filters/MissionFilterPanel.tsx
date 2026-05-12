@@ -12,7 +12,7 @@ const MAX_ROWS = 10;
 function newRow(): FilterRowState {
   const defaultCol = MISSION_FILTER_COLUMNS[0];
   return {
-    id: crypto.randomUUID(),
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     field: defaultCol.field,
     op: OPERATORS_BY_TYPE[defaultCol.type][0].op,
     value: undefined,

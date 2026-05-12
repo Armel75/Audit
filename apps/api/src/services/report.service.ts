@@ -11,7 +11,24 @@ type MissionReport = Prisma.AuditMissionGetPayload<{
     findings: {
       include: {
         riskLevel: true;
-        recos: true;
+        recos: {
+          include: {
+            department: true;
+            priority: true;
+            assigneeUser: true;
+            assigneeGlpiUser: true;
+            ticketLinks: {
+              include: {
+                ticket: {
+                  include: {
+                    requesterGlpiUser: true;
+                    assigneeGlpiUser: true;
+                  };
+                };
+              };
+            };
+          };
+        };
       };
     };
     plan: true;
@@ -61,7 +78,24 @@ export const getMissionReportData = async (missionId: number, tenantId: number) 
       findings: {
         include: {
           riskLevel: true,
-          recos: true,
+          recos: {
+            include: {
+              department: true,
+              priority: true,
+              assigneeUser: true,
+              assigneeGlpiUser: true,
+              ticketLinks: {
+                include: {
+                  ticket: {
+                    include: {
+                      requesterGlpiUser: true,
+                      assigneeGlpiUser: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       plan: true,
@@ -74,16 +108,38 @@ export const getMissionReportData = async (missionId: number, tenantId: number) 
 
 export const buildReportHTML = (mission: MissionReport) => {
   let logoSrc = '';
-  try {
-    const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
-    const logoBase64 = fs.readFileSync(logoFullPath).toString('base64');
-    logoSrc = `data:image/png;base64,${logoBase64}`;
-  } catch (e) {
-    // pas de logo → on continue sans
+  // try {
+  //   const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
+  //   const logoBase64 = fs.readFileSync(logoFullPath).toString('base64');
+  //   logoSrc = `data:image/png;base64,${logoBase64}`;
+  // } catch (e) {
+  //   // pas de logo → on continue sans
+  // }
+
+  const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
+
+  if (!fs.existsSync(logoFullPath)) {
+    console.warn('Logo not found:', logoFullPath);
+  } else {
+    try {
+      const logoBase64 = fs.readFileSync(logoFullPath).toString('base64');
+      logoSrc = `data:image/png;base64,${logoBase64}`;
+    } catch (err) {
+      console.warn('Error reading logo:', err);
+    }
   }
 
   const findings = mission?.findings || [];
   const recos = findings.flatMap(f => f.recos || []);
+  const missionTicketLinks = findings.flatMap(f =>
+    (f.recos || []).flatMap((r) =>
+      (r.ticketLinks || []).map((link) => ({
+        link,
+        recommendationTitle: r.title || '-',
+        findingTitle: f.title || '-',
+      }))
+    )
+  );
   const nbCritique = findings.filter(f => f.riskLevel?.name?.toLowerCase() === 'critique').length;
   const nbMajeur = findings.filter(f => f.riskLevel?.name?.toLowerCase() === 'majeur').length;
   const nbMineur = findings.filter(f => f.riskLevel?.name?.toLowerCase() === 'mineur').length;
@@ -172,6 +228,10 @@ export const buildReportHTML = (mission: MissionReport) => {
       <div class="value">${recos.length}</div>
     </div>
     <div class="synthese-card">
+      <div class="label">Tickets GLPI</div>
+      <div class="value">${missionTicketLinks.length}</div>
+    </div>
+    <div class="synthese-card">
       <div class="label">Critiques</div>
       <div class="value">${nbCritique}</div>
     </div>
@@ -208,87 +268,155 @@ export const buildReportHTML = (mission: MissionReport) => {
       <p class="section-desc">${mission.methodology || '-'}</p>
     </div>
 
-    <!-- Tableau des constats -->
+    <!-- Tableau des constats détaillés -->
     <div class="section">
       <div class="section-title"><span class="dot"></span> Synthèse des constats</div>
       <table>
         <thead>
           <tr>
-            <th>#</th>
-            <th>Constat</th>
-            <th>Niveau de risque</th>
-            <th>Impact</th>
+            <th style="width:5%">#</th>
+            <th style="width:25%">Constat</th>
+            <th style="width:15%">Niveau de risque</th>
+            <th style="width:20%">Cause</th>
+            <th style="width:25%">Impact</th>
+            <th style="width:10%">Score</th>
           </tr>
         </thead>
         <tbody>
           ${findings.map((f, i) => `
             <tr>
               <td>${i + 1}</td>
-              <td>${f.title || '-'}</td>
+              <td><strong>${f.title || '-'}</strong></td>
               <td>${f.riskLevel?.name || '-'}</td>
+              <td>${f.cause || '-'}</td>
               <td>${f.impact || '-'}</td>
+              <td>${f.severityScore ? f.severityScore : '-'}</td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     </div>
 
-    <!-- Tableau des recommandations -->
+    <!-- Tableau des recommandations détaillées -->
     <div class="section">
       <div class="section-title"><span class="dot"></span> Recommandations</div>
       <table>
         <thead>
           <tr>
-            <th>#</th>
-            <th>Recommandation</th>
-            <th>Responsable</th>
-            <th>Délai</th>
-            <th>Statut</th>
+            <th style="width:5%">#</th>
+            <th style="width:20%">Titre</th>
+            <th style="width:25%">Plan d'action</th>
+            <th style="width:12%">Date cible</th>
+            <th style="width:15%">Département</th>
+            <th style="width:15%">Affectation</th>
+            <th style="width:8%">Statut</th>
           </tr>
         </thead>
         <tbody>
-          ${recos.map((r, i) => `
+          ${recos.map((r, i) => {
+            const affectation = [
+              r.assigneeName,
+              r.assigneeUser ? r.assigneeUser.firstName + ' ' + r.assigneeUser.lastName : null,
+              r.assigneeGlpiUser ? r.assigneeGlpiUser.email : null
+            ].filter(Boolean).join(' / ') || '-';
+            return `
             <tr>
               <td>${i + 1}</td>
-              <td>${r.title || '-'}</td>
-              <td>${r.assigneeName || '-'}</td>
+              <td><strong>${r.title || '-'}</strong></td>
+              <td>${r.actionPlan || '-'}</td>
               <td>${r.targetDate ? new Date(r.targetDate).toLocaleDateString('fr-FR') : '-'}</td>
+              <td>${r.department?.name || '-'}</td>
+              <td>${affectation}</td>
               <td><span class="badge">${r.status || '-'}</span></td>
             </tr>
-          `).join('')}
+          `;
+          }).join('')}
         </tbody>
       </table>
     </div>
 
-    <!-- Plan d'action -->
+    <!-- Plan d'action détaillé -->
     <div class="section">
       <div class="section-title"><span class="dot"></span> Plan d'action</div>
       <table>
         <thead>
           <tr>
-            <th>Action</th>
-            <th>Responsable</th>
-            <th>Date prévue</th>
-            <th>Statut</th>
+            <th style="width:5%">#</th>
+            <th style="width:20%">Action (Recommandation)</th>
+            <th style="width:25%">Plan d'action détaillé</th>
+            <th style="width:12%">Date prévue</th>
+            <th style="width:15%">Département responsable</th>
+            <th style="width:15%">Responsable(s)</th>
+            <th style="width:8%">Statut</th>
           </tr>
         </thead>
         <tbody>
-          ${recos.map(r => `
+          ${recos.map((r, i) => {
+            const affectation = [
+              r.assigneeName,
+              r.assigneeUser ? r.assigneeUser.firstName + ' ' + r.assigneeUser.lastName : null,
+              r.assigneeGlpiUser ? r.assigneeGlpiUser.email : null
+            ].filter(Boolean).join(' / ') || '-';
+            return `
             <tr>
-              <td>${r.title || '-'}</td>
-              <td>${r.assigneeName || '-'}</td>
+              <td>${i + 1}</td>
+              <td><strong>${r.title || '-'}</strong></td>
+              <td>${r.actionPlan || '-'}</td>
               <td>${r.targetDate ? new Date(r.targetDate).toLocaleDateString('fr-FR') : '-'}</td>
+              <td>${r.department?.name || '-'}</td>
+              <td>${affectation}</td>
               <td><span class="badge">${r.status || '-'}</span></td>
             </tr>
-          `).join('')}
+          `;
+          }).join('')}
         </tbody>
       </table>
+    </div>
+
+    <!-- Tableau des tickets GLPI liés -->
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Tickets GLPI liés à la mission</div>
+      ${missionTicketLinks.length === 0
+        ? `<p class="section-desc">Aucun ticket GLPI lié à cette mission.</p>`
+        : `<table>
+        <thead>
+          <tr>
+            <th style="width:5%">#</th>
+            <th style="width:10%">N° Ticket</th>
+            <th style="width:17%">Titre</th>
+            <th style="width:10%">Statut</th>
+            <th style="width:10%">Priorité</th>
+            <th style="width:12%">Demandeur</th>
+            <th style="width:12%">Assigné à</th>
+            <th style="width:12%">Constat</th>
+            <th style="width:12%">Recommandation</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${missionTicketLinks.map((item, i) => {
+            const ticket = item.link.ticket;
+            return `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${ticket?.ticketNumber || ticket?.glpiId || '-'}</td>
+              <td><strong>${ticket?.title || '-'}</strong></td>
+              <td>${ticket?.status || '-'}</td>
+              <td>${ticket?.priority || '-'}</td>
+              <td>${ticket?.requesterGlpiUser?.fullName || '-'}</td>
+              <td>${ticket?.assigneeGlpiUser?.fullName || '-'}</td>
+              <td>${item.findingTitle || '-'}</td>
+              <td>${item.recommendationTitle || '-'}</td>
+            </tr>
+          `;
+          }).join('')}
+        </tbody>
+      </table>`}
     </div>
 
     <!-- Conclusion -->
     <div class="section">
       <div class="section-title"><span class="dot"></span> Conclusion</div>
-      <p class="section-desc">Les recommandations permettront de réduire les risques identifiés.</p>
+      <p class="section-desc">${mission.conclusion || '-'}</p>
     </div>
 
     <!-- Signatures -->
@@ -335,6 +463,8 @@ export const getMissionOrderData = async (missionId: number, tenantId: number) =
         where: { assignmentStatus: 'ACTIVE' },
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true } },
+          glpiUser: { select: { id: true, fullName: true, email: true } },
+          externalParticipant: { select: { id: true, fullName: true, email: true, organization: true, title: true } },
         },
         orderBy: { isLead: 'desc' },
       },
@@ -351,13 +481,20 @@ export const getMissionOrderData = async (missionId: number, tenantId: number) =
 
 export const buildMissionOrderHTML = (mission: any): string => {
   let logoSrc = '';
-  try {
-    const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
-    const logoBase64 = fs.readFileSync(logoFullPath).toString('base64');
-    logoSrc = `data:image/png;base64,${logoBase64}`;
-  } catch (e) {
-    // pas de logo → on continue sans
+
+  const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
+
+  if (!fs.existsSync(logoFullPath)) {
+    console.warn('Logo not found:', logoFullPath);
+  } else {
+    try {
+      const logoBase64 = fs.readFileSync(logoFullPath).toString('base64');
+      logoSrc = `data:image/png;base64,${logoBase64}`;
+    } catch (err) {
+      console.warn('Error reading logo:', err);
+    }
   }
+
 
   const orgName = mission.tenant?.name ?? 'Organisation';
   const orgCode = mission.tenant?.code ?? '';
@@ -379,7 +516,7 @@ export const buildMissionOrderHTML = (mission: any): string => {
     .map((m: any, i: number) => `
       <tr>
         <td style="text-align:center">${i + 1}</td>
-        <td>${m.user.firstName} ${m.user.lastName}</td>
+        <td>${m.user ? `${m.user.firstName} ${m.user.lastName}` : m.glpiUser ? (m.glpiUser.fullName || m.glpiUser.email || '-') : (m.externalParticipant?.fullName || '-')}</td>
         <td>${m.roleInMission || '-'}</td>
         <td style="text-align:center">${m.isLead ? 'Oui' : 'Non'}</td>
       </tr>
@@ -596,8 +733,17 @@ export const buildMissionOrderHTML = (mission: any): string => {
 };
 
 export const generatePDF = async (html: string): Promise<Buffer> => {
+  // const browser = await puppeteer.launch({
+  //   headless: true,
+  //   args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  // });
+  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath();
+
+  console.log('Using Chrome at:', executablePath);
+
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
@@ -605,7 +751,7 @@ export const generatePDF = async (html: string): Promise<Buffer> => {
     const page = await browser.newPage();
 
     await page.setContent(html, {
-      waitUntil: 'networkidle0',
+      waitUntil: 'domcontentloaded',
     });
 
     const pdfBuffer = await page.pdf({

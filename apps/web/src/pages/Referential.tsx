@@ -384,6 +384,10 @@ export default function Referential() {
                     <option value="PREVENTIF">Préventif</option>
                     <option value="DETECTIF">Détectif</option>
                     <option value="DIRECTIF">Directif</option>
+                    <option value="MANUEL">Manuel</option>
+                    <option value="AUTOMATIQUE">Automatique</option>
+                    <option value="HIERARCHIQUE">Hiérarchique</option>
+                    <option value="CORRECTIF">Correctif</option>
                   </select>
                 </div>
                 <div>

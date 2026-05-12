@@ -191,6 +191,12 @@ export const getMission = async (req: Request, res: Response) => {
           include: {
             user: {
               select: { id: true, firstName: true, lastName: true, email: true }
+            },
+            glpiUser: {
+              select: { id: true, fullName: true, email: true, entityName: true }
+            },
+            externalParticipant: {
+              select: { id: true, fullName: true, email: true, organization: true, title: true }
             }
           },
           orderBy: { assignedAt: 'desc' }
@@ -308,6 +314,7 @@ export const createMission = async (req: Request, res: Response) => {
       objective,
       scopeDescription,
       methodology,
+      conclusion,
       startDate,
       endDate,
       planId,
@@ -362,6 +369,7 @@ export const createMission = async (req: Request, res: Response) => {
           objective,
           scopeDescription,
           methodology,
+          conclusion,
           startDate: parsedStartDate,
           endDate: parsedEndDate,
           status: 'PLANNED',
@@ -444,6 +452,7 @@ export const updateMission = async (req: Request, res: Response) => {
       objective,
       scopeDescription,
       methodology,
+      conclusion,
       startDate,
       endDate,
       planId,
@@ -474,6 +483,7 @@ export const updateMission = async (req: Request, res: Response) => {
         objective,
         scopeDescription,
         methodology,
+        conclusion,
         startDate: parsedStartDate,
         endDate: parsedEndDate,
         planId: planId ? parseInt(planId) : undefined,
@@ -569,7 +579,16 @@ export const addMissionMember = async (req: Request, res: Response) => {
     if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
 
     const { id } = req.params; // missionId
-    const { userId, roleInMission, isLead, notes } = req.body;
+    const {
+      userId,
+      glpiUserId,
+      externalParticipantId,
+      externalParticipant,
+      memberType,
+      roleInMission,
+      isLead,
+      notes
+    } = req.body;
 
     const mission = await prisma.auditMission.findUnique({
       where: { id: parseInt(id) }
@@ -585,15 +604,117 @@ export const addMissionMember = async (req: Request, res: Response) => {
       });
     }
 
-    if (!userId || !roleInMission) {
-      return res.status(400).json({ error: 'L\'utilisateur et le rôle sont requis' });
+    if (!roleInMission) {
+      return res.status(400).json({ error: 'Le rôle dans la mission est requis' });
+    }
+
+    const requestedMemberType = typeof memberType === 'string' ? memberType : 'INTERNAL_USER';
+    if (!['INTERNAL_USER', 'GLPI_USER', 'EXTERNAL_PARTICIPANT'].includes(requestedMemberType)) {
+      return res.status(400).json({ error: 'Type de membre invalide' });
+    }
+
+    const providedSourceCount = [userId, glpiUserId, externalParticipantId].filter(Boolean).length;
+    if (providedSourceCount > 1) {
+      return res.status(400).json({ error: 'Un seul type de membre peut être renseigné' });
+    }
+
+    let normalizedUserId: number | null = null;
+    let normalizedGlpiUserId: number | null = null;
+    let normalizedExternalParticipantId: number | null = null;
+
+    if (requestedMemberType === 'INTERNAL_USER') {
+      if (!userId) {
+        return res.status(400).json({ error: 'Un utilisateur interne est requis' });
+      }
+
+      const internalUser = await prisma.user.findFirst({
+        where: {
+          id: parseInt(userId),
+          tenantId,
+          status: 'ACTIVE'
+        },
+        select: { id: true }
+      });
+
+      if (!internalUser) {
+        return res.status(404).json({ error: 'Utilisateur interne introuvable ou inactif' });
+      }
+
+      normalizedUserId = internalUser.id;
+    }
+
+    if (requestedMemberType === 'GLPI_USER') {
+      if (!glpiUserId) {
+        return res.status(400).json({ error: 'Un utilisateur GLPI est requis' });
+      }
+
+      const glpi = await prisma.gLPIUser.findFirst({
+        where: {
+          id: parseInt(glpiUserId),
+          tenantId,
+          status: 'ACTIVE',
+          isDeletedInSource: false
+        },
+        select: { id: true }
+      });
+
+      if (!glpi) {
+        return res.status(404).json({ error: 'Utilisateur GLPI introuvable ou inactif' });
+      }
+
+      normalizedGlpiUserId = glpi.id;
+    }
+
+    if (requestedMemberType === 'EXTERNAL_PARTICIPANT') {
+      if (externalParticipantId) {
+        const existingExternal = await prisma.externalParticipant.findFirst({
+          where: {
+            id: parseInt(externalParticipantId),
+            tenantId,
+            isActive: true
+          },
+          select: { id: true }
+        });
+
+        if (!existingExternal) {
+          return res.status(404).json({ error: 'Participant externe introuvable ou inactif' });
+        }
+
+        normalizedExternalParticipantId = existingExternal.id;
+      } else {
+        const fullName = typeof externalParticipant?.fullName === 'string'
+          ? externalParticipant.fullName.trim()
+          : '';
+
+        if (!fullName) {
+          return res.status(400).json({ error: 'Le nom du participant externe est requis' });
+        }
+
+        const createdExternal = await prisma.externalParticipant.create({
+          data: {
+            tenantId,
+            fullName,
+            email: typeof externalParticipant?.email === 'string' ? externalParticipant.email.trim() || null : null,
+            phone: typeof externalParticipant?.phone === 'string' ? externalParticipant.phone.trim() || null : null,
+            organization: typeof externalParticipant?.organization === 'string' ? externalParticipant.organization.trim() || null : null,
+            title: typeof externalParticipant?.title === 'string' ? externalParticipant.title.trim() || null : null,
+            notes: typeof externalParticipant?.notes === 'string' ? externalParticipant.notes.trim() || null : null,
+            isActive: true
+          },
+          select: { id: true }
+        });
+
+        normalizedExternalParticipantId = createdExternal.id;
+      }
     }
 
     // Check if already exists
     const existing = await prisma.auditMissionMember.findFirst({
       where: {
         missionId: parseInt(id),
-        userId: parseInt(userId),
+        userId: normalizedUserId,
+        glpiUserId: normalizedGlpiUserId,
+        externalParticipantId: normalizedExternalParticipantId,
         roleInMission,
         tenantId
       }
@@ -607,7 +728,10 @@ export const addMissionMember = async (req: Request, res: Response) => {
       data: {
         tenantId,
         missionId: parseInt(id),
-        userId: parseInt(userId),
+        memberType: requestedMemberType,
+        userId: normalizedUserId,
+        glpiUserId: normalizedGlpiUserId,
+        externalParticipantId: normalizedExternalParticipantId,
         roleInMission,
         isLead: isLead || false,
         notes,
@@ -619,6 +743,10 @@ export const addMissionMember = async (req: Request, res: Response) => {
 
     res.status(201).json(member);
   } catch (error: any) {
+    if (error?.code === 'P2002') {
+      return res.status(400).json({ error: 'Ce membre a déjà ce rôle dans la mission' });
+    }
+
     console.error('Error adding mission member:', error);
     res.status(500).json({ error: 'Erreur lors de l\'ajout du membre' });
   }
@@ -677,6 +805,26 @@ export const removeMissionMember = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error removing mission member:', error);
     res.status(500).json({ error: 'Erreur lors du retrait du membre' });
+  }
+};
+
+export const getExternalParticipants = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
+
+    const participants = await prisma.externalParticipant.findMany({
+      where: {
+        tenantId,
+        isActive: true
+      },
+      orderBy: { fullName: 'asc' }
+    });
+
+    res.json(participants);
+  } catch (error: any) {
+    console.error('Error fetching external participants:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des participants externes' });
   }
 };
 
@@ -996,7 +1144,9 @@ export const generateMissionReport = async (req: Request, res: Response) => {
       }
     });
 
-    res.json(document);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=rapport-mission-${missionId}.pdf`);
+    res.send(pdfBuffer);
 
   } catch (error) {
     console.error('PDF ERROR FULL:', error);
@@ -1044,9 +1194,42 @@ export const generateMissionOrder = async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename=ordre-mission-${missionId}.pdf`);
     res.send(pdfBuffer);
   } catch (error: any) {
-    console.error('Error generating mission order:', error);
-    res.status(500).json({ error: "Erreur lors de la génération de l'ordre de mission" });
+  console.error('❌ Error generating mission order');
+
+  console.error('➡️ Message:', error?.message);
+  console.error('➡️ Stack:', error?.stack);
+
+  // Puppeteer spécifique
+  if (error?.message?.includes('Browser')) {
+    console.error('🚨 Puppeteer issue detected');
+    console.error('➡️ Expected executablePath:', error?.message);
   }
+
+  // Prisma spécifique
+  if (error?.code) {
+    console.error('🗄️ Prisma error code:', error.code);
+    console.error('➡️ Meta:', error.meta);
+  }
+
+  // Infos utiles runtime
+  console.error('🧠 Context:', {
+    missionId: req.params.id,
+    tenantId: req.user?.tenantId,
+    userId: req.user?.id,
+    url: req.originalUrl,
+    method: req.method,
+  });
+
+  res.status(500).json({
+    error: "Erreur lors de la génération de l'ordre de mission",
+    debug: process.env.NODE_ENV !== 'production'
+      ? {
+          message: error?.message,
+          type: error?.name,
+        }
+      : undefined
+  });
+}
 };
 
 // ==========================================

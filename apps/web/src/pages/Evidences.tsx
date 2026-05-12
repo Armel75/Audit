@@ -13,6 +13,8 @@ import {
   Pencil,
   Trash2,
   Loader2,
+  Paperclip,
+  Download,
 } from 'lucide-react';
 
 export default function Evidences() {
@@ -56,6 +58,29 @@ export default function Evidences() {
     });
 
     fetchEvidences();
+  };
+
+  const handleDownload = async (docId: number, fileName: string) => {
+    try {
+      const res = await apiFetch(`${API_BASE}/documents/download/${docId}`);
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Erreur téléchargement');
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors du téléchargement');
+    }
   };
 
   return (
@@ -155,6 +180,36 @@ export default function Evidences() {
                         </span>
                       </div>
                     </div>
+
+                    {/* Attached document(s) */}
+                    {(() => {
+                      const docs = Array.isArray(e.evidenceDocuments) && e.evidenceDocuments.length > 0
+                        ? e.evidenceDocuments.map((link: any) => link?.document).filter(Boolean)
+                        : (e.document ? [e.document] : []);
+
+                      if (docs.length === 0) return null;
+
+                      return (
+                        <div className="mt-4 space-y-2">
+                          {docs.map((doc: any) => (
+                            <div key={doc.id} className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Paperclip className="w-4 h-4 text-emerald-600 shrink-0" />
+                                <span className="text-sm font-medium text-emerald-900 truncate">{doc.originalName}</span>
+                                <span className="text-xs text-emerald-600 shrink-0">({(doc.sizeBytes / 1024).toFixed(1)} KB)</span>
+                              </div>
+                              <button
+                                onClick={() => handleDownload(doc.id, doc.originalName)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-emerald-700 font-medium text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all shrink-0"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                Télécharger
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* RIGHT — actions */}

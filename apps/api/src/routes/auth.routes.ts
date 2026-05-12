@@ -7,7 +7,11 @@ import { forgotPassword } from '../controllers/auth.controller';
 
 const router = Router();
 
-const ACCESS_TOKEN_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '1h') as jwt.SignOptions['expiresIn'];
+const ACCESS_TOKEN_EXPIRES_IN = process.env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'];
+
+if (!ACCESS_TOKEN_EXPIRES_IN) {
+  throw new Error('JWT_EXPIRES_IN is required');
+}
 const REFRESH_TOKEN_EXPIRES_DAYS = 7; // Long-lived refresh token
 //const RESET_TOKEN_EXPIRES_HOURS = 1; // Limited-lifetime reset token
 
@@ -255,7 +259,7 @@ router.post('/register', async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12); // Use cost 12 for better security
     const role = await prisma.role.findFirst({
-      where: { name: { equals: 'Auditeur', mode: 'insensitive' } }
+      where: { name: 'Auditeur' }
     });
 
     if (!role) {
@@ -276,9 +280,13 @@ router.post('/register', async (req, res) => {
     });
 
     res.status(201).json({ message: 'Inscription réussie. Votre compte est en attente de validation.' });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ error: 'Erreur interne du serveur' });
+  } catch (error: any) {
+    console.error('🔥 REGISTER ERROR FULL:', error);
+    res.status(500).json({
+      error: error.message,
+      code: error.code,
+      meta: error.meta
+    });
   }
 });
 

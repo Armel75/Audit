@@ -151,27 +151,84 @@ export const updateFinding = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const tenantId = req.user?.tenantId;
-    if (!tenantId) return res.status(401).json({ error: 'Non autorisé' });
+    const userId = req.user?.id;
+    if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
 
-    const { title, description, criteria, riskLevelId, residualRiskLevelId, process, cause, impact, managementResponse, severityScore } = req.body;
+    const { title, description, criteria, riskLevelId, residualRiskLevelId, process, cause, impact, managementResponse, severityScore, modificationReason } = req.body;
 
-    const finding = await prisma.finding.updateMany({
+    const existing = await prisma.finding.findFirst({
       where: { id: Number(id), tenantId },
-      data: {
-        title,
-        description,
-        criteria,
-        riskLevelId: riskLevelId ? Number(riskLevelId) : null,
-        residualRiskLevelId: residualRiskLevelId ? Number(residualRiskLevelId) : null,
-        process,
-        cause,
-        impact,
-        managementResponse,
-        severityScore: severityScore ? Number(severityScore) : null,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        criteria: true,
+        riskLevelId: true,
+        residualRiskLevelId: true,
+        process: true,
+        cause: true,
+        impact: true,
+        managementResponse: true,
+        severityScore: true,
+        status: true,
       }
     });
 
-    if (finding.count === 0) return res.status(404).json({ error: 'Constat introuvable' });
+    if (!existing) return res.status(404).json({ error: 'Constat introuvable' });
+
+    const reason = typeof modificationReason === 'string' ? modificationReason.trim() : '';
+    if (reason.length < 10) {
+      return res.status(400).json({ error: 'La raison de modification est obligatoire (minimum 10 caracteres)' });
+    }
+
+    const updatedData = {
+      title,
+      description,
+      criteria,
+      riskLevelId: riskLevelId ? Number(riskLevelId) : null,
+      residualRiskLevelId: residualRiskLevelId ? Number(residualRiskLevelId) : null,
+      process,
+      cause,
+      impact,
+      managementResponse,
+      severityScore: severityScore ? Number(severityScore) : null,
+    };
+
+    await prisma.$transaction(async (tx) => {
+      await tx.finding.update({
+        where: { id: Number(id) },
+        data: updatedData,
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          action: 'FINDING_UPDATE_WITH_REASON',
+          entityName: 'Finding',
+          entityId: String(existing.id),
+          oldValues: JSON.stringify({
+            title: existing.title,
+            description: existing.description,
+            criteria: existing.criteria,
+            riskLevelId: existing.riskLevelId,
+            residualRiskLevelId: existing.residualRiskLevelId,
+            process: existing.process,
+            cause: existing.cause,
+            impact: existing.impact,
+            managementResponse: existing.managementResponse,
+            severityScore: existing.severityScore,
+            status: existing.status,
+          }),
+          newValues: JSON.stringify({
+            ...updatedData,
+            modificationReason: reason,
+          }),
+          userId,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'] || null,
+        }
+      });
+    });
     
     res.json({ success: true });
   } catch (error) {

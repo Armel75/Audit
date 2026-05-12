@@ -20,8 +20,12 @@ interface RiskLevel {
 }
 
 interface FindingFormProps {
-  missionId: string;
+  missionId?: string;
+  findingId?: string;
+  initialEditReason?: string;
+  initialData?: any;
   onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 const inputCls =
@@ -29,18 +33,36 @@ const inputCls =
 
 const labelCls = 'block text-sm font-semibold text-slate-900 mb-2';
 
-export default function FindingForm({ missionId, onSuccess }: FindingFormProps) {
+export default function FindingForm({ missionId, findingId, initialEditReason, initialData, onSuccess, onCancel }: FindingFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [process, setProcess] = useState('');
   const [cause, setCause] = useState('');
   const [impact, setImpact] = useState('');
   const [riskLevelId, setRiskLevelId] = useState('');
+  const [modificationReason, setModificationReason] = useState(initialEditReason || '');
   const [riskLevels, setRiskLevels] = useState<RiskLevel[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_URL;
+
+  useEffect(() => {
+    if (initialData) {
+      setTitle(initialData.title || '');
+      setDescription(initialData.description || '');
+      setProcess(initialData.process || '');
+      setCause(initialData.cause || '');
+      setImpact(initialData.impact || '');
+      setRiskLevelId(initialData.riskLevelId ? initialData.riskLevelId.toString() : '');
+    }
+  }, [initialData]);
+
+  useEffect(() => {
+    if (findingId && initialEditReason) {
+      setModificationReason(initialEditReason);
+    }
+  }, [findingId, initialEditReason]);
 
   useEffect(() => {
     apiFetch(`${API_BASE}/settings/risk-levels`)
@@ -59,33 +81,54 @@ export default function FindingForm({ missionId, onSuccess }: FindingFormProps) 
     setError(null);
 
     try {
-      const res = await apiFetch(`${API_BASE}/findings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          description,
-          process: process || undefined,
-          cause: cause || undefined,
-          impact: impact || undefined,
-          riskLevelId: riskLevelId || undefined,
-          missionId
-        })
-      });
+      if (findingId) {
+        if (modificationReason.trim().length < 10) {
+          throw new Error('La raison de modification est obligatoire (minimum 10 caracteres).');
+        }
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Erreur lors de la creation du constat');
+        // UPDATE
+        const res = await apiFetch(`${API_BASE}/findings/${findingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            description,
+            process: process || undefined,
+            cause: cause || undefined,
+            impact: impact || undefined,
+            riskLevelId: riskLevelId || undefined,
+            modificationReason: modificationReason.trim(),
+          })
+        });
+        if (!res.ok) throw new Error('Erreur mise à jour');
+        onSuccess?.();
+      } else {
+        // CREATE
+        const res = await apiFetch(`${API_BASE}/findings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            description,
+            process: process || undefined,
+            cause: cause || undefined,
+            impact: impact || undefined,
+            riskLevelId: riskLevelId || undefined,
+            missionId: missionId!,
+          })
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Erreur création');
+        }
+        setTitle('');
+        setDescription('');
+        setProcess('');
+        setCause('');
+        setImpact('');
+        setRiskLevelId('');
+        onSuccess?.();
       }
-
-      setTitle('');
-      setDescription('');
-      setProcess('');
-      setCause('');
-      setImpact('');
-      setRiskLevelId('');
-
-      onSuccess?.();
 
     } catch (err: any) {
       setError(err.message);
@@ -114,9 +157,11 @@ export default function FindingForm({ missionId, onSuccess }: FindingFormProps) 
               <AlertTriangle className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Nouveau constat</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{findingId ? 'Modifier le constat' : 'Nouveau constat'}</h1>
               <p className="text-sm text-slate-500 mt-1">
-                Documentez un ecart, une non-conformite ou un risque identifie lors de la mission.
+                {findingId
+                  ? 'Mettez a jour le constat avec une raison de modification tracee.'
+                  : 'Documentez un ecart, une non-conformite ou un risque identifie lors de la mission.'}
               </p>
             </div>
           </div>
@@ -240,6 +285,30 @@ export default function FindingForm({ missionId, onSuccess }: FindingFormProps) 
             </div>
           </section>
 
+          {findingId && (
+            <>
+              <div className="border-t border-slate-100" />
+              <section>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-5">Traçabilite de modification</h2>
+                <div>
+                  <label className={labelCls}>
+                    Raison de la modification <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    required
+                    minLength={10}
+                    rows={3}
+                    placeholder="Expliquez pourquoi ce constat est modifie"
+                    value={modificationReason}
+                    onChange={(e) => setModificationReason(e.target.value)}
+                    className={`${inputCls} resize-y`}
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Minimum 10 caracteres. Cette raison est enregistree pour audit.</p>
+                </div>
+              </section>
+            </>
+          )}
+
           {/* Footer actions */}
           <div className="border-t border-slate-100 pt-6 flex items-center justify-between">
             <p className="text-xs text-slate-400">
@@ -251,7 +320,9 @@ export default function FindingForm({ missionId, onSuccess }: FindingFormProps) 
               className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {submitting ? 'Creation en cours...' : 'Creer le constat'}
+              {submitting
+                ? (findingId ? 'Mise a jour en cours...' : 'Creation en cours...')
+                : (findingId ? 'Enregistrer les modifications' : 'Creer le constat')}
             </button>
           </div>
 

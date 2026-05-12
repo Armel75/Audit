@@ -80,6 +80,7 @@ const permissions = [
   { code: 'audit_mission:submit_review', description: 'Soumettre une mission en revue' },
   { code: 'audit_mission:rollback', description: 'Revenir à une étape précédente de la mission' },
   { code: 'audit_mission:cancel', description: 'Annuler une mission (statut annulé)' },
+  { code: 'audit_mission:approve', description: 'Approuver une mission (valider après revue)' },
 
   // ================= AUDIT PROGRAM =================
   { code: 'audit_program:create', description: 'Creer un programme d audit' },

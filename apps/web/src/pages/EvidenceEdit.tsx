@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { apiFetch } from '../lib/api';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -13,6 +13,9 @@ import {
   AlertTriangle,
   Loader2,
   CheckCircle2,
+  Paperclip,
+  X,
+  Download,
 } from 'lucide-react';
 
 const inputCls =
@@ -30,11 +33,15 @@ export default function EvidenceEdit() {
   const [source, setSource] = useState('');
   const [collectionDate, setCollectionDate] = useState('');
   const [isSensitive, setIsSensitive] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [attachedDocuments, setAttachedDocuments] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -58,9 +65,89 @@ export default function EvidenceEdit() {
           : ''
       );
       setIsSensitive(e.isSensitive || false);
+      const linkedDocs = Array.isArray(e.evidenceDocuments)
+        ? e.evidenceDocuments
+            .map((link: any) => link?.document)
+            .filter(Boolean)
+        : [];
+
+      if (linkedDocs.length > 0) {
+        setAttachedDocuments(linkedDocs);
+      } else if (e.document) {
+        setAttachedDocuments([e.document]);
+      } else {
+        setAttachedDocuments([]);
+      }
     }
 
     setLoading(false);
+  };
+
+  const handleDownload = async (docId: number, fileName: string) => {
+    try {
+      const res = await apiFetch(`${API_BASE}/documents/download/${docId}`);
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Erreur téléchargement');
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors du téléchargement');
+    }
+  };
+
+  const handleUploadFile = async () => {
+    if (selectedFiles.length === 0 || !id) return;
+
+    setUploadingFile(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      for (const file of selectedFiles) {
+        formData.append('files', file);
+      }
+
+      const res = await apiFetch(`${API_BASE}/evidences/${id}/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erreur lors de l\'upload');
+      }
+
+      const result = await res.json();
+      const linkedDocs = Array.isArray(result?.evidence?.evidenceDocuments)
+        ? result.evidence.evidenceDocuments
+            .map((link: any) => link?.document)
+            .filter(Boolean)
+        : [];
+
+      if (linkedDocs.length > 0) {
+        setAttachedDocuments(linkedDocs);
+      } else if (result?.evidence?.document) {
+        setAttachedDocuments([result.evidence.document]);
+      }
+
+      setSelectedFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setUploadingFile(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -264,6 +351,98 @@ export default function EvidenceEdit() {
                   </label>
                 </div>
               </div>
+            </div>
+          </section>
+
+          <div className="border-t border-slate-100" />
+
+          {/* Section 3 : Piece jointe */}
+          <section>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-5">Piece jointe (optionnel)</h2>
+            <div className="space-y-5">
+              {attachedDocuments.length > 0 && (
+                <div className="space-y-2">
+                  {attachedDocuments.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Paperclip className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-emerald-900 truncate">{doc.originalName}</p>
+                          <p className="text-xs text-emerald-600">{(doc.sizeBytes / 1024).toFixed(1)} KB</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(doc.id, doc.originalName)}
+                        className="inline-flex items-center px-2 py-1.5 text-emerald-600 hover:bg-emerald-100 rounded transition-all"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) {
+                      setSelectedFiles((prev) => [...prev, ...files]);
+                    }
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-600 hover:border-teal-400 hover:text-teal-600 transition-all"
+                >
+                  <Paperclip className="w-5 h-5" />
+                  <span className="text-sm font-medium">Ajouter des pieces jointes</span>
+                </button>
+                <p className="text-xs text-slate-400 mt-2 text-center">PDF, Word, Excel, images (max 20 MB/fichier)</p>
+              </div>
+
+              {selectedFiles.length > 0 && (
+                <div className="space-y-2">
+                  {selectedFiles.map((file, index) => (
+                    <div key={`${file.name}-${index}`} className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Paperclip className="w-4 h-4 text-blue-600 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-blue-900 truncate">{file.name}</p>
+                          <p className="text-xs text-blue-600">{(file.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFiles((prev) => prev.filter((_, i) => i !== index))}
+                        className="inline-flex items-center justify-center p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-all"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {selectedFiles.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleUploadFile}
+                  disabled={uploadingFile}
+                  className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed inline-flex justify-center items-center gap-2"
+                >
+                  {uploadingFile && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {uploadingFile ? 'Upload en cours...' : 'Charger les fichiers'}
+                </button>
+              )}
             </div>
           </section>
 

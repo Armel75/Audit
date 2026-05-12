@@ -26,6 +26,7 @@ import ProcedureFormPage from './pages/ProcedureFormPage';
 import Evidences from './pages/Evidences';
 import EvidenceCreate from './pages/EvidenceCreate';
 import EvidenceEdit from './pages/EvidenceEdit';
+import FindingEdit from './pages/FindingEdit';
 import DashboardDG from './pages/DashboardDG';
 import ApprovalCenter from './pages/ApprovalCenter';
 
@@ -102,6 +103,7 @@ export default function App() {
             <Route path="/missions/:id/edit" element={<PermissionRoute requiredPermissions={['audit_mission:update']}><MissionEdit /></PermissionRoute>} />
             <Route path="/missions/:id/findings" element={<PermissionRoute requiredPermissions={['finding:read']}><MissionFindings /></PermissionRoute>} />
             <Route path="/missions/:id/findings/new" element={<PermissionRoute requiredPermissions={['finding:create']}><FindingFormPage /></PermissionRoute>} />
+            <Route path="/findings/:id/edit" element={<PermissionRoute requiredPermissions={['finding:update']}><FindingEdit /></PermissionRoute>} />
             <Route path="/business-processes" element={<PermissionRoute requiredPermissions={['business_process:read']}><BusinessProcesses /></PermissionRoute>} />
             <Route path="/business-processes/new" element={<PermissionRoute requiredPermissions={['business_process:create']}><BusinessProcessForm /></PermissionRoute>} />
             <Route path="/business-processes/:id" element={<PermissionRoute requiredPermissions={['business_process:update', 'business_process:read']}><BusinessProcessForm /></PermissionRoute>} />

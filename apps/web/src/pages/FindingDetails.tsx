@@ -104,7 +104,9 @@ export default function FindingDetails() {
   const { user } = useAuth();
   const canSubmitFinding = user?.permissions?.includes('finding:submit') ?? false;
   const canRejectFinding = user?.permissions?.includes('finding:reject') ?? false;
+  const canUpdateFinding = user?.permissions?.includes('finding:update') ?? false;
   const API_BASE = import.meta.env.VITE_API_URL;
+
 
   const fetchFinding = () => {
     apiFetch(`${API_BASE}/findings/${id}`)
@@ -229,6 +231,21 @@ export default function FindingDetails() {
     }
   };
 
+  const handleRequestEdit = () => {
+    const reason = window.prompt('Indiquez la raison de la modification (minimum 10 caracteres) :', '');
+    if (reason === null) return;
+
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < 10) {
+      alert('La raison est obligatoire et doit contenir au moins 10 caracteres.');
+      return;
+    }
+
+    navigate(`/findings/${finding?.id}/edit`, {
+      state: { editReason: trimmedReason }
+    });
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-slate-500">Chargement des détails du constat...</div>;
   }
@@ -298,6 +315,16 @@ export default function FindingDetails() {
             
             {/* Action buttons based on status */}
             <div className="flex space-x-2 mt-2">
+              {canUpdateFinding && (
+                <button
+                  type="button"
+                  onClick={handleRequestEdit}
+                  className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                >
+                  Modifier le constat
+                </button>
+              )}
+
               {finding.status === 'DRAFT' && (
                 <>
                   {/* CAS 1 — pas d’approbation */}
