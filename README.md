@@ -87,3 +87,6 @@ Si vous souhaitez tester la version compilée (optimisée pour la production) en
 - `apps/web/` : Frontend React / Vite / Tailwind CSS.
 - `packages/database/` : Schéma Prisma et client de base de données.
 - `packages/shared/` : Types, interfaces et utilitaires partagés entre le front et le back.
+
+
+<img width="1590" height="1205" alt="image" src="https://github.com/user-attachments/assets/0e7df642-41ab-4f1e-91a9-01395c504aea" />
