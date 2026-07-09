@@ -1,92 +1,94 @@
-# SISAR - Système de Suivi des Audits et Recommandations
+# SISAR - Audit Tracking and Recommendations System
 
-Ce projet est une application SaaS B2B de gestion et de suivi d'audit. Il est structuré sous forme de monorepo (utilisant les workspaces npm) et comprend un backend en Node.js/Express, un frontend en React/Vite, et une base de données SQL Server gérée avec Prisma.
+SISAR is a B2B SaaS application for audit management and tracking. It is structured as a monorepo (using npm workspaces) and includes a Node.js/Express backend, a React/Vite frontend, and a SQL Server database managed with Prisma.
 
-## 📋 Prérequis
+## 📋 Prerequisites
 
-Avant de commencer, assurez-vous de disposer des éléments suivants sur votre machine :
+Before you begin, make sure you have the following installed on your machine:
 
-- **Node.js** (version 18.x ou supérieure recommandée)
-- **npm** (version 9.x ou supérieure)
-- **SQL Server** (une instance locale ou distante accessible)
+- **Node.js** (version 18.x or higher recommended)
+- **npm** (version 9.x or higher)
+- **SQL Server** (a local or remote instance you can connect to)
 
-## 🚀 Mode Opératoire : Déploiement et Lancement en Local
+## 🚀 Setup and Local Launch
 
-Suivez ces étapes dans l'ordre pour configurer et lancer le projet sur votre machine locale.
+Follow these steps in order to set up and run the project on your local machine.
 
-### 1. Installation des dépendances
+### 1. Install dependencies
 
-Placez-vous à la racine du projet et installez toutes les dépendances du monorepo (cela installera les paquets pour l'API, le Web, et les packages partagés) :
+From the project root, install all monorepo dependencies (this installs packages for the API, the Web app, and shared packages):
 
 ```bash
 npm install
 ```
 
-### 2. Configuration de l'environnement
+### 2. Configure environment variables
 
-Créez un fichier `.env` à la racine du projet (vous pouvez vous baser sur le fichier `.env.example` s'il existe) et configurez vos variables d'environnement. 
+Create a `.env` file at the project root (you can use `.env.example` as a starting point if it exists) and set your environment variables.
 
-La variable la plus importante est la chaîne de connexion à votre base de données SQL Server :
+The most important variable is the SQL Server connection string:
 
 ```env
-# Exemple de configuration de base de données SQL Server
-DATABASE_URL="sqlserver://UTILISATEUR:MOT_DE_PASSE@HOST:PORT;database=NOM_BDD;encrypt=true;trustServerCertificate=true"
+# Example SQL Server configuration
+DATABASE_URL="sqlserver://USER:PASSWORD@HOST:PORT;database=DB_NAME;encrypt=true;trustServerCertificate=true"
 
-# Autres variables potentielles selon votre configuration
-# JWT_SECRET="votre_secret_jwt_tres_securise"
+# Other potential variables depending on your setup
+# JWT_SECRET="your_very_secure_jwt_secret"
 # PORT=3000
 ```
 
-### 3. Initialisation de la base de données (Prisma)
+### 3. Initialize the database (Prisma)
 
-Une fois la connexion à la base de données configurée, vous devez générer le client Prisma et appliquer le schéma à votre base de données SQL Server.
+Once the database connection is configured, generate the Prisma client and apply the schema to your SQL Server database.
 
-Depuis la racine du projet, exécutez :
+From the project root, run:
 
 ```bash
-# 1. Générer le client Prisma
+# 1. Generate the Prisma client
 npm run prisma:generate
 
-# 2. Appliquer les migrations à la base de données
+# 2. Apply migrations to the database
 npm run prisma:migrate
 ```
-*(Note : Si vous êtes en phase de développement rapide sans historique de migration strict, vous pouvez également utiliser `npx prisma db push --schema=packages/database/schema.prisma`)*
 
-### 4. Lancement de l'application (Mode Développement)
+*(Note: If you're in rapid development mode without a strict migration history, you can alternatively use `npx prisma db push --schema=packages/database/schema.prisma`)*
 
-Pour lancer simultanément le serveur Backend (API) et le serveur Frontend (Web) avec rechargement à chaud, exécutez la commande suivante à la racine :
+### 4. Run the application (Development mode)
+
+To run both the backend (API) and frontend (Web) servers concurrently with hot reload, run the following command from the root:
 
 ```bash
 npm run dev
 ```
 
-Cette commande utilise `concurrently` pour démarrer les deux environnements :
-- **Frontend (Web)** : Généralement accessible sur [http://localhost:5173](http://localhost:5173)
-- **Backend (API)** : Généralement accessible sur [http://localhost:3000](http://localhost:3000) (ou le port défini dans votre `.env`)
+This command uses `concurrently` to start both environments:
+
+- **Frontend (Web)**: Typically available at [http://localhost:5173](http://localhost:5173)
+- **Backend (API)**: Typically available at [http://localhost:3000](http://localhost:3000) (or the port defined in your `.env`)
 
 ---
 
-## 📦 Déploiement pour la Production (Build)
+## 📦 Production Deployment (Build)
 
-Si vous souhaitez tester la version compilée (optimisée pour la production) en local :
+To test the compiled (production-optimized) version locally:
 
-1. Compilez l'ensemble des workspaces (API et Web) :
+1. Build all workspaces (API and Web):
    ```bash
    npm run build
    ```
-
-2. Démarrez le serveur API compilé :
+2. Start the compiled API server:
    ```bash
    npm run start
    ```
-*(Note : En production, assurez-vous que votre API est configurée pour servir les fichiers statiques générés dans `apps/web/dist` ou utilisez un serveur web dédié comme Nginx).*
 
-## 🏗️ Structure du Monorepo
+*(Note: In production, make sure your API is configured to serve the static files generated in `apps/web/dist`, or use a dedicated web server such as Nginx.)*
 
-- `apps/api/` : Backend Node.js / Express.
-- `apps/web/` : Frontend React / Vite / Tailwind CSS.
-- `packages/database/` : Schéma Prisma et client de base de données.
-- `packages/shared/` : Types, interfaces et utilitaires partagés entre le front et le back.
+## 🏗️ Monorepo Structure
+
+- `apps/api/`: Node.js / Express backend.
+- `apps/web/`: React / Vite / Tailwind CSS frontend.
+- `packages/database/`: Prisma schema and database client.
+- `packages/shared/`: Types, interfaces, and utilities shared between frontend and backend.
 
 
 <img width="1590" height="1205" alt="image" src="https://github.com/user-attachments/assets/0e7df642-41ab-4f1e-91a9-01395c504aea" />
