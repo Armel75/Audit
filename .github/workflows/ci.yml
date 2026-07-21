@@ -24,10 +24,13 @@ jobs:
       - name: 📦 Installer les dépendances
         run: npm install
 
-      - name: 🏗️ Vérifier le build frontend
+      - name: � Vérifier le build frontend
         run: npm run build --workspace=@audit/web
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:5000' }}
 
+      - name: ⚙️ Vérifier le build backend
+        run: npm run build --workspace=@audit/api
+
       - name: ✅ Succès
-        run: echo "🎉 Tout est OK — le code compile sans erreur !"
+        run: echo "🎉 Frontend + Backend OK !"
