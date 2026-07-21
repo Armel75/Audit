@@ -1,0 +1,33 @@
+name: CI — Vérification automatique
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Vérifier le projet
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: ⚡ Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: 📦 Installer les dépendances
+        run: npm ci
+
+      - name: 🏗️ Vérifier le build frontend
+        run: npm run build --workspace=@audit/web
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:5000' }}
+
+      - name: ✅ Succès
+        run: echo "🎉 Tout est OK — le code compile sans erreur !"
