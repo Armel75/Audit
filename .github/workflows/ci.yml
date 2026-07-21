@@ -2,7 +2,7 @@ name: CI — Vérification automatique
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, developpement]
   pull_request:
     branches: [main]
 
