@@ -24,13 +24,13 @@ jobs:
       - name: 📦 Installer les dépendances
         run: npm install
 
-      - name: � Vérifier le build frontend
-        run: npm run build --workspace=@audit/web
+      - name: ⚙️ Générer le client Prisma
+        run: npm run prisma:generate
+
+      - name: 🏗️ Vérifier le build complet
+        run: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:5000' }}
 
-      - name: ⚙️ Vérifier le build backend
-        run: npm run build --workspace=@audit/api
-
       - name: ✅ Succès
-        run: echo "🎉 Frontend + Backend OK !"
+        run: echo "🎉 Build complet réussi !"
