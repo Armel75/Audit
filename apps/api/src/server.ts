@@ -52,7 +52,6 @@ async function startServer() {
     fs.mkdirSync(STORAGE_PATH, { recursive: true });
   }
 
-
   // API Routes
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/documents', documentRoutes);
