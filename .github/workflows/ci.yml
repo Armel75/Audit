@@ -22,7 +22,7 @@ jobs:
           cache: 'npm'
 
       - name: 📦 Installer les dépendances
-        run: npm ci
+        run: npm install
 
       - name: 🏗️ Vérifier le build frontend
         run: npm run build --workspace=@audit/web
