@@ -1,7 +1,9 @@
+
 import { useState, useEffect, useRef } from 'react';
 import ComboBox from '../components/ComboBox';
-import { useParams, Link } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload, Users, Target, Clock, Edit2, Trash2, CheckCircle, XCircle, Ticket, ScrollText } from 'lucide-react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload, Users, Target, Clock, Edit2, Trash2, CheckCircle, XCircle, Ticket, ScrollText, MessageCircle } from 'lucide-react';
+import HierarchyCommentTabs from '../components/hierarchy-comments/HierarchyCommentTabs';
 import { apiFetch } from '../lib/api';
 import RecommendationList from '../components/RecommendationList';
 import RecommendationFormModal from '../components/RecommendationFormModal';
@@ -179,14 +181,15 @@ export default function MissionDetails() {
     // Pour la recherche d'entité auditable dans le formulaire
     const [entitySearchText, setEntitySearchText] = useState("");
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [mission, setMission] = useState<Mission | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   //const [activeTab, setActiveTab] = useState<'details' | 'members' | 'scopes' | 'programs' | 'history'>('details');
   const [activeTab, setActiveTab] = useState<
-    'details' | 'members' | 'scopes' | 'programs' | 'history' | 'recommendations' | 'tickets'
-  >('members');
+    'details' | 'members' | 'scopes' | 'programs' | 'history' | 'hierarchy-comments' | 'recommendations' | 'tickets'
+  >((searchParams.get('tab') as any) || 'members');
   // Modals state
   const [isFindingModalOpen, setIsFindingModalOpen] = useState(false);
   //const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -907,25 +910,25 @@ export default function MissionDetails() {
   !mission.approvals?.some(a => a.decision === 'APPROVED');
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-12 bg-slate-50 px-6 lg:px-0 min-h-screen">
+    <div className="space-y-8 max-w-7xl mx-auto pb-12 bg-slate-50 dark:bg-slate-900 px-6 lg:px-0 min-h-screen">
       {/* Header */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-        <Link to="/missions" className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm p-8">
+        <Link to="/missions" className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm transition hover:border-slate-300 dark:hover:border-slate-500 hover:text-slate-800 dark:hover:text-white">
           <ArrowLeft className="h-4 w-4" />
           <span>Retour aux missions</span>
         </Link>
         <div className="sm:flex sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tighter text-slate-900">{mission.title}</h1>
-            <p className="mt-2 text-sm text-slate-500 flex items-center gap-x-3">
-              <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-2xl">Plan {mission.plan.year}</span>
+            <h1 className="text-3xl font-semibold tracking-tighter text-slate-900 dark:text-white">{mission.title}</h1>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-x-3">
+              <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl">Plan {mission.plan.year}</span>
               {mission.auditType ? (
-                <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-2xl">Type: {mission.auditType.name}</span>
+                <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl">Type: {mission.auditType.name}</span>
               ) : null}
-              <span className="inline-flex items-center text-slate-400">•</span>
+              <span className="inline-flex items-center text-slate-400 dark:text-slate-500">•</span>
               <span className="font-medium">Chef de mission :</span> {mission.leader.firstName} {mission.leader.lastName}
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-6 text-sm text-slate-600">
+            <div className="mt-3 flex flex-wrap items-center gap-6 text-sm text-slate-600 dark:text-slate-300">
               {mission.startDate && (
                 <span className="flex items-center">
                   <span className="font-medium mr-2">Début :</span>
@@ -989,7 +992,7 @@ export default function MissionDetails() {
             {canViewReport ? (
               <Link
                 to={`/missions/${id}/report`}
-                className="inline-flex items-center px-6 py-3 border border-slate-200 hover:border-slate-300 rounded-3xl text-sm font-semibold text-slate-700 shadow-sm hover:shadow transition-all duration-200 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500"
+                className="inline-flex items-center px-6 py-3 border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 rounded-3xl text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:shadow transition-all duration-200 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500"
               >
                 Voir le rapport
               </Link>
@@ -1006,7 +1009,7 @@ export default function MissionDetails() {
             <button
               onClick={handleDownloadMissionOrder}
               disabled={generatingOrder}
-              className="inline-flex items-center gap-2 px-6 py-3 border border-emerald-200 hover:border-emerald-300 rounded-3xl text-sm font-semibold text-emerald-700 shadow-sm hover:shadow transition-all duration-200 active:scale-[0.97] bg-white hover:bg-emerald-50 disabled:opacity-60 disabled:cursor-wait"
+              className="inline-flex items-center gap-2 px-6 py-3 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-300 dark:hover:border-emerald-600 rounded-3xl text-sm font-semibold text-emerald-700 dark:text-emerald-300 shadow-sm hover:shadow transition-all duration-200 active:scale-[0.97] bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-60 disabled:cursor-wait"
               title="Télécharger l'ordre de mission en PDF"
             >
               <ScrollText className="h-4 w-4" />
@@ -1016,13 +1019,13 @@ export default function MissionDetails() {
         </div>
       </div>
       {/* Tabs */}
-      <div className="border-b border-slate-200 bg-white rounded-3xl shadow-sm px-6">
+      <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-3xl shadow-sm px-6">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('members')}
             className={`${activeTab === 'members'
-              ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
             <Users className="w-4 h-4 mr-2" />
@@ -1031,8 +1034,8 @@ export default function MissionDetails() {
           <button
             onClick={() => setActiveTab('scopes')}
             className={`${activeTab === 'scopes'
-              ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
             <Target className="w-4 h-4 mr-2" />
@@ -1041,8 +1044,8 @@ export default function MissionDetails() {
           <button
             onClick={() => setActiveTab('programs')}
             className={`${activeTab === 'programs'
-              ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
             <FileText className="w-4 h-4 mr-2" />
@@ -1051,8 +1054,8 @@ export default function MissionDetails() {
           <button
             onClick={() => setActiveTab('details')}
             className={`${activeTab === 'details'
-              ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
             <FileText className="w-4 h-4 mr-2" />
@@ -1061,8 +1064,8 @@ export default function MissionDetails() {
           <button
             onClick={() => setActiveTab('recommendations')}
             className={`${activeTab === 'recommendations'
-              ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
             Recommandations ({recommendations.length})
@@ -1070,8 +1073,8 @@ export default function MissionDetails() {
           <button
             onClick={() => setActiveTab('tickets')}
             className={`${activeTab === 'tickets'
-              ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
             <Ticket className="w-4 h-4 mr-2" />
@@ -1080,12 +1083,22 @@ export default function MissionDetails() {
           <button
             onClick={() => setActiveTab('history')}
             className={`${activeTab === 'history'
-              ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
             <Clock className="w-4 h-4 mr-2" />
             Historique
+          </button>
+          <button
+            onClick={() => setActiveTab('hierarchy-comments')}
+            className={`${activeTab === 'hierarchy-comments'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
+              } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
+          >
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Commentaires hiérarchiques
           </button>
         </nav>
       </div>
@@ -1093,51 +1106,51 @@ export default function MissionDetails() {
       {activeTab === 'details' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 space-y-8">
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-all duration-300 space-y-8">
               <div>
-                <h3 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-x-2">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-x-2">
                   <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
                   Description
                 </h3>
-                <p className="text-slate-600 leading-relaxed">{mission.description}</p>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{mission.description}</p>
               </div>
               {mission.objective && (
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-x-2">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-x-2">
                     <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
                     Objectif
                   </h3>
-                  <p className="text-slate-600 leading-relaxed">{mission.objective}</p>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{mission.objective}</p>
                 </div>
               )}
               {mission.scopeDescription && (
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-x-2">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-x-2">
                     <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
                     Description du périmètre
                   </h3>
-                  <p className="text-slate-600 leading-relaxed">{mission.scopeDescription}</p>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{mission.scopeDescription}</p>
                 </div>
               )}
               {mission.methodology && (
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-x-2">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-x-2">
                     <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
                     Méthodologie
                   </h3>
-                  <p className="text-slate-600 leading-relaxed">{mission.methodology}</p>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{mission.methodology}</p>
                 </div>
               )}
             </div>
             {/* Findings Section */}
-            <div className="bg-white shadow-sm border border-slate-100 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
-              <div className="px-8 py-6 border-b border-slate-100 sm:flex sm:items-center sm:justify-between">
+            <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
+              <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-700 sm:flex sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-xl font-semibold leading-6 text-slate-900 flex items-center">
+                  <h3 className="text-xl font-semibold leading-6 text-slate-900 dark:text-white flex items-center">
                     <FileText className="w-6 h-6 mr-3 text-indigo-500" />
                     Constats d'audit
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     Liste des constats relevés lors de cette mission.
                   </p>
                 </div>
@@ -1157,24 +1170,24 @@ export default function MissionDetails() {
                     <button
                       disabled
                       title="La mission doit être en cours"
-                      className="inline-flex items-center bg-slate-100 text-slate-400 px-6 py-3 rounded-3xl cursor-not-allowed font-semibold shadow-sm"
+                      className="inline-flex items-center bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 px-6 py-3 rounded-3xl cursor-not-allowed font-semibold shadow-sm"
                     >
                       + Nouveau constat
                     </button>
                   )}
                 </div>
               </div>
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-700">
                 {mission.findings.length === 0 ? (
-                  <li className="px-8 py-12 text-center text-sm text-slate-500 flex flex-col items-center">
-                    <FileText className="w-8 h-8 mb-3 text-slate-300" />
+                  <li className="px-8 py-12 text-center text-sm text-slate-500 dark:text-slate-400 flex flex-col items-center">
+                    <FileText className="w-8 h-8 mb-3 text-slate-300 dark:text-slate-600" />
                     Aucun constat n'a encore été enregistré pour cette mission.
                   </li>
                 ) : (
                   mission.findings.map((finding) => {
                     const statusConf = findingStatusConfig[finding.status] || findingStatusConfig.DRAFT;
                     return (
-                      <li key={finding.id} className="group hover:bg-slate-50 transition-all duration-200">
+                      <li key={finding.id} className="group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-200">
                         <div className="px-8 py-6 flex items-center justify-between">
                           <div className="flex-1 min-w-0 pr-4">
                             <div className="flex items-center justify-between mb-2">
@@ -1201,12 +1214,12 @@ export default function MissionDetails() {
                             </div>
                             <div className="mt-2 sm:flex sm:justify-between">
                               <div className="sm:flex">
-                                <p className="flex items-center text-sm text-slate-500 truncate leading-relaxed">
+                                <p className="flex items-center text-sm text-slate-500 dark:text-slate-400 truncate leading-relaxed">
                                   {finding.description.substring(0, 100)}
                                   {finding.description.length > 100 ? '...' : ''}
                                 </p>
                               </div>
-                              <div className="mt-3 flex items-center text-sm text-slate-500 sm:mt-0 sm:ml-6 font-medium">
+                              <div className="mt-3 flex items-center text-sm text-slate-500 dark:text-slate-400 sm:mt-0 sm:ml-6 font-medium">
                                 <p>
                                   {finding._count.recos} recommandation(s)
                                 </p>
@@ -1216,7 +1229,7 @@ export default function MissionDetails() {
                           <div className="ml-6 flex-shrink-0">
                             <Link
                               to={`/findings/${finding.id}`}
-                              className="px-4 py-3 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors rounded-2xl hover:bg-white shadow-sm inline-flex items-center gap-2"
+                              className="px-4 py-3 text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:hover:text-indigo-400 transition-colors rounded-2xl hover:bg-white dark:hover:bg-slate-700 shadow-sm inline-flex items-center gap-2"
                             >
                               <span>Voir détails</span>
                               <ChevronRight className="w-5 h-5" />
@@ -1233,22 +1246,22 @@ export default function MissionDetails() {
           {/* Sidebar */}
           <div className="space-y-8">
             {/* Attachments */}
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300">
-              <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center">
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl transition-all duration-300">
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-6 flex items-center">
                 <Paperclip className="w-6 h-6 mr-3 text-indigo-500" />
                 Documents ({mission.documents?.length || 0})
               </h3>
               {!mission.documents || mission.documents.length === 0 ? (
-                <p className="text-sm text-slate-400 italic mb-6 flex items-center gap-x-2">
-                  <Paperclip className="w-4 h-4" />
+                <p className="text-sm text-slate-400 dark:text-slate-500 italic mb-6 flex items-center gap-x-2">
+                  <Paperclip className="w-4 h-4 dark:text-slate-500" />
                   Aucun document attaché.
                 </p>
               ) : (
-                <ul className="divide-y divide-slate-100 mb-8">
+                <ul className="divide-y divide-slate-100 dark:divide-slate-700 mb-8">
                   {mission.documents.map(doc => (
                     <li key={doc.id} className="py-4 flex items-center justify-between group">
                     <div className="flex items-center min-w-0">
-                      <Paperclip className="h-4 w-4 text-slate-400 mr-3" />
+                      <Paperclip className="h-4 w-4 text-slate-400 dark:text-slate-500 mr-3" />
                       {/* <a
                         href={`${API_BASE}/documents/download/${doc.id}`}
                         target="_blank"
@@ -1259,14 +1272,14 @@ export default function MissionDetails() {
                       </a> */}
                       <button
                         onClick={() => handleDownload(doc.id, doc.originalName)}
-                        className="text-sm font-medium text-slate-700 hover:text-indigo-600 truncate"
+                        className="text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 truncate"
                       >
                         {doc.originalName}
                       </button>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-400 dark:text-slate-500">
                         {(doc.sizeBytes / 1024).toFixed(1)} KB
                       </span>
 
@@ -1291,7 +1304,7 @@ export default function MissionDetails() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="w-full inline-flex justify-center items-center px-6 py-4 border border-slate-200 shadow-sm text-sm font-semibold rounded-3xl text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 transition-all duration-200 active:scale-[0.97]"
+                  className="w-full inline-flex justify-center items-center px-6 py-4 border border-slate-200 dark:border-slate-600 shadow-sm text-sm font-semibold rounded-3xl text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 hover:border-slate-300 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 transition-all duration-200 active:scale-[0.97]"
                 >
                   {uploading ? (
                     'Upload en cours...'
@@ -1305,9 +1318,9 @@ export default function MissionDetails() {
               </div>
             </div>
             {/* Approvals */}
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300">
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-slate-900 flex items-center">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white flex items-center">
                   <CheckCircle className="w-6 h-6 mr-3 text-indigo-500" />
                   Approbations ({mission.approvals?.length || 0})
                 </h3>
@@ -1317,17 +1330,17 @@ export default function MissionDetails() {
                   className={`text-sm font-semibold px-4 py-2 rounded-3xl transition-all duration-200
                   ${
                     canRequestApproval
-                      ? 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
-                      : 'text-slate-400 cursor-not-allowed'
+                      ? 'text-indigo-600 hover:text-indigo-700 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
+                      : 'text-slate-400 dark:text-slate-500 cursor-not-allowed'
                   }`}
                 >
                   + Demander
                 </button>
               </div>
               {!mission.approvals || mission.approvals.length === 0 ? (
-                <p className="text-sm text-slate-400 italic mb-6">Aucune approbation.</p>
+                <p className="text-sm text-slate-400 dark:text-slate-500 italic mb-6">Aucune approbation.</p>
               ) : (
-                <ul className="divide-y divide-slate-100 mb-6">
+                <ul className="divide-y divide-slate-100 dark:divide-slate-700 mb-6">
                   {/* {mission.approvals.map(approval => (
                     <li key={approval.id} className="py-3 flex items-start">
                       <div className="flex-shrink-0">
@@ -1362,12 +1375,12 @@ export default function MissionDetails() {
                           )}
                         </div>
                         <div className="ml-4">
-                          <p className="text-sm font-medium text-slate-900">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">
                             {approval.approver
                               ? `${approval.approver.firstName} ${approval.approver.lastName}`
                               : 'En attente de validation'}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
                             {new Date(approval.createdAt).toLocaleDateString()} — {approval.decision}
                           </p>
                         </div>
@@ -1390,11 +1403,11 @@ export default function MissionDetails() {
         </div>
       )}
       {activeTab === 'members' && (
-        <div className="bg-white shadow-sm border border-slate-100 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
-          <div className="px-8 py-6 border-b border-slate-100 sm:flex sm:items-center sm:justify-between">
+        <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
+          <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-700 sm:flex sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-xl font-semibold leading-6 text-slate-900">Membres de la mission</h3>
-              <p className="mt-1 text-sm text-slate-500">Gérez l'équipe affectée à cette mission d'audit.</p>
+              <h3 className="text-xl font-semibold leading-6 text-slate-900 dark:text-white">Membres de la mission</h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Gérez l'équipe affectée à cette mission d'audit.</p>
             </div>
             <div className="mt-4 sm:mt-0">
               <button
@@ -1402,7 +1415,7 @@ export default function MissionDetails() {
                 disabled={!canEditCadrage}
                 className={`inline-flex items-center px-6 py-3 rounded-3xl font-semibold transition-all duration-200 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${canEditCadrage
                   ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-xl'
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                   }`}
               >
                 <Plus className="-ml-1 mr-2 h-4 w-4" />
@@ -1410,29 +1423,29 @@ export default function MissionDetails() {
               </button>
             </div>
           </div>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-slate-100 dark:divide-slate-700">
             {mission.members.length === 0 ? (
-              <li className="px-8 py-12 text-center text-sm text-slate-500">Aucun membre affecté.</li>
+              <li className="px-8 py-12 text-center text-sm text-slate-500 dark:text-slate-400">Aucun membre affecté.</li>
             ) : (
               mission.members.map(member => (
-                <li key={member.id} className="px-8 py-6 flex items-center justify-between group hover:bg-slate-50 transition-all duration-200">
+                <li key={member.id} className="px-8 py-6 flex items-center justify-between group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-200">
                   <div className="flex-1">
-                    <p className="text-base font-semibold text-slate-900 flex items-center">
+                    <p className="text-base font-semibold text-slate-900 dark:text-white flex items-center">
                       {getMemberDisplayName(member)}
-                      {member.isLead && <span className="ml-3 px-3 py-0.5 rounded-3xl text-xs font-medium bg-indigo-100 text-indigo-700">Lead</span>}
+                      {member.isLead && <span className="ml-3 px-3 py-0.5 rounded-3xl text-xs font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">Lead</span>}
                     </p>
-                    <p className="text-sm text-slate-500 mt-px">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-px">
                       {getMemberDisplayEmail(member) ? `${getMemberDisplayEmail(member)} • ` : ''}
                       Rôle: {member.roleInMission}
                     </p>
                     {member.notes && (
-                      <p className="text-sm text-slate-600 mt-2 italic">Notes: {member.notes}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 italic">Notes: {member.notes}</p>
                     )}
                   </div>
                   <button
                     onClick={() => handleRemoveMember(member.id)}
                     disabled={!canEditCadrage}
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none"
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Retirer de la mission
@@ -1444,11 +1457,11 @@ export default function MissionDetails() {
         </div>
       )}
       {activeTab === 'scopes' && (
-        <div className="bg-white shadow-sm border border-slate-100 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
-          <div className="px-8 py-6 border-b border-slate-100 sm:flex sm:items-center sm:justify-between">
+        <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
+          <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-700 sm:flex sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-xl font-semibold leading-6 text-slate-900">Périmètre de la mission</h3>
-              <p className="mt-1 text-sm text-slate-500">Entités auditables concernées par cette mission.</p>
+              <h3 className="text-xl font-semibold leading-6 text-slate-900 dark:text-white">Périmètre de la mission</h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Entités auditables concernées par cette mission.</p>
             </div>
             <div className="mt-4 sm:mt-0">
               <button
@@ -1456,7 +1469,7 @@ export default function MissionDetails() {
                 disabled={!canEditCadrage}
                 className={`inline-flex items-center justify-center rounded-3xl px-6 py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${canEditCadrage
                   ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-xl'
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                   }`}
               >
                 <Plus className="-ml-1 mr-2 h-4 w-4" />
@@ -1464,28 +1477,28 @@ export default function MissionDetails() {
               </button>
             </div>
           </div>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-slate-100 dark:divide-slate-700">
             {mission.scopes.length === 0 ? (
-              <li className="px-8 py-12 text-center text-sm text-slate-500">Aucune entité dans le périmètre.</li>
+              <li className="px-8 py-12 text-center text-sm text-slate-500 dark:text-slate-400">Aucune entité dans le périmètre.</li>
             ) : (
               mission.scopes.map(scope => (
-                <li key={scope.id} className="px-8 py-6 flex items-center justify-between group hover:bg-slate-50 transition-all duration-200">
+                <li key={scope.id} className="px-8 py-6 flex items-center justify-between group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-200">
                   <div className="flex-1">
-                    <p className="text-base font-semibold text-slate-900">
-                      {scope.auditableEntity.name} <span className="text-slate-400 font-normal">({scope.auditableEntity.code})</span>
+                    <p className="text-base font-semibold text-slate-900 dark:text-white">
+                      {scope.auditableEntity.name} <span className="text-slate-400 dark:text-slate-500 font-normal">({scope.auditableEntity.code})</span>
                     </p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                       Type: {scope.auditableEntity.entityType}
                       {scope.scopeRole ? ` • Rôle: ${scope.scopeRole}` : ''}
                       {scope.criticality ? ` • Criticité: ${getCriticalityLabel(scope.criticality)}` : ''}
                     </p>
                     {scope.notes && (
-                      <p className="text-sm text-slate-600 mt-1 italic">
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 italic">
                         "{scope.notes}"
                       </p>
                     )}
                     {scope.addedBy && (
-                      <p className="text-xs text-slate-400 mt-1">
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                         Ajouté par {scope.addedBy.firstName} {scope.addedBy.lastName}
                       </p>
                     )}
@@ -1515,11 +1528,11 @@ export default function MissionDetails() {
         </div>
       )}
       {activeTab === 'programs' && (
-        <div className="bg-white shadow-sm border border-slate-100 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
-          <div className="px-8 py-6 border-b border-slate-100 sm:flex sm:items-center sm:justify-between">
+        <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
+          <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-700 sm:flex sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-xl font-semibold leading-6 text-slate-900">Programmes d'audit</h3>
-              <p className="mt-1 text-sm text-slate-500">Gérez les programmes et procédures d'audit pour cette mission.</p>
+              <h3 className="text-xl font-semibold leading-6 text-slate-900 dark:text-white">Programmes d'audit</h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Gérez les programmes et procédures d'audit pour cette mission.</p>
             </div>
             <div className="mt-4 sm:mt-0">
               <button
@@ -1527,7 +1540,7 @@ export default function MissionDetails() {
                 disabled={!canEditCadrage}
                 className={`inline-flex items-center justify-center rounded-3xl px-6 py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${canEditCadrage
                   ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-xl'
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                   }`}
               >
                 <Plus className="-ml-1 mr-2 h-4 w-4" />
@@ -1535,25 +1548,25 @@ export default function MissionDetails() {
               </button>
             </div>
           </div>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-slate-100 dark:divide-slate-700">
             {!mission.programs || mission.programs.length === 0 ? (
-              <li className="px-8 py-12 text-center text-sm text-slate-500">Aucun programme d'audit défini.</li>
+              <li className="px-8 py-12 text-center text-sm text-slate-500 dark:text-slate-400">Aucun programme d'audit défini.</li>
             ) : (
               mission.programs.map(program => (
                 <li
                   key={program.id}
-                  className="px-8 py-6 flex items-center justify-between hover:bg-slate-50 transition-all duration-200 group"
+                  className="px-8 py-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-200 group"
                 >
                   {/* LEFT */}
                   <div>
                     <Link
                       to={`/programs/${program.id}`}
-                      className="text-base font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+                      className="text-base font-semibold text-indigo-600 hover:text-indigo-700 dark:hover:text-indigo-400 transition-colors"
                     >
                       {program.title}
                     </Link>
-                    <div className="flex items-center mt-3 space-x-6 text-sm text-slate-500">
-                      <span className="inline-flex items-center px-4 py-1 rounded-3xl text-xs font-medium bg-slate-100 text-slate-700 transition-all group-hover:bg-slate-200">
+                    <div className="flex items-center mt-3 space-x-6 text-sm text-slate-500 dark:text-slate-400">
+                      <span className="inline-flex items-center px-4 py-1 rounded-3xl text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all group-hover:bg-slate-200 dark:group-hover:bg-slate-600">
                         {programStatusConfig[program.status] ?? program.status}
                       </span>
                       <span className="font-medium">{program._count.procedures} procédure(s)</span>
@@ -1583,7 +1596,7 @@ export default function MissionDetails() {
                           });
                           setIsEditProgramModalOpen(true);
                         }}
-                        className="inline-flex items-center gap-1.5 text-sm px-4 py-2.5 rounded-3xl border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-medium transition-all duration-200 active:scale-95"
+                        className="inline-flex items-center gap-1.5 text-sm px-4 py-2.5 rounded-3xl border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-500 font-medium transition-all duration-200 active:scale-95"
                       >
                         <Edit2 className="w-4 h-4" />
                         Modifier
@@ -1604,9 +1617,9 @@ export default function MissionDetails() {
         </div>
       )}
       {activeTab === 'history' && (
-        <div className="bg-white shadow-sm border border-slate-100 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
-          <div className="px-8 py-6 border-b border-slate-100">
-            <h3 className="text-xl font-semibold leading-6 text-slate-900">Historique des statuts</h3>
+        <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
+          <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-700">
+            <h3 className="text-xl font-semibold leading-6 text-slate-900 dark:text-white">Historique des statuts</h3>
           </div>
           <div className="p-8">
             <div className="flow-root">
@@ -1619,18 +1632,18 @@ export default function MissionDetails() {
                       ) : null}
                       <div className="relative flex space-x-4">
                         <div>
-                          <span className="h-8 w-8 rounded-2xl bg-indigo-100 flex items-center justify-center ring-4 ring-white shadow-inner">
+                          <span className="h-8 w-8 rounded-2xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center ring-4 ring-white dark:ring-slate-800 shadow-inner">
                             <Clock className="h-4 w-4 text-indigo-600" aria-hidden="true" />
                           </span>
                         </div>
                         <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
                           <div>
-                            <p className="text-sm text-slate-500">
-                              Statut changé à <span className="font-semibold text-slate-900">{missionStatusConfig[history.newStatus]?.label || history.newStatus}</span>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              Statut changé à <span className="font-semibold text-slate-900 dark:text-white">{missionStatusConfig[history.newStatus]?.label || history.newStatus}</span>
                               {history.changedBy && ` par ${history.changedBy.firstName} ${history.changedBy.lastName}`}
                             </p>
                             {history.reason && (
-                              <p className="mt-2 text-sm text-slate-600 italic">"{
+                              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 italic">"{
                                 history.reason.replace(
                                   /Transition automatique vers (\w+)/,
                                   (_, s) => `Transition automatique vers ${missionStatusConfig[s]?.label ?? s}`
@@ -1638,7 +1651,7 @@ export default function MissionDetails() {
                               }"</p>
                             )}
                           </div>
-                          <div className="whitespace-nowrap text-right text-sm text-slate-500 flex flex-col items-end gap-3">
+                          <div className="whitespace-nowrap text-right text-sm text-slate-500 dark:text-slate-400 flex flex-col items-end gap-3">
                             {new Date(history.changedAt).toLocaleString('fr-FR')}
                             <div className="flex items-center gap-3">
                               {/* Boutons désactivés */}
@@ -1660,11 +1673,14 @@ export default function MissionDetails() {
           </div>
         </div>
       )}
+        {activeTab === 'hierarchy-comments' && (
+          <HierarchyCommentTabs contextType="MISSION" contextId={mission.id} />
+        )}
       {activeTab === 'recommendations' && (
-        <div className="bg-white shadow-sm border border-slate-100 rounded-3xl p-8 space-y-6 hover:shadow-xl transition-all duration-300">
+        <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-3xl p-8 space-y-6 hover:shadow-xl transition-all duration-300">
           {/* HEADER */}
           <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold text-slate-900">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
               Recommandations
             </h3>
             {/* <button
@@ -1702,7 +1718,7 @@ export default function MissionDetails() {
               }
               className={`inline-flex items-center px-6 py-3 rounded-3xl font-semibold transition-all duration-200 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${canCreateRecommendation
                 ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-xl'
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                 }`}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -1716,8 +1732,8 @@ export default function MissionDetails() {
           />
           
           {/* Bloc Conclusion */}
-          <div className="mt-8 p-6 bg-gradient-to-r from-slate-50 to-indigo-50 rounded-3xl border border-indigo-100">
-            <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <div className="mt-8 p-6 bg-gradient-to-r from-slate-50 to-indigo-50 dark:from-slate-800 dark:to-indigo-950/40 rounded-3xl border border-indigo-100 dark:border-indigo-900">
+            <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <ScrollText className="w-5 h-5 text-indigo-500" />
               Conclusion de la mission
             </h4>
@@ -1727,8 +1743,8 @@ export default function MissionDetails() {
               rows={6}
               className={`w-full p-4 rounded-2xl border-2 focus:ring-2 focus:ring-indigo-200 resize-vertical shadow-sm transition-all duration-200 ${
                 mission.status === 'IN_PROGRESS' && !isConclusionSubmitted
-                  ? 'border-indigo-300 focus:border-indigo-500 focus:outline-none'
-                  : 'bg-slate-100 border-slate-300 cursor-not-allowed'
+                  ? 'border-indigo-300 dark:border-indigo-600 dark:bg-slate-700 dark:text-white focus:border-indigo-500 focus:outline-none'
+                  : 'bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 dark:text-slate-400 cursor-not-allowed'
               }`}
               placeholder="Saisissez la conclusion générale de la mission d'audit..."
               disabled={mission.status !== 'IN_PROGRESS' || isConclusionSubmitted}
@@ -1775,21 +1791,21 @@ export default function MissionDetails() {
       )}
 
       {activeTab === 'tickets' && (
-        <div className="bg-white shadow-sm border border-slate-100 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
-          <div className="px-8 py-6 border-b border-slate-100">
-            <h3 className="text-xl font-semibold leading-6 text-slate-900">Tickets GLPI liés</h3>
-            <p className="mt-1 text-sm text-slate-500">
+        <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300">
+          <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-700">
+            <h3 className="text-xl font-semibold leading-6 text-slate-900 dark:text-white">Tickets GLPI liés</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Tickets rattachés via les recommandations de cette mission.
             </p>
           </div>
 
           {missionTickets.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm">
+            <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm">
               Aucun ticket GLPI lié à cette mission.
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600 uppercase text-xs tracking-wide">
+              <thead className="bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wide">
                 <tr>
                   <th className="p-4 text-left">N° Ticket</th>
                   <th className="p-4 text-left">Titre</th>
@@ -1813,11 +1829,11 @@ export default function MissionDetails() {
                     PLANNED: 'bg-purple-100 text-purple-800',
                   };
                   return (
-                    <tr key={link.id} className="border-t hover:bg-slate-50 transition">
-                      <td className="p-4 font-mono text-slate-700">
+                    <tr key={link.id} className="border-t dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                      <td className="p-4 font-mono text-slate-700 dark:text-slate-300">
                         {t?.ticketNumber || t?.glpiId || '-'}
                       </td>
-                      <td className="p-4 font-medium text-slate-800 max-w-xs truncate">
+                      <td className="p-4 font-medium text-slate-800 dark:text-slate-200 max-w-xs truncate">
                         {t?.title || '-'}
                       </td>
                       <td className="p-4">
@@ -1897,24 +1913,24 @@ export default function MissionDetails() {
       )} */}
       {isActionModalOpen && selectedAction && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
-            <h3 className="text-xl font-semibold mb-2 text-slate-900">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl">
+            <h3 className="text-xl font-semibold mb-2 text-slate-900 dark:text-white">
               {selectedAction?.label}
             </h3>
-            <p className="text-sm text-slate-500 mb-6">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
               Cette action va changer le statut de la mission.
             </p>
             <textarea
               value={actionReason}
               onChange={(e) => setActionReason(e.target.value)}
               placeholder="Commentaire obligatoire..."
-              className="w-full border border-slate-200 focus:border-indigo-300 rounded-3xl p-4 text-sm mb-8 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all resize-y min-h-[120px]"
+              className="w-full border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:border-indigo-300 rounded-3xl p-4 text-sm mb-8 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all resize-y min-h-[120px]"
               required
             />
             <div className="flex justify-end gap-x-3">
               <button
                 onClick={() => setIsActionModalOpen(false)}
-                className="px-6 py-3 border border-slate-200 hover:border-slate-300 rounded-3xl font-medium transition-all duration-200"
+                className="px-6 py-3 border border-slate-200 dark:border-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500 rounded-3xl font-medium transition-all duration-200"
               >
                 Annuler
               </button>
@@ -1941,15 +1957,15 @@ export default function MissionDetails() {
         <div className="fixed inset-0 z-[9999] overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsMemberModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
-              <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-6 border-b border-indigo-200">
+            <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+              <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-950/50 dark:to-indigo-900/30 px-8 py-6 border-b border-indigo-200 dark:border-indigo-800">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-full bg-indigo-600 text-white">
                     <Users className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-slate-900">Ajouter un membre</h3>
-                    <p className="text-sm text-slate-600 mt-1">Affectez rapidement un collaborateur avec son rôle et des notes utiles.</p>
+                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Ajouter un membre</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Affectez rapidement un collaborateur avec son rôle et des notes utiles.</p>
                   </div>
                 </div>
               </div>
@@ -1957,7 +1973,7 @@ export default function MissionDetails() {
               <form onSubmit={handleAddMember} className="px-8 py-6 space-y-6">
                 <div className="grid gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Type de membre *</label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Type de membre *</label>
                     <select
                       value={memberForm.memberType}
                       onChange={(e) =>
@@ -1974,7 +1990,7 @@ export default function MissionDetails() {
                           externalTitle: ''
                         })
                       }
-                      className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                      className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                       required
                     >
                       <option value="INTERNAL_USER">Utilisateur interne</option>
@@ -1985,11 +2001,11 @@ export default function MissionDetails() {
 
                   {memberForm.memberType === 'INTERNAL_USER' && (
                     <div>
-                      <label className="block text-sm font-semibold text-slate-900 mb-2">Utilisateur *</label>
+                      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Utilisateur *</label>
                       <select
                         value={memberForm.userId}
                         onChange={(e) => setMemberForm({ ...memberForm, userId: e.target.value })}
-                        className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                        className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                         required
                       >
                         <option value="">Sélectionner un utilisateur</option>
@@ -1997,17 +2013,17 @@ export default function MissionDetails() {
                           <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
                         ))}
                       </select>
-                      <p className="mt-2 text-xs text-slate-500">Sélectionnez l'utilisateur interne à ajouter à la mission.</p>
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Sélectionnez l'utilisateur interne à ajouter à la mission.</p>
                     </div>
                   )}
 
                   {memberForm.memberType === 'GLPI_USER' && (
                     <div>
-                      <label className="block text-sm font-semibold text-slate-900 mb-2">Utilisateur GLPI *</label>
+                      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Utilisateur GLPI *</label>
                       <select
                         value={memberForm.glpiUserId}
                         onChange={(e) => setMemberForm({ ...memberForm, glpiUserId: e.target.value })}
-                        className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                        className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                         required
                       >
                         <option value="">Sélectionner un utilisateur GLPI</option>
@@ -2015,18 +2031,18 @@ export default function MissionDetails() {
                           <option key={u.id} value={u.id}>{u.fullName || u.email || `GLPI#${u.id}`}</option>
                         ))}
                       </select>
-                      <p className="mt-2 text-xs text-slate-500">Sélectionnez un utilisateur référencé depuis GLPI.</p>
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Sélectionnez un utilisateur référencé depuis GLPI.</p>
                     </div>
                   )}
 
                   {memberForm.memberType === 'EXTERNAL_PARTICIPANT' && (
                     <>
                       <div>
-                        <label className="block text-sm font-semibold text-slate-900 mb-2">Participant externe existant</label>
+                        <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Participant externe existant</label>
                         <select
                           value={memberForm.externalParticipantId}
                           onChange={(e) => setMemberForm({ ...memberForm, externalParticipantId: e.target.value })}
-                          className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                          className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                         >
                           <option value="">Nouveau participant externe</option>
                           {externalParticipants.map(p => (
@@ -2038,49 +2054,49 @@ export default function MissionDetails() {
                       {!memberForm.externalParticipantId && (
                         <>
                           <div>
-                            <label className="block text-sm font-semibold text-slate-900 mb-2">Nom complet *</label>
+                            <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Nom complet *</label>
                             <input
                               type="text"
                               value={memberForm.externalFullName}
                               onChange={(e) => setMemberForm({ ...memberForm, externalFullName: e.target.value })}
-                              className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                              className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                               required
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-slate-900 mb-2">Email</label>
+                            <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Email</label>
                             <input
                               type="email"
                               value={memberForm.externalEmail}
                               onChange={(e) => setMemberForm({ ...memberForm, externalEmail: e.target.value })}
-                              className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                              className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-slate-900 mb-2">Téléphone</label>
+                            <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Téléphone</label>
                             <input
                               type="text"
                               value={memberForm.externalPhone}
                               onChange={(e) => setMemberForm({ ...memberForm, externalPhone: e.target.value })}
-                              className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                              className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-slate-900 mb-2">Organisation</label>
+                            <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Organisation</label>
                             <input
                               type="text"
                               value={memberForm.externalOrganization}
                               onChange={(e) => setMemberForm({ ...memberForm, externalOrganization: e.target.value })}
-                              className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                              className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-slate-900 mb-2">Fonction</label>
+                            <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Fonction</label>
                             <input
                               type="text"
                               value={memberForm.externalTitle}
                               onChange={(e) => setMemberForm({ ...memberForm, externalTitle: e.target.value })}
-                              className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                              className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                             />
                           </div>
                         </>
@@ -2089,46 +2105,46 @@ export default function MissionDetails() {
                   )}
 
                   <div>
-                    <p className="mt-2 text-xs text-slate-500">Sélectionnez la source du membre à ajouter à la mission.</p>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Sélectionnez la source du membre à ajouter à la mission.</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Rôle dans la mission *</label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Rôle dans la mission *</label>
                     <input
                       type="text"
                       value={memberForm.roleInMission}
                       onChange={(e) => setMemberForm({ ...memberForm, roleInMission: e.target.value })}
-                      className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+                      className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                       placeholder="Ex: Auditeur IT, Expert métier..."
                       required
                     />
-                    <p className="mt-2 text-xs text-slate-500">Exemple : Auditeur IT, Expert métier, Responsable qualité.</p>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Exemple : Auditeur IT, Expert métier, Responsable qualité.</p>
                   </div>
 
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4">
-                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-900">
+                  <div className="rounded-3xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-5 py-4">
+                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-900 dark:text-white">
                       <input
                         id="isLead"
                         type="checkbox"
                         checked={memberForm.isLead}
                         onChange={(e) => setMemberForm({ ...memberForm, isLead: e.target.checked })}
-                        className="h-5 w-5 rounded-2xl border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all"
+                        className="h-5 w-5 rounded-2xl border-slate-300 dark:border-slate-500 text-indigo-600 focus:ring-indigo-500 transition-all"
                       />
                       <span>Est un lead (co-responsable)</span>
                     </label>
-                    <p className="mt-2 text-xs text-slate-500">Cochez si ce membre est responsable de la mission avec vous.</p>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Cochez si ce membre est responsable de la mission avec vous.</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Notes</label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Notes</label>
                     <textarea
                       rows={4}
                       value={memberForm.notes}
                       onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
-                      className="mt-1 block w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 resize-y"
+                      className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-4 text-sm text-slate-900 dark:text-white shadow-sm transition-all duration-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 resize-y"
                       placeholder="Précisez des informations utiles : disponibilité, rôle précis, contraintes..."
                     />
-                    <p className="mt-2 text-xs text-slate-500">Cette note est visible uniquement dans le contexte de la mission.</p>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Cette note est visible uniquement dans le contexte de la mission.</p>
                   </div>
                 </div>
 
@@ -2136,7 +2152,7 @@ export default function MissionDetails() {
                   <button
                     type="button"
                     onClick={() => setIsMemberModalOpen(false)}
-                    className="inline-flex w-full justify-center rounded-3xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all duration-200 sm:w-auto"
+                    className="inline-flex w-full justify-center rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 transition-all duration-200 sm:w-auto"
                   >
                     Annuler
                   </button>
@@ -2157,16 +2173,16 @@ export default function MissionDetails() {
         <div className="fixed inset-0 z-[9999] overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsScopeModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+            <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
               {/* Header */}
-              <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 px-8 py-6 border-b border-emerald-200">
+              <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-950/60 dark:to-emerald-900/30 px-8 py-6 border-b border-emerald-200 dark:border-emerald-800">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full">
                     <Target className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-slate-900">{editingScope ? 'Modifier le périmètre' : 'Ajouter au périmètre'}</h3>
-                    <p className="text-sm text-slate-600 mt-1">{editingScope ? 'Modifier les détails de cette entité dans le périmètre' : 'Définir une nouvelle entité dans le périmètre d\'audit'}</p>
+                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{editingScope ? 'Modifier le périmètre' : 'Ajouter au périmètre'}</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{editingScope ? 'Modifier les détails de cette entité dans le périmètre' : 'Définir une nouvelle entité dans le périmètre d\'audit'}</p>
                   </div>
                 </div>
               </div>
@@ -2177,7 +2193,7 @@ export default function MissionDetails() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Entité auditable */}
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                         Entité auditable <span className="text-red-500">*</span>
                       </label>
                       <ComboBox
@@ -2190,12 +2206,12 @@ export default function MissionDetails() {
                         placeholder="Rechercher une entité..."
                         required
                       />
-                      <p className="text-xs text-slate-500 mt-2">Choisissez l'entité qui sera incluse dans le périmètre d'audit</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Choisissez l'entité qui sera incluse dans le périmètre d'audit</p>
                     </div>
 
                     {/* Rôle dans le périmètre */}
                     <div>
-                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                         Rôle dans le périmètre
                       </label>
                       <input
@@ -2203,20 +2219,20 @@ export default function MissionDetails() {
                         value={scopeForm.scopeRole}
                         onChange={(e) => setScopeForm({ ...scopeForm, scopeRole: e.target.value })}
                         placeholder="Ex: Entité principale, Support, Interface..."
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900 hover:border-slate-300 dark:hover:border-slate-500"
                       />
-                      <p className="text-xs text-slate-500 mt-2">Précisez le rôle de cette entité dans l'audit</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Précisez le rôle de cette entité dans l'audit</p>
                     </div>
 
                     {/* Criticité */}
                     <div>
-                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                         Niveau de criticité
                       </label>
                       <select
                         value={scopeForm.criticality}
                         onChange={(e) => setScopeForm({ ...scopeForm, criticality: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900 hover:border-slate-300 dark:hover:border-slate-500"
                       >
                         <option value="">Sélectionner un niveau</option>
                         <option value="LOW">🟢 Faible - Impact limité</option>
@@ -2224,13 +2240,13 @@ export default function MissionDetails() {
                         <option value="HIGH">🟠 Élevé - Impact significatif</option>
                         <option value="CRITICAL">🔴 Critique - Impact majeur</option>
                       </select>
-                      <p className="text-xs text-slate-500 mt-2">Évaluez l'importance de cette entité</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Évaluez l'importance de cette entité</p>
                     </div>
                   </div>
 
                   {/* Notes */}
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                       Notes
                     </label>
                     <textarea
@@ -2238,20 +2254,20 @@ export default function MissionDetails() {
                       value={scopeForm.notes}
                       onChange={(e) => setScopeForm({ ...scopeForm, notes: e.target.value })}
                       placeholder="Informations complémentaires sur cette entité dans le périmètre..."
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300 resize-y"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900 hover:border-slate-300 dark:hover:border-slate-500 resize-y"
                     />
-                    <p className="text-xs text-slate-500 mt-2">Ajoutez des notes spécifiques à cette entité dans le périmètre</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Ajoutez des notes spécifiques à cette entité dans le périmètre</p>
                   </div>
 
                   {/* Section informative */}
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                  <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
                     <div className="flex items-start gap-3">
-                      <div className="p-1 bg-emerald-100 rounded-full flex-shrink-0">
-                        <Target className="w-4 h-4 text-emerald-600" />
+                      <div className="p-1 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex-shrink-0">
+                        <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold text-emerald-900 mb-1">À propos du périmètre</h4>
-                        <p className="text-sm text-emerald-700">
+                        <h4 className="text-sm font-semibold text-emerald-900 dark:text-emerald-200 mb-1">À propos du périmètre</h4>
+                        <p className="text-sm text-emerald-700 dark:text-emerald-300">
                           Le périmètre définit les entités qui seront auditées. Chaque entité peut avoir un rôle spécifique
                           et un niveau de criticité qui influencera la planification et l'exécution de l'audit.
                         </p>
@@ -2261,11 +2277,11 @@ export default function MissionDetails() {
                 </div>
 
                 {/* Actions */}
-                <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+                <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 dark:border-slate-600 pt-6 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     onClick={() => setIsScopeModalOpen(false)}
-                    className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
+                    className="rounded-xl border border-slate-300 dark:border-slate-600 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500"
                   >
                     Annuler
                   </button>
@@ -2286,16 +2302,16 @@ export default function MissionDetails() {
         <div className="fixed inset-0 z-[9999] overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsHistoryModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-3xl bg-white px-8 pt-8 pb-8 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
-              <h3 className="text-xl font-semibold leading-6 text-slate-900 mb-6">Modifier l'historique</h3>
+            <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 px-8 pt-8 pb-8 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+              <h3 className="text-xl font-semibold leading-6 text-slate-900 dark:text-white mb-6">Modifier l'historique</h3>
               <form onSubmit={handleUpdateHistory} className="space-y-8">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Raison / Commentaire</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Raison / Commentaire</label>
                   <textarea
                     rows={4}
                     value={historyForm.reason}
                     onChange={(e) => setHistoryForm({ ...historyForm, reason: e.target.value })}
-                    className="mt-1 block w-full rounded-3xl border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
+                    className="mt-1 block w-full rounded-3xl border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 sm:text-sm p-4 transition-all"
                     required
                   />
                 </div>
@@ -2309,7 +2325,7 @@ export default function MissionDetails() {
                   <button
                     type="button"
                     onClick={() => setIsHistoryModalOpen(false)}
-                    className="mt-3 inline-flex w-full justify-center rounded-3xl border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-700 shadow-sm hover:bg-slate-50 sm:col-start-1 sm:mt-0 sm:text-sm transition-all duration-200"
+                    className="mt-3 inline-flex w-full justify-center rounded-3xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-8 py-4 text-base font-semibold text-slate-700 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 sm:col-start-1 sm:mt-0 sm:text-sm transition-all duration-200"
                   >
                     Annuler
                   </button>
@@ -2324,17 +2340,17 @@ export default function MissionDetails() {
         <div className="fixed inset-0 z-[9999] overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsProgramModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+            <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
 
               {/* Header */}
-              <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-6 border-b border-indigo-200">
+              <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-950/50 dark:to-indigo-900/30 px-8 py-6 border-b border-indigo-200 dark:border-indigo-800">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full">
                     <FileText className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-slate-900">Nouveau programme d'audit</h3>
-                    <p className="text-sm text-slate-600 mt-1">Définir un programme structuré pour cette mission</p>
+                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Nouveau programme d'audit</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Définir un programme structuré pour cette mission</p>
                   </div>
                 </div>
               </div>
@@ -2345,7 +2361,7 @@ export default function MissionDetails() {
                   {/* Code + Type */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                         Code <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -2354,19 +2370,19 @@ export default function MissionDetails() {
                         placeholder="Ex: PROG-2026-001"
                         value={programForm.code}
                         onChange={(e) => setProgramForm({ ...programForm, code: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                       />
                       <p className="text-xs text-slate-500 mt-2">Identifiant unique du programme dans le tenant</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                         Type de programme <span className="text-red-500">*</span>
                       </label>
                       <select
                         required
                         value={programForm.programType}
                         onChange={(e) => setProgramForm({ ...programForm, programType: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                       >
                         <option value="">Sélectionner un type</option>
                         <option value="COMPLIANCE">✅ Conformité</option>
@@ -2380,7 +2396,7 @@ export default function MissionDetails() {
 
                   {/* Titre */}
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                       Titre <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -2389,14 +2405,14 @@ export default function MissionDetails() {
                       placeholder="Ex: Programme d'audit des contrôles financiers 2026"
                       value={programForm.title}
                       onChange={(e) => setProgramForm({ ...programForm, title: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                     />
-                    <p className="text-xs text-slate-500 mt-2">Nom clair et descriptif du programme</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Nom clair et descriptif du programme</p>
                   </div>
 
                   {/* Objectif */}
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                       Objectif
                     </label>
                     <textarea
@@ -2404,14 +2420,14 @@ export default function MissionDetails() {
                       placeholder="Décrivez l'objectif principal de ce programme d'audit..."
                       value={programForm.objective}
                       onChange={(e) => setProgramForm({ ...programForm, objective: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 resize-y"
                     />
-                    <p className="text-xs text-slate-500 mt-2">Ce que ce programme cherche à évaluer ou vérifier</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Ce que ce programme cherche à évaluer ou vérifier</p>
                   </div>
 
                   {/* Périmètre */}
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                       Périmètre (Scope)
                     </label>
                     <textarea
@@ -2419,48 +2435,48 @@ export default function MissionDetails() {
                       placeholder="Décrivez les entités, processus ou systèmes couverts par ce programme..."
                       value={programForm.scopeDescription}
                       onChange={(e) => setProgramForm({ ...programForm, scopeDescription: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 resize-y"
                     />
-                    <p className="text-xs text-slate-500 mt-2">Définissez les limites et l'étendue de l'audit</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Définissez les limites et l'étendue de l'audit</p>
                   </div>
 
                   {/* Dates */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                         Date de début planifiée
                       </label>
                       <input
                         type="date"
                         value={programForm.plannedStartDate}
                         onChange={(e) => setProgramForm({ ...programForm, plannedStartDate: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                       />
-                      <p className="text-xs text-slate-500 mt-2">Début prévu de l'exécution du programme</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Début prévu de l'exécution du programme</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                         Date de fin planifiée
                       </label>
                       <input
                         type="date"
                         value={programForm.plannedEndDate}
                         onChange={(e) => setProgramForm({ ...programForm, plannedEndDate: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                       />
-                      <p className="text-xs text-slate-500 mt-2">Fin prévue de l'exécution du programme</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Fin prévue de l'exécution du programme</p>
                     </div>
                   </div>
 
                   {/* Info box */}
-                  <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                  <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4">
                     <div className="flex items-start gap-3">
-                      <div className="p-1 bg-indigo-100 rounded-full flex-shrink-0">
-                        <FileText className="w-4 h-4 text-indigo-600" />
+                      <div className="p-1 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex-shrink-0">
+                        <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold text-indigo-900 mb-1">À propos du programme d'audit</h4>
-                        <p className="text-sm text-indigo-700">
+                        <h4 className="text-sm font-semibold text-indigo-900 dark:text-indigo-200 mb-1">À propos du programme d'audit</h4>
+                        <p className="text-sm text-indigo-700 dark:text-indigo-300">
                           Un programme d'audit regroupe les procédures à exécuter pour cette mission.
                           Il sera versionné automatiquement à sa création et pourra être soumis à validation avant l'exécution.
                         </p>
@@ -2470,11 +2486,11 @@ export default function MissionDetails() {
                 </div>
 
                 {/* Actions */}
-                <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+                <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 dark:border-slate-600 pt-6 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     onClick={() => setIsProgramModalOpen(false)}
-                    className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
+                    className="rounded-xl border border-slate-300 dark:border-slate-600 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500"
                   >
                     Annuler
                   </button>
@@ -2495,17 +2511,17 @@ export default function MissionDetails() {
       {isEditProgramModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
           <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsEditProgramModalOpen(false)} />
-          <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+          <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-6 border-b border-indigo-200">
+            <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-950/50 dark:to-indigo-900/30 px-8 py-6 border-b border-indigo-200 dark:border-indigo-800">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full">
                   <Edit2 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-slate-900">Modifier le programme d'audit</h3>
-                  <p className="text-sm text-slate-600 mt-1">Mettez à jour les informations du programme</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Modifier le programme d'audit</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Mettez à jour les informations du programme</p>
                 </div>
               </div>
             </div>
@@ -2516,7 +2532,7 @@ export default function MissionDetails() {
                 {/* Titre + Type */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                       Titre <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -2524,19 +2540,19 @@ export default function MissionDetails() {
                       required
                       value={editProgramForm.title}
                       onChange={(e) => setEditProgramForm({ ...editProgramForm, title: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                     />
-                    <p className="text-xs text-slate-500 mt-2">Nom clair et descriptif du programme</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Nom clair et descriptif du programme</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                       Type de programme <span className="text-red-500">*</span>
                     </label>
                     <select
                       required
                       value={editProgramForm.programType}
                       onChange={(e) => setEditProgramForm({ ...editProgramForm, programType: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                     >
                       <option value="">Sélectionner un type</option>
                       <option value="COMPLIANCE">✅ Conformité</option>
@@ -2550,57 +2566,57 @@ export default function MissionDetails() {
 
                 {/* Objectif */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">Objectif</label>
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Objectif</label>
                   <textarea
                     rows={3}
                     value={editProgramForm.objective}
                     onChange={(e) => setEditProgramForm({ ...editProgramForm, objective: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 resize-y"
                   />
-                  <p className="text-xs text-slate-500 mt-2">Ce que ce programme cherche à évaluer ou vérifier</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Ce que ce programme cherche à évaluer ou vérifier</p>
                 </div>
 
                 {/* Périmètre */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">Périmètre (Scope)</label>
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Périmètre (Scope)</label>
                   <textarea
                     rows={3}
                     value={editProgramForm.scopeDescription}
                     onChange={(e) => setEditProgramForm({ ...editProgramForm, scopeDescription: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 resize-y"
                   />
-                  <p className="text-xs text-slate-500 mt-2">Définissez les limites et l'étendue de l'audit</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Définissez les limites et l'étendue de l'audit</p>
                 </div>
 
                 {/* Dates */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Date de début planifiée</label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Date de début planifiée</label>
                     <input
                       type="date"
                       value={editProgramForm.plannedStartDate}
                       onChange={(e) => setEditProgramForm({ ...editProgramForm, plannedStartDate: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Date de fin planifiée</label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Date de fin planifiée</label>
                     <input
                       type="date"
                       value={editProgramForm.plannedEndDate}
                       onChange={(e) => setEditProgramForm({ ...editProgramForm, plannedEndDate: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 dark:border-slate-600 pt-6 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => setIsEditProgramModalOpen(false)}
-                  className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
+                  className="rounded-xl border border-slate-300 dark:border-slate-600 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500"
                 >
                   Annuler
                 </button>

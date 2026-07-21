@@ -13,11 +13,11 @@ interface Finding {
 }
 
 const findingStatusConfig: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Brouillon', color: 'bg-slate-100 text-slate-800' },
-  SUBMITTED: { label: 'Soumis', color: 'bg-blue-100 text-blue-800' },
-  CONFIRMED: { label: 'Confirmé', color: 'bg-amber-100 text-amber-800' },
-  ADDRESSED: { label: 'Traité', color: 'bg-emerald-100 text-emerald-800' },
-  REJECTED: { label: 'Rejeté', color: 'bg-red-100 text-red-800' },
+  DRAFT: { label: 'Brouillon', color: 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200' },
+  SUBMITTED: { label: 'Soumis', color: 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200' },
+  CONFIRMED: { label: 'Confirmé', color: 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200' },
+  ADDRESSED: { label: 'Traité', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200' },
+  REJECTED: { label: 'Rejeté', color: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200' },
 };
 
 export default function MissionFindings() {
@@ -38,11 +38,11 @@ export default function MissionFindings() {
   if (loading) return <div className="p-6">Chargement...</div>;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 px-6 lg:px-0">
       
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold">Constats d'audit</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Constats d'audit</h1>
 
         <Link
           to={`/missions/${id}/findings/new`}
@@ -54,20 +54,20 @@ export default function MissionFindings() {
       </div>
 
       {/* List */}
-      <div className="bg-white border rounded-xl divide-y">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl divide-y dark:divide-slate-700">
         {findings.length === 0 ? (
-          <div className="p-6 text-center text-slate-500">
+          <div className="p-6 text-center text-slate-500 dark:text-slate-400">
             Aucun constat.
           </div>
         ) : (
           findings.map(f => {
-            const status = findingStatusConfig[f.status] ?? { label: f.status, color: 'bg-slate-100 text-slate-800' };
+            const status = findingStatusConfig[f.status] ?? { label: f.status, color: 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200' };
 
             return (
-              <div key={f.id} className="p-4 flex justify-between items-center hover:bg-slate-50">
+              <div key={f.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
                 <div>
-                  <p className="font-medium text-indigo-600">{f.title}</p>
-                  <p className="text-sm text-slate-500">
+                  <p className="font-medium text-indigo-600 dark:text-indigo-400">{f.title}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     {f.description.slice(0, 100)}
                   </p>
 

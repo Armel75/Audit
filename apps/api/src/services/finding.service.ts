@@ -209,4 +209,32 @@ export class FindingService {
       }
     });
   }
+
+  // Récupère les findings d'une mission avec filtres premium
+  static async getByMissionIdWithFilters(missionId: number, filters: any) {
+    return prisma.finding.findMany({
+      where: {
+        missionId,
+        ...(filters.status && { status: filters.status }),
+        ...(filters.startDate && { createdAt: { gte: filters.startDate } }),
+        ...(filters.endDate && { createdAt: { lte: filters.endDate } }),
+        ...(filters.keyword && { OR: [
+          { title: { contains: filters.keyword, mode: 'insensitive' } },
+          { description: { contains: filters.keyword, mode: 'insensitive' } }
+        ] })
+      },
+      include: {
+        riskLevel: true,
+        author: { select: { firstName: true, lastName: true } },
+        validator: { select: { firstName: true, lastName: true } },
+        comments: {
+          include: { author: { select: { firstName: true, lastName: true } } },
+          orderBy: { createdAt: 'desc' }
+        },
+        documents: true,
+        recos: { select: { id: true, title: true, status: true } }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+  }
 }

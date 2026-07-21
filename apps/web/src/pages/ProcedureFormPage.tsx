@@ -42,9 +42,9 @@ const PROCEDURE_TYPES = [
 ];
 
 const inputCls =
-  'w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none';
+  'w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 outline-none';
 
-const labelCls = 'block text-sm font-semibold text-slate-900 mb-2';
+const labelCls = 'block text-sm font-semibold text-slate-900 dark:text-white mb-2';
 
 export default function ProcedureFormPage() {
   const { programId } = useParams<{ programId: string }>();
@@ -153,21 +153,21 @@ export default function ProcedureFormPage() {
     <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6 pb-16">
       <button
         onClick={() => navigate(`/programs/${programId}`)}
-        className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+        className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm transition hover:border-slate-300 dark:hover:border-slate-500 hover:text-slate-800 dark:hover:text-white"
       >
         <ArrowLeft className="h-4 w-4" />
         Retour au programme
       </button>
 
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-7 border-b border-indigo-200">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-950/50 dark:to-indigo-900/30 px-8 py-7 border-b border-indigo-200 dark:border-indigo-800">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-md">
               <ClipboardList className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Nouvelle procedure d'audit</h1>
-              <p className="text-sm text-slate-500 mt-1">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nouvelle procedure d'audit</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Definissez le point de controle, son responsable et les preuves attendues.
               </p>
             </div>
@@ -178,7 +178,7 @@ export default function ProcedureFormPage() {
 
           {/* Section 1: Identification */}
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-500 mb-5">Identification</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-5">Identification</h2>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
               <div>
                 <label className={labelCls}>
@@ -192,7 +192,7 @@ export default function ProcedureFormPage() {
                   onChange={e => setSequenceNo(e.target.value ? Number(e.target.value) : '')}
                   className={inputCls}
                 />
-                <p className="text-xs text-slate-400 mt-1">Position dans le programme</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Position dans le programme</p>
               </div>
               <div>
                 <label className={labelCls}>
@@ -206,7 +206,7 @@ export default function ProcedureFormPage() {
                   placeholder="ex. CTL-01"
                   className={inputCls}
                 />
-                <p className="text-xs text-slate-400 mt-1">Reference interne optionnelle</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Reference interne optionnelle</p>
               </div>
               <div className="sm:col-span-2">
                 <label className={labelCls}>
@@ -221,16 +221,16 @@ export default function ProcedureFormPage() {
                   placeholder="Intitule de la procedure"
                   className={inputCls}
                 />
-                <p className="text-xs text-slate-400 mt-1">Nom court et precis du point de controle</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Nom court et precis du point de controle</p>
               </div>
             </div>
           </section>
 
-          <div className="border-t border-slate-100" />
+          <div className="border-t border-slate-100 dark:border-slate-700" />
 
           {/* Section 2: Contenu */}
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-500 mb-5">Contenu</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-5">Contenu</h2>
             <div className="space-y-5">
               <div>
                 <label className={labelCls}>
@@ -261,7 +261,7 @@ export default function ProcedureFormPage() {
                       <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-slate-400 mt-1">Nature de la demarche d'audit</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Nature de la demarche d'audit</p>
                 </div>
                 <div>
                   <label className={labelCls}>
@@ -275,13 +275,13 @@ export default function ProcedureFormPage() {
                     placeholder="ex. Rapport d'inventaire signe"
                     className={inputCls}
                   />
-                  <p className="text-xs text-slate-400 mt-1">Document ou element a collecter</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Document ou element a collecter</p>
                 </div>
               </div>
             </div>
           </section>
 
-          <div className="border-t border-slate-100" />
+          <div className="border-t border-slate-100 dark:border-slate-700" />
 
           {/* Section 3: Planification */}
           <section>
@@ -316,7 +316,7 @@ export default function ProcedureFormPage() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-400 mt-1">Auditeur responsable</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Auditeur responsable</p>
               </div>
               <div>
                 <label className={labelCls}>
@@ -337,11 +337,11 @@ export default function ProcedureFormPage() {
             </div>
           </section>
 
-          <div className="border-t border-slate-100" />
+          <div className="border-t border-slate-100 dark:border-slate-700" />
 
           {/* Section 4: Pieces jointes */}
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-500 mb-5">Pieces jointes</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-5">Pieces jointes</h2>
             {/* input en dehors du label pour eviter tout conflit d'evenements */}
             <input
               id="procedure-file-input"
@@ -358,33 +358,33 @@ export default function ProcedureFormPage() {
               onDrop={handleFileDrop}
               className={`flex flex-col items-center cursor-pointer rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-all duration-200 ${
                 isDragging
-                  ? 'border-indigo-400 bg-indigo-50'
-                  : 'border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/50'
+                  ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-950/50'
+                  : 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30'
               }`}
             >
-              <Upload className="w-8 h-8 text-slate-300 mb-2" />
-              <p className="text-sm font-medium text-slate-600">
+              <Upload className="w-8 h-8 text-slate-300 dark:text-slate-500 mb-2" />
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
                 Glissez vos fichiers ici ou{' '}
                 <span className="text-indigo-600 underline">cliquez pour parcourir</span>
               </p>
-              <p className="text-xs text-slate-400 mt-1">PDF, Word, Excel, images - max 20 MB</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">PDF, Word, Excel, images - max 20 MB</p>
             </label>
 
             {pendingFiles.length > 0 && (
               <ul className="mt-4 space-y-2">
                 {pendingFiles.map((f, i) => (
-                  <li key={i} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                  <li key={i} className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 shadow-sm">
                     <div className="flex items-center gap-3 min-w-0">
                       <Paperclip className="w-4 h-4 text-indigo-400 shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">{f.name}</p>
-                        <p className="text-xs text-slate-400">{formatBytes(f.size)}</p>
+                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{f.name}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{formatBytes(f.size)}</p>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => removeFile(i)}
-                      className="ml-4 p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                      className="ml-4 p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -395,11 +395,11 @@ export default function ProcedureFormPage() {
           </section>
 
           {/* Footer */}
-          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 dark:border-slate-600 pt-6 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={() => navigate(`/programs/${programId}`)}
-              className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
+              className="rounded-xl border border-slate-300 dark:border-slate-600 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500"
             >
               Annuler
             </button>

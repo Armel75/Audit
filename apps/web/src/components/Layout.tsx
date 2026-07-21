@@ -16,6 +16,8 @@ import {
   Moon,
   CheckCircle,
   Lock,
+  AlertTriangle,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -52,11 +54,12 @@ export default function Layout() {
 
   const navItems: NavItem[] = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
-    { path: '/dashboard-dg', icon: LayoutDashboard, label: 'Tableau de bord DG', requiredPermissions: ['dashboard_dg:read'] },
-    { path: '/plans', icon: Calendar, label: "Plans d'audit", requiredPermissions: ['audit_plan:read'] },
+    { path: '/dashboard-dg', icon: LayoutDashboard, label: 'Tableau de bord stratégique', requiredPermissions: ['dashboard_dg:read'] },
+    { path: '/plans', icon: Calendar, label: "Plans d'audit annuels", requiredPermissions: ['audit_plan:read'] },
     { path: '/missions', icon: Briefcase, label: 'Missions', requiredPermissions: ['audit_mission:read', 'audit_mission:read_all'] },
     { path: '/missions/archive', icon: Archive, label: 'Archives missions', requiredPermissions: ['audit_mission:read', 'audit_mission:read_all'] },
     { path: '/approvals', icon: CheckCircle, label: 'Approbations', requiredPermissions: ['approval:read'] },
+    { path: '/hierarchy-comments', icon: CheckCircle, label: 'Commentaires hiérarchiques', requiredPermissions: ['comment:read'] },
     { path: '/referential', icon: Database, label: 'Referentiel', requiredPermissions: ['referential:access'] },
     { path: '/settings', icon: SettingsIcon, label: 'Parametres', requiredPermissions: ['settings:read'] },
     { path: '/admin', icon: ShieldAlert, label: 'Administration', requiredPermissions: ['admin:access'] },
@@ -122,6 +125,50 @@ export default function Layout() {
               {!isCollapsed && item.label}
             </NavLink>
           ))}
+
+          {!isCollapsed && visibleNavItems.length > 0 && (
+            <div className="pt-4 pb-2 px-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500">Raccourcis</p>
+            </div>
+          )}
+
+          {hasAnyPermission(['finding:read']) && (
+            <NavLink
+              to="/findings/critical"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center ${
+                  isCollapsed ? 'justify-center' : 'gap-3'
+                } px-3 py-2.5 rounded-lg font-medium transition-colors ${
+                  isActive
+                    ? 'bg-emerald-500/10 text-emerald-400'
+                    : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                }`
+              }
+            >
+              <AlertTriangle className="w-5 h-5" />
+              {!isCollapsed && 'Constats critiques'}
+            </NavLink>
+          )}
+
+          {hasAnyPermission(['recommendation:read']) && (
+            <NavLink
+              to="/recommendations/overdue"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center ${
+                  isCollapsed ? 'justify-center' : 'gap-3'
+                } px-3 py-2.5 rounded-lg font-medium transition-colors ${
+                  isActive
+                    ? 'bg-emerald-500/10 text-emerald-400'
+                    : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                }`
+              }
+            >
+              <Clock className="w-5 h-5" />
+              {!isCollapsed && 'Recommandations en retard'}
+            </NavLink>
+          )}
         </nav>
 
         <div className="p-3 border-t border-slate-800/60">

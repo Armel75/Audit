@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
+import HierarchyCommentsOverview from './pages/HierarchyCommentsOverview';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Missions from './pages/Missions';
@@ -12,6 +13,8 @@ import AuditProgramDetails from './pages/AuditProgramDetails';
 import Settings from './pages/Settings';
 import AdminSettings from './pages/AdminSettings';
 import Referential from './pages/Referential';
+import CriticalFindings from './pages/CriticalFindings';
+import OverdueRecommendations from './pages/OverdueRecommendations';
 import AuditPlans from './pages/AuditPlans';
 import AuditPlanDetails from './pages/AuditPlanDetails';
 import CreateMission from './pages/CreateMission';
@@ -84,6 +87,7 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="hierarchy-comments" element={<PermissionRoute requiredPermissions={['comment:read']}><HierarchyCommentsOverview /></PermissionRoute>} />
             <Route path="dashboard-dg" element={<PermissionRoute requiredPermissions={['dashboard_dg:read']}><DashboardDG /></PermissionRoute>} />
             <Route path="plans" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlans /></PermissionRoute>} />
             <Route path="plans/:id" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlanDetails /></PermissionRoute>} />
@@ -93,7 +97,9 @@ export default function App() {
             <Route path="missions/:id/report" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><MissionReport /></PermissionRoute>} />
             <Route path="programs/:id" element={<PermissionRoute requiredPermissions={['audit_program:read']}><AuditProgramDetails /></PermissionRoute>} />
             <Route path="programs/:programId/procedures/new" element={<PermissionRoute requiredPermissions={['audit_procedure:create']}><ProcedureFormPage /></PermissionRoute>} />
+            <Route path="findings/critical" element={<PermissionRoute requiredPermissions={['finding:read']}><CriticalFindings /></PermissionRoute>} />
             <Route path="findings/:id" element={<PermissionRoute requiredPermissions={['finding:read']}><FindingDetails /></PermissionRoute>} />
+            <Route path="recommendations/overdue" element={<PermissionRoute requiredPermissions={['recommendation:read']}><OverdueRecommendations /></PermissionRoute>} />
             <Route path="recommendations/:id" element={<PermissionRoute requiredPermissions={['recommendation:read']}><RecommendationDetails /></PermissionRoute>} />
             <Route path="referential" element={<PermissionRoute requiredPermissions={['referential:access']}><Referential /></PermissionRoute>} />
             <Route path="settings" element={<PermissionRoute requiredPermissions={['settings:read']}><Settings /></PermissionRoute>} />

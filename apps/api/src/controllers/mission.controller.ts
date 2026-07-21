@@ -9,7 +9,9 @@ import {
   buildReportHTML,
   generatePDF,
   getMissionOrderData,
-  buildMissionOrderHTML
+  buildMissionOrderHTML,
+  getMissionInfoData,
+  buildMissionInfoHTML
 } from '../services/report.service';
 
 import { DocumentService } from '../services/document.service';
@@ -22,7 +24,7 @@ import { DocumentService } from '../services/document.service';
  * where the user is leader or an active member.
  * Returns null if the user has read_all (no restriction needed).
  */
-function getMissionAccessFilter(user: Express.Request['user']): any | null {
+export function getMissionAccessFilter(user: Express.Request['user']): any | null {
   if (!user) return null;
   const perms = user.permissions.map((p: string) => p.toLowerCase());
   console.log('[MISSION ACCESS] userId:', user.id, 'permissions:', perms);
@@ -1230,6 +1232,62 @@ export const generateMissionOrder = async (req: Request, res: Response) => {
       : undefined
   });
 }
+};
+
+// ==========================================
+// EXPORT MISSION INFO (PDF)
+// ==========================================
+export const exportMissionInfo = async (req: Request, res: Response) => {
+  try {
+    const missionId = Number(req.params.id);
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Non autorisé' });
+    }
+
+    // Permission-based access check
+    const accessFilter = getMissionAccessFilter(req.user);
+    if (accessFilter) {
+      const allowed = await prisma.auditMission.findFirst({
+        where: { id: missionId, tenantId, AND: [accessFilter] },
+        select: { id: true }
+      });
+      if (!allowed) return res.status(403).json({ error: 'Accès non autorisé à cette mission' });
+    }
+
+    const mission = await getMissionInfoData(missionId, tenantId);
+
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission introuvable' });
+    }
+
+    const html = buildMissionInfoHTML(mission);
+    const pdfBuffer = await generatePDF(html);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=infos-mission-${missionId}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('❌ Error generating mission info PDF');
+    console.error('➡️ Message:', error?.message);
+    console.error('➡️ Stack:', error?.stack);
+
+    if (error?.message?.includes('Browser')) {
+      console.error('🚨 Puppeteer issue detected');
+    }
+
+    if (error?.code) {
+      console.error('🗄️ Prisma error code:', error.code);
+    }
+
+    res.status(500).json({
+      error: "Erreur lors de l'export des informations mission",
+      debug: process.env.NODE_ENV !== 'production'
+        ? { message: error?.message, type: error?.name }
+        : undefined
+    });
+  }
 };
 
 // ==========================================

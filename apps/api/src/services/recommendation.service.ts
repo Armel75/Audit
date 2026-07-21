@@ -145,6 +145,32 @@ export class RecommendationService {
       where: { id: Number(id) } // ✅ FIX
     });
   }
+
+  // Récupère les recommandations d'une mission avec filtres premium
+  static async getByMissionIdWithFilters(missionId: number, filters: any) {
+    return prisma.recommendation.findMany({
+      where: {
+        finding: { missionId },
+        ...(filters.status && { status: filters.status }),
+        ...(filters.startDate && { createdAt: { gte: filters.startDate } }),
+        ...(filters.endDate && { createdAt: { lte: filters.endDate } }),
+        ...(filters.keyword && { OR: [
+          { title: { contains: filters.keyword, mode: 'insensitive' } },
+          { actionPlan: { contains: filters.keyword, mode: 'insensitive' } }
+        ] })
+      },
+      include: {
+        priority: true,
+        department: true,
+        comments: {
+          include: { author: { select: { firstName: true, lastName: true } } },
+          orderBy: { createdAt: 'desc' }
+        },
+        documents: true
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+  }
 }
 
 export const getRecommendationsByMission = async (missionId: number) => {

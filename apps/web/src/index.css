@@ -7,3 +7,29 @@
 html {
   color-scheme: light;
 }
+
+/* ── Recharts dark mode ── */
+.dark .recharts-text {
+  fill: #94a3b8 !important;
+}
+.dark .recharts-cartesian-grid line {
+  stroke: #334155 !important;
+}
+.dark .recharts-cartesian-axis-line {
+  stroke: #334155 !important;
+}
+.dark .recharts-legend-item-text {
+  color: #cbd5e1 !important;
+}
+.dark .recharts-default-tooltip {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+.dark .recharts-tooltip-label {
+  color: #e2e8f0 !important;
+}
+/* Gauge ring background track */
+.dark svg circle[stroke="#e2e8f0"] {
+  stroke: #334155 !important;
+}
+

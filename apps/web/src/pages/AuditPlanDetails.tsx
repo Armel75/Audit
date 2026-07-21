@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Calendar, ArrowLeft, FileText, CheckCircle, XCircle, Clock, History, Plus, Save, Edit2, Trash2 } from 'lucide-react';
+import { Calendar, ArrowLeft, FileText, CheckCircle, XCircle, Clock, History, Plus, Save, Edit2, Trash2, RotateCcw } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 interface AuditPlan {
   id: number;
@@ -37,10 +38,10 @@ interface AuditPlanStatusHistory {
 }
 
 const statusConfig = {
-  DRAFT: { label: 'Brouillon', color: 'bg-slate-100 text-slate-800 border-slate-200', icon: FileText },
-  PENDING_APPROVAL: { label: 'En attente DG', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: Clock },
-  VALIDATED: { label: 'Validé', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: CheckCircle },
-  REJECTED: { label: 'Rejeté', color: 'bg-rose-100 text-rose-800 border-rose-200', icon: XCircle },
+  DRAFT: { label: 'Brouillon', color: 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-600', icon: FileText },
+  PENDING_APPROVAL: { label: 'En attente DG', color: 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800', icon: Clock },
+  VALIDATED: { label: 'Validé', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800', icon: CheckCircle },
+  REJECTED: { label: 'Rejeté', color: 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800', icon: XCircle },
 };
 
 export default function AuditPlanDetails() {
@@ -62,6 +63,8 @@ export default function AuditPlanDetails() {
   const [editingHistory, setEditingHistory] = useState<AuditPlanStatusHistory | null>(null);
   const [historyForm, setHistoryForm] = useState({ reason: '' });
   const API_BASE = import.meta.env.VITE_API_URL;
+  const { user } = useAuth();
+  const canUpdate = user?.permissions?.includes('audit_plan:update');
 
   useEffect(() => {
     fetchPlanDetails();
@@ -182,6 +185,25 @@ export default function AuditPlanDetails() {
     }
   };
 
+  const handleReopenPlan = async () => {
+    if (!window.confirm('⚠️ Êtes-vous sûr de vouloir rouvrir ce plan validé ?\n\nIl repassera en statut "Brouillon" et pourra être modifié à nouveau.')) return;
+    try {
+      const response = await apiFetch(`${API_BASE}/plans/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'DRAFT', reason: 'Réouverture du plan validé' }),
+      });
+      if (response.ok) {
+        fetchPlanDetails();
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Erreur lors de la réouverture du plan');
+      }
+    } catch (error) {
+      console.error('Failed to reopen plan', error);
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-center">Chargement...</div>;
   }
@@ -194,27 +216,27 @@ export default function AuditPlanDetails() {
   const StatusIcon = currentStatus.icon;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto px-6 lg:px-0">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/plans" className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+          <Link to="/plans" className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                 Plan d'Audit {plan.year}
               </h1>
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${currentStatus.color}`}>
                 <StatusIcon className="w-3.5 h-3.5" />
                 {currentStatus.label}
               </span>
-              <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600">
                 v{plan.versionNumber}
               </span>
             </div>
-            <p className="text-sm text-slate-500 mt-1">{plan.title || 'Sans titre'}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{plan.title || 'Sans titre'}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -223,17 +245,39 @@ export default function AuditPlanDetails() {
               setStatusForm({ status: plan.status, reason: '' });
               setIsStatusModalOpen(true);
             }}
-            className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            disabled={plan.status === 'VALIDATED'}
+            title={plan.status === 'VALIDATED' ? 'Impossible de changer le statut d\'un plan validé' : undefined}
+            className={`inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium shadow-sm transition-colors ${
+              plan.status === 'VALIDATED'
+                ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+            }`}
           >
             Changer le statut
           </button>
+
+          {plan.status === 'VALIDATED' && canUpdate && (
+            <button
+              onClick={handleReopenPlan}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 shadow-sm hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Rouvrir le plan
+            </button>
+          )}
           <button
             onClick={() => {
               setEditingVersion(null);
               setVersionForm({ label: '', changeSummary: '', snapshotNote: '' });
               setIsVersionModalOpen(true);
             }}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700"
+            disabled={plan.status === 'VALIDATED'}
+            title={plan.status === 'VALIDATED' ? 'Impossible de créer une version sur un plan validé' : undefined}
+            className={`inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors ${
+              plan.status === 'VALIDATED'
+                ? 'bg-emerald-400 dark:bg-emerald-800 cursor-not-allowed opacity-60'
+                : 'border-transparent bg-emerald-600 hover:bg-emerald-700'
+            }`}
           >
             <Save className="-ml-1 mr-2 h-4 w-4" />
             Créer une version
@@ -242,14 +286,14 @@ export default function AuditPlanDetails() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-slate-200">
+      <div className="border-b border-slate-200 dark:border-slate-700">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('details')}
             className={`${
               activeTab === 'details'
-                ? 'border-emerald-500 text-emerald-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
           >
             <FileText className="w-4 h-4" />
@@ -260,7 +304,7 @@ export default function AuditPlanDetails() {
             className={`${
               activeTab === 'versions'
                 ? 'border-emerald-500 text-emerald-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
           >
             <History className="w-4 h-4" />
@@ -271,7 +315,7 @@ export default function AuditPlanDetails() {
             className={`${
               activeTab === 'history'
                 ? 'border-emerald-500 text-emerald-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
           >
             <Clock className="w-4 h-4" />
@@ -281,47 +325,47 @@ export default function AuditPlanDetails() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white shadow-sm rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 shadow-sm rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         {activeTab === 'details' && (
           <div className="p-6 space-y-6">
             <div>
-              <h3 className="text-sm font-medium text-slate-500">Description</h3>
-              <p className="mt-1 text-sm text-slate-900 whitespace-pre-wrap">
+              <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">Description</h3>
+              <p className="mt-1 text-sm text-slate-900 dark:text-white whitespace-pre-wrap">
                 {plan.description || 'Aucune description fournie.'}
               </p>
             </div>
             
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <h3 className="text-sm font-medium text-slate-500">Missions rattachées</h3>
-                <p className="mt-1 text-2xl font-semibold text-slate-900">{plan.missions.length}</p>
+                <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">Missions rattachées</h3>
+                <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{plan.missions.length}</p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-slate-500">Date de création</h3>
-                <p className="mt-1 text-sm text-slate-900">{new Date(plan.createdAt).toLocaleDateString('fr-FR')}</p>
+                <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">Date de création</h3>
+                <p className="mt-1 text-sm text-slate-900 dark:text-white">{new Date(plan.createdAt).toLocaleDateString('fr-FR')}</p>
               </div>
             </div>
           </div>
         )}
 
         {activeTab === 'versions' && (
-          <div className="divide-y divide-slate-200">
+          <div className="divide-y divide-slate-200 dark:divide-slate-700">
             {plan.versions.length === 0 ? (
-              <div className="p-6 text-center text-slate-500">Aucune version enregistrée.</div>
+              <div className="p-6 text-center text-slate-500 dark:text-slate-400">Aucune version enregistrée.</div>
             ) : (
               plan.versions.map((version) => (
-                <div key={version.id} className="p-6 hover:bg-slate-50 transition-colors">
+                <div key={version.id} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold text-sm">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm">
                         v{version.versionNumber}
                       </span>
-                      <h4 className="text-sm font-medium text-slate-900">
+                      <h4 className="text-sm font-medium text-slate-900 dark:text-white">
                         {version.label || `Version ${version.versionNumber}`}
                       </h4>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
                         {new Date(version.createdAt).toLocaleString('fr-FR')}
                       </span>
                       <div className="flex items-center gap-2">
@@ -335,28 +379,30 @@ export default function AuditPlanDetails() {
                             });
                             setIsVersionModalOpen(true);
                           }}
-                          className="text-slate-400 hover:text-blue-600"
+                          className="inline-flex items-center gap-1 rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="w-3 h-3" />
+                          Modifier
                         </button>
                         <button 
                           onClick={() => handleDeleteVersion(version.id)}
-                          className="text-slate-400 hover:text-red-600"
+                          className="inline-flex items-center gap-1 rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3 h-3" />
+                          Supprimer
                         </button>
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm text-slate-600 mb-2">{version.changeSummary}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">{version.changeSummary}</p>
                   {version.snapshotNote && (
-                    <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-md border border-slate-100">
-                      <span className="font-medium text-slate-700">Note:</span> {version.snapshotNote}
-                    </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 p-3 rounded-md border border-slate-100 dark:border-slate-600">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">Note:</span> {version.snapshotNote}
+                    </p>
                   )}
-                  <div className="mt-3 text-xs text-slate-400 flex items-center gap-1">
+                    <p className="mt-3 text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
                     Créé par {version.createdBy.firstName} {version.createdBy.lastName}
-                  </div>
+                  </p>
                 </div>
               ))
             )}
@@ -385,15 +431,15 @@ export default function AuditPlanDetails() {
                           </div>
                           <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
                             <div>
-                              <p className="text-sm text-slate-500">
-                                Statut passé à <span className="font-medium text-slate-900">{statusInfo.label}</span>
-                                {' '}par <span className="font-medium text-slate-900">{history.changedBy.firstName} {history.changedBy.lastName}</span>
+                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                                Statut passé à <span className="font-medium text-slate-900 dark:text-white">{statusInfo.label}</span>
+                                {' '}par <span className="font-medium text-slate-900 dark:text-white">{history.changedBy.firstName} {history.changedBy.lastName}</span>
                               </p>
                               {history.reason && (
-                                <p className="mt-1 text-sm text-slate-600 italic">"{history.reason}"</p>
+                                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 italic">"{history.reason}"</p>
                               )}
                             </div>
-                            <div className="whitespace-nowrap text-right text-sm text-slate-500 flex flex-col items-end gap-2">
+                            <div className="whitespace-nowrap text-right text-sm text-slate-500 dark:text-slate-400 flex flex-col items-end gap-2">
                               {new Date(history.changedAt).toLocaleString('fr-FR')}
                               <div className="flex items-center gap-2">
                                 <button 
@@ -402,15 +448,17 @@ export default function AuditPlanDetails() {
                                     setHistoryForm({ reason: history.reason || '' });
                                     setIsHistoryModalOpen(true);
                                   }}
-                                  className="text-slate-400 hover:text-blue-600"
+                                  className="inline-flex items-center gap-1 rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
                                 >
-                                  <Edit2 className="w-4 h-4" />
+                                  <Edit2 className="w-3 h-3" />
+                                  Modifier
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteHistory(history.id)}
-                                  className="text-slate-400 hover:text-red-600"
+                                  className="inline-flex items-center gap-1 rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-3 h-3" />
+                                  Supprimer
                                 </button>
                               </div>
                             </div>
@@ -431,29 +479,29 @@ export default function AuditPlanDetails() {
         <div className="fixed inset-0 z-10 overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-500 bg-opacity-75 transition-opacity" onClick={() => setIsStatusModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-xl bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-              <h3 className="text-lg font-medium leading-6 text-slate-900 mb-4">Changer le statut du plan</h3>
+            <div className="relative transform overflow-hidden rounded-xl bg-white dark:bg-slate-800 px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+              <h3 className="text-lg font-medium leading-6 text-slate-900 dark:text-white mb-4">Changer le statut du plan</h3>
               <form onSubmit={handleStatusChange} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Nouveau statut</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nouveau statut</label>
                   <select
                     value={statusForm.status}
                     onChange={(e) => setStatusForm({...statusForm, status: e.target.value})}
-                    className="mt-1 block w-full rounded-md border border-slate-300 py-2 pl-3 pr-10 text-base focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white py-2 pl-3 pr-10 text-base focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                   >
-                    <option value="DRAFT">Brouillon</option>
-                    <option value="PENDING_APPROVAL">En attente DG</option>
-                    <option value="VALIDATED">Validé</option>
-                    <option value="REJECTED">Rejeté</option>
+                    <option value="DRAFT" className="dark:bg-slate-700 dark:text-white">Brouillon</option>
+                    <option value="PENDING_APPROVAL" className="dark:bg-slate-700 dark:text-white">En attente DG</option>
+                    <option value="VALIDATED" className="dark:bg-slate-700 dark:text-white">Validé</option>
+                    <option value="REJECTED" className="dark:bg-slate-700 dark:text-white">Rejeté</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Raison / Commentaire</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Raison / Commentaire</label>
                   <textarea
                     rows={3}
                     value={statusForm.reason}
                     onChange={(e) => setStatusForm({...statusForm, reason: e.target.value})}
-                    className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm p-2"
+                    className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm p-2"
                     placeholder="Ex: Validé suite au comité de direction..."
                     required
                   />
@@ -468,7 +516,7 @@ export default function AuditPlanDetails() {
                   <button
                     type="button"
                     onClick={() => setIsStatusModalOpen(false)}
-                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-base font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:col-start-1 sm:mt-0 sm:text-sm"
+                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-base font-medium text-slate-700 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 sm:col-start-1 sm:mt-0 sm:text-sm"
                   >
                     Annuler
                   </button>
@@ -484,45 +532,45 @@ export default function AuditPlanDetails() {
         <div className="fixed inset-0 z-10 overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-500 bg-opacity-75 transition-opacity" onClick={() => setIsVersionModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-xl bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-              <h3 className="text-lg font-medium leading-6 text-slate-900 mb-4">
+            <div className="relative transform overflow-hidden rounded-xl bg-white dark:bg-slate-800 px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+              <h3 className="text-lg font-medium leading-6 text-slate-900 dark:text-white mb-4">
                 {editingVersion ? "Modifier la version" : "Créer une nouvelle version"}
               </h3>
               {!editingVersion && (
-                <p className="text-sm text-slate-500 mb-4">
-                  Ceci va créer la version v{plan.versionNumber + 1} du plan d'audit.
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                  Ceci va créer la version v{(plan?.versionNumber ?? 0) + 1} du plan d'audit.
                 </p>
               )}
               <form onSubmit={handleCreateOrUpdateVersion} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Libellé de la version</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Libellé de la version</label>
                   <input
                     type="text"
                     value={versionForm.label}
                     onChange={(e) => setVersionForm({...versionForm, label: e.target.value})}
-                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
                     placeholder="Ex: Version finale après révision DG"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Résumé des modifications</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Résumé des modifications</label>
                   <textarea
                     rows={2}
                     value={versionForm.changeSummary}
                     onChange={(e) => setVersionForm({...versionForm, changeSummary: e.target.value})}
-                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
                     placeholder="Ex: Ajout de 2 missions sur la cybersécurité"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Notes (Optionnel)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Notes (Optionnel)</label>
                   <textarea
                     rows={3}
                     value={versionForm.snapshotNote}
                     onChange={(e) => setVersionForm({...versionForm, snapshotNote: e.target.value})}
-                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
                   />
                 </div>
                 <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
@@ -535,7 +583,7 @@ export default function AuditPlanDetails() {
                   <button
                     type="button"
                     onClick={() => setIsVersionModalOpen(false)}
-                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-base font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:col-start-1 sm:mt-0 sm:text-sm"
+                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-base font-medium text-slate-700 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 sm:col-start-1 sm:mt-0 sm:text-sm"
                   >
                     Annuler
                   </button>

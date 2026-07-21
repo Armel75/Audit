@@ -29,9 +29,9 @@ interface FindingFormProps {
 }
 
 const inputCls =
-  'w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none';
+  'w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 outline-none';
 
-const labelCls = 'block text-sm font-semibold text-slate-900 mb-2';
+const labelCls = 'block text-sm font-semibold text-slate-900 dark:text-white mb-2';
 
 export default function FindingForm({ missionId, findingId, initialEditReason, initialData, onSuccess, onCancel }: FindingFormProps) {
   const [title, setTitle] = useState('');
@@ -142,23 +142,23 @@ export default function FindingForm({ missionId, findingId, initialEditReason, i
       <button
         type="button"
         onClick={() => navigate(`/missions/${missionId}`)}
-        className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+        className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm transition hover:border-slate-300 dark:hover:border-slate-500 hover:text-slate-800 dark:hover:text-white"
       >
         <ArrowLeft className="h-4 w-4" />
         Retour a la mission
       </button>
 
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-amber-50 to-orange-100 px-8 py-7 border-b border-amber-200">
+        <div className="bg-gradient-to-r from-amber-50 to-orange-100 dark:from-amber-950/40 dark:to-orange-900/30 px-8 py-7 border-b border-amber-200 dark:border-amber-800">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl shadow-md">
               <AlertTriangle className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{findingId ? 'Modifier le constat' : 'Nouveau constat'}</h1>
-              <p className="text-sm text-slate-500 mt-1">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{findingId ? 'Modifier le constat' : 'Nouveau constat'}</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {findingId
                   ? 'Mettez a jour le constat avec une raison de modification tracee.'
                   : 'Documentez un ecart, une non-conformite ou un risque identifie lors de la mission.'}
@@ -171,7 +171,7 @@ export default function FindingForm({ missionId, findingId, initialEditReason, i
 
           {/* Error banner */}
           {error && (
-            <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+            <div className="flex items-start gap-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl px-4 py-3 text-sm">
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
               {error}
             </div>
@@ -179,7 +179,7 @@ export default function FindingForm({ missionId, findingId, initialEditReason, i
 
           {/* Section 1: Identification */}
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-5">Identification</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-5">Identification</h2>
             <div className="space-y-5">
               <div>
                 <label className={labelCls}>
@@ -194,7 +194,7 @@ export default function FindingForm({ missionId, findingId, initialEditReason, i
                   onChange={(e) => setTitle(e.target.value)}
                   className={inputCls}
                 />
-                <p className="text-xs text-slate-400 mt-1">Ex. : Absence de validation des factures fournisseurs</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Ex. : Absence de validation des factures fournisseurs</p>
               </div>
 
               <div>
@@ -212,7 +212,7 @@ export default function FindingForm({ missionId, findingId, initialEditReason, i
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-400 mt-1">Criticite du constat selon la grille de risques</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Criticite du constat selon la grille de risques</p>
               </div>
 
               <div>
@@ -227,7 +227,7 @@ export default function FindingForm({ missionId, findingId, initialEditReason, i
                   onChange={(e) => setProcess(e.target.value)}
                   className={inputCls}
                 />
-                <p className="text-xs text-slate-400 mt-1">Domaine ou fonction audite(e)</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Domaine ou fonction audite(e)</p>
               </div>
             </div>
           </section>
@@ -236,7 +236,7 @@ export default function FindingForm({ missionId, findingId, initialEditReason, i
 
           {/* Section 2: Analyse */}
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-5">Analyse</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-5">Analyse</h2>
             <div className="space-y-5">
               <div>
                 <label className={labelCls}>
@@ -287,9 +287,9 @@ export default function FindingForm({ missionId, findingId, initialEditReason, i
 
           {findingId && (
             <>
-              <div className="border-t border-slate-100" />
+              <div className="border-t border-slate-100 dark:border-slate-700" />
               <section>
-                <h2 className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-5">Traçabilite de modification</h2>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-5">Traçabilite de modification</h2>
                 <div>
                   <label className={labelCls}>
                     Raison de la modification <span className="text-red-500">*</span>
@@ -303,15 +303,15 @@ export default function FindingForm({ missionId, findingId, initialEditReason, i
                     onChange={(e) => setModificationReason(e.target.value)}
                     className={`${inputCls} resize-y`}
                   />
-                  <p className="text-xs text-slate-400 mt-1">Minimum 10 caracteres. Cette raison est enregistree pour audit.</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Minimum 10 caracteres. Cette raison est enregistree pour audit.</p>
                 </div>
               </section>
             </>
           )}
 
           {/* Footer actions */}
-          <div className="border-t border-slate-100 pt-6 flex items-center justify-between">
-            <p className="text-xs text-slate-400">
+          <div className="border-t border-slate-100 dark:border-slate-700 pt-6 flex items-center justify-between">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
               Les champs marques <span className="text-red-500">*</span> sont obligatoires
             </p>
             <button

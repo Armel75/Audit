@@ -348,14 +348,14 @@ export default function AdminSettings() {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 px-6 lg:px-0">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <ShieldAlert className="w-6 h-6 text-indigo-600" />
             Administration Globale
           </h1>
-          <p className="text-slate-500 mt-1">Gérez les locataires, les accès et la sécurité de la plateforme.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez les locataires, les accès et la sécurité de la plateforme.</p>
         </div>
       </div>
 
@@ -371,7 +371,7 @@ export default function AdminSettings() {
       )}
 
       {/* Tabs */}
-      <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-fit">
+      <div className="flex space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
         {[
           { id: 'tenants', icon: Building2, label: 'Tenants', permission: 'tenant:read' },
           { id: 'users', icon: Users, label: 'Utilisateurs', permission: 'user:read' },
@@ -382,7 +382,7 @@ export default function AdminSettings() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id as TabType)}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-              activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'
             }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -392,13 +392,13 @@ export default function AdminSettings() {
       </div>
 
       {/* CONTENT */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
         
         {/* TENANTS TAB */}
         {activeTab === 'tenants' && hasPerm('tenants') && (
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold text-slate-900">Gestion des Locataires (Tenants)</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Gestion des Locataires (Tenants)</h2>
               <button 
                 onClick={() => { setIsEditingTenant(false); setTenantForm({ isActive: true }); }}
                 className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
@@ -407,12 +407,12 @@ export default function AdminSettings() {
               </button>
             </div>
 
-            <form onSubmit={handleTenantSubmit} className="mb-8 bg-slate-50 p-6 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input type="text" placeholder="Nom du Tenant" required value={tenantForm.name || ''} onChange={e => setTenantForm({...tenantForm, name: e.target.value})} className="px-3 py-2 border rounded-lg" />
-              <input type="text" placeholder="Code (ex: SOREPCO)" required value={tenantForm.code || ''} onChange={e => setTenantForm({...tenantForm, code: e.target.value})} className="px-3 py-2 border rounded-lg font-mono" />
+            <form onSubmit={handleTenantSubmit} className="mb-8 bg-slate-50 dark:bg-slate-700/50 p-6 rounded-xl border border-slate-200 dark:border-slate-600 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <input type="text" placeholder="Nom du Tenant" required value={tenantForm.name || ''} onChange={e => setTenantForm({...tenantForm, name: e.target.value})} className="px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
+              <input type="text" placeholder="Code (ex: SOREPCO)" required value={tenantForm.code || ''} onChange={e => setTenantForm({...tenantForm, code: e.target.value})} className="px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white font-mono" />
               <label className="flex items-center gap-2 px-3 py-2">
                 <input type="checkbox" checked={tenantForm.isActive ?? true} onChange={e => setTenantForm({...tenantForm, isActive: e.target.checked})} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                <span className="text-sm font-medium text-slate-700">Tenant Actif</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Tenant Actif</span>
               </label>
               
               <div className="md:col-span-3 flex justify-end gap-3 mt-2">
@@ -423,7 +423,7 @@ export default function AdminSettings() {
             </form>
 
             <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+              <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-slate-600">
                 <tr>
                   <th className="px-4 py-3">Nom</th>
                   <th className="px-4 py-3">Code</th>
@@ -431,13 +431,13 @@ export default function AdminSettings() {
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {tenants.map(t => (
-                  <tr key={t.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-900">{t.name}</td>
-                    <td className="px-4 py-3 text-slate-600 font-mono text-xs">{t.code}</td>
+                  <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{t.name}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300 font-mono text-xs">{t.code}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-md text-xs font-medium ${t.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                      <span className={`px-2 py-1 rounded-md text-xs font-medium ${t.isActive ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}`}>
                         {t.isActive ? 'Actif' : 'Inactif'}
                       </span>
                     </td>
@@ -451,7 +451,7 @@ export default function AdminSettings() {
                           isActive: t.isActive
                         });
                         }} className="text-indigo-600 hover:underline">Éditer</button>
-                      <button onClick={() => toggleTenantStatus(t)} className="text-slate-600 hover:underline">Basculer Statut</button>
+                      <button onClick={() => toggleTenantStatus(t)} className="text-slate-600 dark:text-slate-400 hover:underline">Basculer Statut</button>
                     </td>
                   </tr>
                 ))}
@@ -464,7 +464,7 @@ export default function AdminSettings() {
         {activeTab === 'users' && hasPerm('users') && (
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold text-slate-900">Gestion des Utilisateurs</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Gestion des Utilisateurs</h2>
               <button 
                 onClick={() => { setIsEditingUser(false); setUserForm({ status: 'ACTIVE' }); }}
                 className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
@@ -473,30 +473,30 @@ export default function AdminSettings() {
               </button>
             </div>
 
-            <form onSubmit={handleUserSubmit} className="mb-8 bg-slate-50 p-6 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input type="text" placeholder="Prénom" required value={userForm.firstName || ''} onChange={e => setUserForm({...userForm, firstName: e.target.value})} className="px-3 py-2 border rounded-lg" />
-              <input type="text" placeholder="Nom" required value={userForm.lastName || ''} onChange={e => setUserForm({...userForm, lastName: e.target.value})} className="px-3 py-2 border rounded-lg" />
-              <input type="email" placeholder="Email" required value={userForm.email || ''} onChange={e => setUserForm({...userForm, email: e.target.value})} className="px-3 py-2 border rounded-lg" />
-              <input type="text" placeholder="Matricule" required value={userForm.matricule || ''} onChange={e => setUserForm({...userForm, matricule: e.target.value})} className="px-3 py-2 border rounded-lg" />
+            <form onSubmit={handleUserSubmit} className="mb-8 bg-slate-50 dark:bg-slate-700/50 p-6 rounded-xl border border-slate-200 dark:border-slate-600 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <input type="text" placeholder="Prénom" required value={userForm.firstName || ''} onChange={e => setUserForm({...userForm, firstName: e.target.value})} className="px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
+              <input type="text" placeholder="Nom" required value={userForm.lastName || ''} onChange={e => setUserForm({...userForm, lastName: e.target.value})} className="px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
+              <input type="email" placeholder="Email" required value={userForm.email || ''} onChange={e => setUserForm({...userForm, email: e.target.value})} className="px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
+              <input type="text" placeholder="Matricule" required value={userForm.matricule || ''} onChange={e => setUserForm({...userForm, matricule: e.target.value})} className="px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
               
-              <select required value={userForm.tenantId || ''} onChange={e => setUserForm({...userForm, tenantId: e.target.value})} className="px-3 py-2 border rounded-lg bg-white">
+              <select required value={userForm.tenantId || ''} onChange={e => setUserForm({...userForm, tenantId: e.target.value})} className="px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white bg-white">
                 <option value="">Sélectionner un Tenant</option>
                 {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
 
-              <select required value={userForm.roleId || ''} onChange={e => setUserForm({...userForm, roleId: e.target.value})} className="px-3 py-2 border rounded-lg bg-white">
+              <select required value={userForm.roleId || ''} onChange={e => setUserForm({...userForm, roleId: e.target.value})} className="px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white bg-white">
                 <option value="">Sélectionner un Rôle</option>
                 {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
 
-              <select required value={userForm.status || ''} onChange={e => setUserForm({...userForm, status: e.target.value})} className="px-3 py-2 border rounded-lg bg-white">
+              <select required value={userForm.status || ''} onChange={e => setUserForm({...userForm, status: e.target.value})} className="px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white bg-white">
                 <option value="PENDING">En attente</option>
                 <option value="ACTIVE">Actif</option>
                 <option value="LOCKED">Verrouillé</option>
                 <option value="INACTIVE">Inactif</option>
               </select>
 
-              <input type="password" placeholder={isEditingUser ? "Nouveau mot de passe (optionnel)" : "Mot de passe"} required={!isEditingUser} onChange={e => setUserForm({...userForm, password: e.target.value})} className="px-3 py-2 border rounded-lg" />
+              <input type="password" placeholder={isEditingUser ? "Nouveau mot de passe (optionnel)" : "Mot de passe"} required={!isEditingUser} onChange={e => setUserForm({...userForm, password: e.target.value})} className="px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
               
               <div className="md:col-span-3 flex justify-end gap-3 mt-2">
                 <button type="submit" className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800">
@@ -507,7 +507,7 @@ export default function AdminSettings() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-slate-600">
                   <tr>
                     <th className="px-4 py-3">Nom</th>
                     <th className="px-4 py-3">Email</th>
@@ -517,9 +517,9 @@ export default function AdminSettings() {
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {users.map(u => (
-                    <tr key={u.id} className="hover:bg-slate-50">
+                    <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                       {/* <td className="px-4 py-3 font-medium text-slate-900">{u.firstName} {u.lastName}</td> */}
                       <td
                         onClick={() => navigate(`/users/${u.id}`)}
@@ -527,9 +527,9 @@ export default function AdminSettings() {
                       >
                         {u.firstName} {u.lastName}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                      <td className="px-4 py-3 text-slate-600">{u.tenant?.name}</td>
-                      <td className="px-4 py-3 text-slate-600">{u.role?.name}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.email}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.tenant?.name}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.role?.name}</td>
                       <td className="px-4 py-3">
                         {/* <span className={`px-2 py-1 rounded-md text-xs font-medium ${u.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                           {u.status}
@@ -537,12 +537,12 @@ export default function AdminSettings() {
                         <span
                           className={`px-2 py-1 rounded-md text-xs font-medium ${
                             u.status === 'ACTIVE'
-                              ? 'bg-emerald-100 text-emerald-700'
+                              ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
                               : u.status === 'PENDING'
-                              ? 'bg-amber-100 text-amber-700'
+                              ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
                               : u.status === 'LOCKED'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-slate-100 text-slate-700'
+                              ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+                              : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                           }`}
                         >
                           {u.status === 'ACTIVE' ? 'Actif' : u.status === 'PENDING' ? 'En attente' : u.status === 'LOCKED' ? 'Verrouillé' : u.status === 'INACTIVE' ? 'Inactif' : u.status}
@@ -587,14 +587,14 @@ export default function AdminSettings() {
         {/* ROLES & PERMISSIONS TAB */}
         {activeTab === 'roles' && hasPerm('roles') && (
           <div className="min-h-[500px]">
-            <div className="border-b border-slate-200 p-6 bg-slate-50/60">
+            <div className="border-b border-slate-200 dark:border-slate-700 p-6 bg-slate-50/60 dark:bg-slate-800/60">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">Gestion des roles</h2>
-                  <p className="text-sm text-slate-500 mt-1">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Gestion des roles</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                     Creez, renommez et supprimez les roles sans modifier le panneau actuel des permissions.
                   </p>
-                  <p className="text-xs text-slate-400 mt-2">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
                     {filteredRoles.length} role{filteredRoles.length > 1 ? 's' : ''} affiche{filteredRoles.length > 1 ? 's' : ''} sur {roles.length}
                   </p>
                 </div>
@@ -606,10 +606,10 @@ export default function AdminSettings() {
                 </button>
               </div>
 
-              <form onSubmit={handleRoleSubmit} className="mt-6 bg-white p-4 rounded-xl border border-slate-200">
+              <form onSubmit={handleRoleSubmit} className="mt-6 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                 <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-4 items-end">
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-slate-700">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                       Nom du role
                     </label>
                     <input
@@ -618,7 +618,7 @@ export default function AdminSettings() {
                       value={roleForm.name || ''}
                       onChange={e => setRoleForm({ ...roleForm, name: e.target.value })}
                       placeholder="Ex: Auditeur Senior"
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                     />
                   </div>
                   <div className="flex gap-3">
@@ -626,7 +626,7 @@ export default function AdminSettings() {
                       <button
                         type="button"
                         onClick={resetRoleForm}
-                        className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+                        className="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700"
                       >
                         Annuler
                       </button>
@@ -647,17 +647,17 @@ export default function AdminSettings() {
                   value={roleSearch}
                   onChange={e => setRoleSearch(e.target.value)}
                   placeholder="Rechercher un role..."
-                  className="w-full md:max-w-md px-3 py-2 border rounded-lg bg-white"
+                  className="w-full md:max-w-md px-3 py-2 border rounded-lg dark:border-slate-600 dark:bg-slate-700 dark:text-white bg-white"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 min-h-[500px]">
-              <div className="border-r border-slate-200 bg-slate-50 p-4">
-              <h3 className="font-semibold text-slate-900 mb-4">Rôles existants</h3>
+              <div className="border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Rôles existants</h3>
               <div className="space-y-2">
                 {filteredRoles.length === 0 && (
-                  <div className="bg-white border border-dashed border-slate-300 rounded-xl px-4 py-6 text-sm text-slate-500">
+                  <div className="bg-white dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
                     Aucun role ne correspond a cette recherche.
                   </div>
                 )}
@@ -665,11 +665,11 @@ export default function AdminSettings() {
                   <button 
                     key={r.id} 
                     onClick={() => handleRoleSelect(r)}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${selectedRole?.id === r.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-700 hover:border-indigo-300'}`}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${selectedRole?.id === r.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-500'}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span>{r.name}</span>
-                      <span className={`text-xs px-2 py-1 rounded-full ${selectedRole?.id === r.id ? 'bg-indigo-500/70 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      <span className={`text-xs px-2 py-1 rounded-full ${selectedRole?.id === r.id ? 'bg-indigo-500/70 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                         {roleUserCounts[r.id] || 0} user{(roleUserCounts[r.id] || 0) > 1 ? 's' : ''}
                       </span>
                     </div>
@@ -682,7 +682,7 @@ export default function AdminSettings() {
                   <>
                     <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="text-lg font-semibold text-slate-900">Permissions pour : <span className="text-indigo-600">{selectedRole.name}</span></h3>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Permissions pour : <span className="text-indigo-600">{selectedRole.name}</span></h3>
                         <button
                           type="button"
                           onClick={() => startRoleEdit(selectedRole)}
@@ -705,23 +705,23 @@ export default function AdminSettings() {
                     </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {permissions.map(p => (
-                      <label key={p.id} className="flex items-start gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                      <label key={p.id} className="flex items-start gap-3 p-4 border border-slate-200 dark:border-slate-600 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                         <input 
                           type="checkbox" 
                           checked={rolePermissions.includes(p.id)}
                           onChange={() => togglePermission(p.id)}
-                          className="mt-1 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                          className="mt-1 w-4 h-4 text-indigo-600 rounded border-slate-300 dark:border-slate-600 focus:ring-indigo-500"
                         />
                         <div>
-                          <p className="font-medium text-slate-900 text-sm">{p.code}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">{p.description || 'Aucune description'}</p>
+                          <p className="font-medium text-slate-900 dark:text-white text-sm">{p.code}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{p.description || 'Aucune description'}</p>
                         </div>
                       </label>
                     ))}
                   </div>
                 </>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
                   <Shield className="w-12 h-12 mb-4 opacity-20" />
                   <p>Sélectionnez un rôle pour gérer ses permissions</p>
                 </div>
@@ -734,10 +734,10 @@ export default function AdminSettings() {
         {/* SECURITY TOKENS TAB */}
         {activeTab === 'security' && hasPerm('security') && (
           <div className="p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-6">Sessions Actives (Refresh Tokens)</h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">Sessions Actives (Refresh Tokens)</h2>
             <div className="overflow-x-auto mb-8">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-slate-600">
                   <tr>
                     <th className="px-4 py-3">Utilisateur</th>
                     <th className="px-4 py-3">IP / Appareil</th>
@@ -746,22 +746,22 @@ export default function AdminSettings() {
                     <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {refreshTokens.map(t => (
-                    <tr key={t.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-medium text-slate-900">{t.user?.firstName} {t.user?.lastName}</td>
-                      <td className="px-4 py-3 text-slate-600 text-xs">{t.ipAddress}<br/><span className="text-slate-400">{t.userAgent?.substring(0,30)}...</span></td>
-                      <td className="px-4 py-3 text-slate-600">{new Date(t.createdAt).toLocaleDateString()}</td>
+                    <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{t.user?.firstName} {t.user?.lastName}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs">{t.ipAddress}<br/><span className="text-slate-400 dark:text-slate-500">{t.userAgent?.substring(0,30)}...</span></td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{new Date(t.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
                         {t.revokedAt ? (
-                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-medium">Révoqué</span>
+                          <span className="px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-md text-xs font-medium">Révoqué</span>
                         ) : (
-                          <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-medium">Actif</span>
+                          <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-md text-xs font-medium">Actif</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {!t.revokedAt && (
-                          <button onClick={() => revokeRefreshToken(t.id)} className="text-red-600 hover:text-red-800 font-medium text-xs bg-red-50 px-3 py-1.5 rounded-lg">
+                          <button onClick={() => revokeRefreshToken(t.id)} className="text-red-600 hover:text-red-800 font-medium text-xs bg-red-50 dark:bg-red-900/30 px-3 py-1.5 rounded-lg">
                             Révoquer
                           </button>
                         )}
@@ -772,10 +772,10 @@ export default function AdminSettings() {
               </table>
             </div>
 
-            <h2 className="text-lg font-semibold text-slate-900 mb-6">Demandes de Réinitialisation (Reset Tokens)</h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">Demandes de Réinitialisation (Reset Tokens)</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-slate-600">
                   <tr>
                     <th className="px-4 py-3">Utilisateur</th>
                     <th className="px-4 py-3">Création</th>
@@ -784,24 +784,24 @@ export default function AdminSettings() {
                     <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {resetTokens.map(t => (
-                    <tr key={t.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-medium text-slate-900">{t.user?.firstName} {t.user?.lastName}</td>
-                      <td className="px-4 py-3 text-slate-600">{new Date(t.createdAt).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 text-slate-600">{new Date(t.expiresAt).toLocaleDateString()}</td>
+                    <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{t.user?.firstName} {t.user?.lastName}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{new Date(t.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{new Date(t.expiresAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
                         {t.used ? (
-                          <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-medium">Utilisé</span>
+                          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-md text-xs font-medium">Utilisé</span>
                         ) : new Date(t.expiresAt) < new Date() ? (
-                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-medium">Expiré</span>
+                          <span className="px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-md text-xs font-medium">Expiré</span>
                         ) : (
-                          <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-medium">Valide</span>
+                          <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-md text-xs font-medium">Valide</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {!t.used && new Date(t.expiresAt) > new Date() && (
-                          <button onClick={() => invalidateResetToken(t.id)} className="text-red-600 hover:text-red-800 font-medium text-xs bg-red-50 px-3 py-1.5 rounded-lg">
+                          <button onClick={() => invalidateResetToken(t.id)} className="text-red-600 hover:text-red-800 font-medium text-xs bg-red-50 dark:bg-red-900/30 px-3 py-1.5 rounded-lg">
                             Invalider
                           </button>
                         )}

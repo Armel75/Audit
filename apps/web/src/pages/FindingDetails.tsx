@@ -269,20 +269,20 @@ export default function FindingDetails() {
   const conf = statusConfig[finding.status] || statusConfig.DRAFT;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 px-6 lg:px-0">
       {/* Header */}
       <div>
         <Link
           to={`/missions/${finding.mission.id}`}
-          className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm transition hover:border-slate-300 dark:hover:border-slate-500 hover:text-slate-800 dark:hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Retour aux détails de la mission</span>
         </Link>
         <div className="sm:flex sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{finding.title}</h1>
-            <div className="mt-2 flex items-center space-x-4 text-sm text-slate-500">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{finding.title}</h1>
+            <div className="mt-2 flex items-center space-x-4 text-sm text-slate-500 dark:text-slate-400">
               <span className="flex items-center">
                 <User className="w-4 h-4 mr-1" />
                 Auteur : {finding.author ? `${finding.author.firstName} ${finding.author.lastName}` : 'Inconnu'}
@@ -349,7 +349,7 @@ export default function FindingDetails() {
 
                   {/* CAS 2 — en attente */}
                   {finding.approvals?.some(a => a.decision === 'PENDING') && (
-                    <span className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded">
+                    <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">
                       Validation en attente
                     </span>
                   )}
@@ -420,66 +420,41 @@ export default function FindingDetails() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-medium text-slate-900 mb-4">Description du constat</h3>
-            <div className="prose prose-sm max-w-none text-slate-600">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4">Description du constat</h3>
+            <div className="prose prose-sm max-w-none text-slate-600 dark:text-slate-300">
               <p className="whitespace-pre-wrap">{finding.description}</p>
             </div>
             
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100">
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100 dark:border-slate-700">
               <div>
-                <h4 className="text-sm font-medium text-slate-900 mb-2">Processus concerné</h4>
-                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100 min-h-[60px]">
-                  {finding.process || <span className="text-slate-400 italic">Non renseigné</span>}
+                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Processus concerné</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 p-3 rounded-md border border-slate-100 dark:border-slate-600 min-h-[60px]">
+                  {finding.process || <span className="text-slate-400 dark:text-slate-500 italic">Non renseigné</span>}
                 </p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-slate-900 mb-2">Cause racine</h4>
-                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100 min-h-[60px]">
-                  {finding.cause || <span className="text-slate-400 italic">Non renseignée</span>}
+                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Cause racine</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 p-3 rounded-md border border-slate-100 dark:border-slate-600 min-h-[60px]">
+                  {finding.cause || <span className="text-slate-400 dark:text-slate-500 italic">Non renseignée</span>}
                 </p>
               </div>
               <div className="md:col-span-2">
-                <h4 className="text-sm font-medium text-slate-900 mb-2">Impact / Conséquence</h4>
-                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100 min-h-[60px]">
-                  {finding.impact || <span className="text-slate-400 italic">Non renseigné</span>}
+                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Impact / Conséquence</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 p-3 rounded-md border border-slate-100 dark:border-slate-600 min-h-[60px]">
+                  {finding.impact || <span className="text-slate-400 dark:text-slate-500 italic">Non renseigné</span>}
                 </p>
               </div>
             </div>
           </div>
 
           {/* Evidences */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            {/* <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-slate-900 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-slate-400" />
-                Preuves ({finding.evidences?.length || 0})
-              </h3>
-              <button className="text-sm text-indigo-600 hover:text-indigo-900 font-medium">
-                + Ajouter une preuve
-              </button>
-            </div> */}
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-slate-900 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-slate-400" />
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-slate-400 dark:text-slate-500" />
                 Preuves ({finding.evidences?.length || 0})
               </h3>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => navigate(`/evidences?findingId=${finding.id}`)}
-                  className="text-sm bg-slate-800 text-white px-3 py-1 rounded"
-                >
-                  Voir tout
-                </button>
-
-                <button
-                  onClick={() => navigate(`/evidences/create?findingId=${finding.id}`)}
-                  className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1 rounded"
-                >
-                  + Ajouter une preuve
-                </button>
-              </div>
             </div>
             {finding.evidences && finding.evidences.length > 0 ? (
               <ul className="divide-y divide-slate-100">
@@ -497,15 +472,15 @@ export default function FindingDetails() {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-slate-500 italic">Aucune preuve associée.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 italic">Aucune preuve associée.</p>
             )}
           </div>
 
           {/* Approvals */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-slate-900 flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2 text-slate-400" />
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white flex items-center">
+                <CheckCircle className="w-5 h-5 mr-2 text-slate-400 dark:text-slate-500" />
                 Approbations ({finding.approvals?.length || 0})
               </h3>
               {!finding.approvals?.some(a => a.decision === 'PENDING' || a.decision === 'APPROVED') && (
@@ -529,7 +504,7 @@ export default function FindingDetails() {
               )}
             </div>
             {finding.approvals && finding.approvals.length > 0 ? (
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-700">
                 {finding.approvals.map(approval => (
                   <li key={approval.id} className="py-3 flex items-start">
                     <div className="flex-shrink-0">
@@ -553,12 +528,12 @@ export default function FindingDetails() {
                             </button>
                           </div>
                         )}
-                      <p className="text-sm font-medium text-slate-900">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
                         {approval.approver?.firstName && approval.approver?.lastName
                           ? `${approval.approver.firstName} ${approval.approver.lastName}`
                           : 'Utilisateur inconnu'}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         {new Date(approval.createdAt).toLocaleDateString()} - 
                         {approval.decision === 'APPROVED'
                           ? 'Approuvé'
@@ -566,21 +541,21 @@ export default function FindingDetails() {
                           ? 'Rejeté'
                           : 'En attente'}
                       </p>
-                      {approval.comments && <p className="text-sm text-slate-600 mt-1">{approval.comments}</p>}
+                      {approval.comments && <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{approval.comments}</p>}
                     </div>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-slate-500 italic">Aucune approbation.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 italic">Aucune approbation.</p>
             )}
           </div>
 
           {/* Recommendations Section */}
-          <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-200 sm:flex sm:items-center sm:justify-between">
+          <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 sm:flex sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-lg font-medium leading-6 text-slate-900 flex items-center">
+                <h3 className="text-lg font-medium leading-6 text-slate-900 dark:text-white flex items-center">
                   <Target className="w-5 h-5 mr-2 text-indigo-500" />
                   Recommandations ({finding.recos?.length || 0})
                 </h3>
@@ -597,27 +572,27 @@ export default function FindingDetails() {
               </div>
             </div>
 
-            <ul className="divide-y divide-slate-200">
+            <ul className="divide-y divide-slate-200 dark:divide-slate-700">
               {!finding.recos || finding.recos.length === 0 ? (
-                <li className="px-6 py-8 text-center text-sm text-slate-500">
+                <li className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                   Aucune recommandation pour ce constat.
                 </li>
               ) : (
                 finding.recos.map((reco) => {
                   const statusConf = getRecommendationStatusMeta(reco.status);
                   return (
-                    <li key={reco.id} className="hover:bg-slate-50 transition-colors">
+                    <li key={reco.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                       <div className="px-6 py-4">
                         <div className="flex items-center justify-between mb-2">
-                          <Link to={`/recommendations/${reco.id}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-900">
+                          <Link to={`/recommendations/${reco.id}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-900 dark:hover:text-indigo-400">
                             {reco.title}
                           </Link>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConf.class}`}>
                             {statusConf.label}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-600 mb-3 line-clamp-2">{reco.actionPlan}</p>
-                        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 line-clamp-2">{reco.actionPlan}</p>
+                        <div className="flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
                           {reco.priority && (
                             <span className="flex items-center">
                               <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: reco.priority.color || '#cbd5e1' }}></span>
@@ -652,27 +627,27 @@ export default function FindingDetails() {
           </div>
 
           {/* Comments Section */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4 flex items-center">
               <MessageSquare className="w-5 h-5 mr-2 text-indigo-500" />
               Commentaires ({finding.comments.length})
             </h3>
             
             <div className="space-y-4 mb-6">
               {finding.comments.length === 0 ? (
-                <p className="text-sm text-slate-500 italic">Aucun commentaire pour le moment.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 italic">Aucun commentaire pour le moment.</p>
               ) : (
                 finding.comments.map(comment => (
-                  <div key={comment.id} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <div key={comment.id} className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg border border-slate-100 dark:border-slate-600">
                     <div className="flex justify-between items-start mb-2">
-                      <span className="text-sm font-medium text-slate-900">
+                      <span className="text-sm font-medium text-slate-900 dark:text-white">
                         {comment.author.firstName} {comment.author.lastName}
                       </span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
                         {new Date(comment.createdAt).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.content}</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{comment.content}</p>
                   </div>
                 ))
               )}
@@ -683,7 +658,7 @@ export default function FindingDetails() {
               <textarea
                 id="comment"
                 rows={3}
-                className="block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className="block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white py-2 px-3 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 placeholder="Ajouter un commentaire..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
@@ -701,38 +676,38 @@ export default function FindingDetails() {
           </div>
 
           {/* Status History */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4 flex items-center">
               <Clock className="w-5 h-5 mr-2 text-indigo-500" />
               Historique des statuts
             </h3>
             
             <div className="space-y-4">
               {finding.statusHistory && finding.statusHistory.length > 0 ? (
-                <ul className="divide-y divide-slate-100">
+                <ul className="divide-y divide-slate-100 dark:divide-slate-700">
                   {finding.statusHistory.map(history => (
                     <li key={history.id} className="py-3">
                       <div className="flex justify-between">
-                        <span className="text-sm font-medium text-slate-900">
+                        <span className="text-sm font-medium text-slate-900 dark:text-white">
                           {history.previousStatus ? `${findingStatusLabels[history.previousStatus] ?? history.previousStatus} → ` : ''}{findingStatusLabels[history.newStatus] ?? history.newStatus}
                         </span>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
                           {new Date(history.changedAt).toLocaleString()}
                         </span>
                       </div>
                       {history.changedBy && (
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                           Par {history.changedBy.firstName} {history.changedBy.lastName}
                         </p>
                       )}
                       {history.reason && (
-                        <p className="text-sm text-slate-600 mt-2 italic">"{history.reason}"</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 italic">"{history.reason}"</p>
                       )}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-slate-500 italic">Aucun historique disponible.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 italic">Aucun historique disponible.</p>
               )}
             </div>
           </div>
@@ -741,28 +716,28 @@ export default function FindingDetails() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Attachments */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4 flex items-center">
               <Paperclip className="w-5 h-5 mr-2 text-indigo-500" />
               Pièces jointes ({finding.documents.length})
             </h3>
             
             {finding.documents.length === 0 ? (
-              <p className="text-sm text-slate-500 italic mb-4">Aucun document attaché.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 italic mb-4">Aucun document attaché.</p>
             ) : (
-              <ul className="divide-y divide-slate-100 mb-4">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-700 mb-4">
                 {finding.documents.map(doc => (
                   <li key={doc.id} className="py-3 flex items-center justify-between">
                     <div className="flex items-center min-w-0">
-                      <Paperclip className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
+                      <Paperclip className="h-4 w-4 text-slate-400 dark:text-slate-500 mr-2 flex-shrink-0" />
                       <button
                         onClick={() => handleDownload(doc.id, doc.originalName)}
-                        className="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate"
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-900 dark:hover:text-indigo-400 truncate"
                       >
                         {doc.originalName}
                       </button>
                     </div>
-                    <span className="text-xs text-slate-500 ml-2 flex-shrink-0">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 ml-2 flex-shrink-0">
                       {(doc.sizeBytes / 1024).toFixed(1)} KB
                     </span>
                   </li>
@@ -780,7 +755,7 @@ export default function FindingDetails() {
               <button 
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="w-full inline-flex justify-center items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                className="w-full inline-flex justify-center items-center px-4 py-2 border border-slate-300 dark:border-slate-600 shadow-sm text-sm font-medium rounded-md text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
                 {uploading ? (
                   'Upload en cours...'
@@ -795,17 +770,17 @@ export default function FindingDetails() {
           </div>
 
           {/* Metadata */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-sm font-medium text-slate-900 mb-4 uppercase tracking-wider">Méta-données</h3>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-4 uppercase tracking-wider">Méta-données</h3>
             <dl className="space-y-4 text-sm">
               <div>
-                <dt className="text-slate-500">Dernière mise à jour</dt>
-                <dd className="font-medium text-slate-900">{new Date(finding.updatedAt).toLocaleString()}</dd>
+                <dt className="text-slate-500 dark:text-slate-400">Dernière mise à jour</dt>
+                <dd className="font-medium text-slate-900 dark:text-white">{new Date(finding.updatedAt).toLocaleString()}</dd>
               </div>
               {finding.validator && (
                 <div>
-                  <dt className="text-slate-500">Validé par</dt>
-                  <dd className="font-medium text-slate-900">{finding.validator.firstName} {finding.validator.lastName}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400">Validé par</dt>
+                  <dd className="font-medium text-slate-900 dark:text-white">{finding.validator.firstName} {finding.validator.lastName}</dd>
                 </div>
               )}
             </dl>

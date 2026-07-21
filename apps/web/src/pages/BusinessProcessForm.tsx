@@ -88,9 +88,9 @@ export default function BusinessProcessForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white p-6 rounded-xl border border-slate-200">
+    <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
 
-      <h1 className="text-lg font-semibold text-slate-900 mb-4">
+      <h1 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
         {isEdit ? 'Modifier Business Process' : 'Nouveau Business Process'}
       </h1>
 

@@ -4,14 +4,14 @@ export default function RecommendationList({ recommendations = [], onRefresh }: 
 
   if (!Array.isArray(recommendations) || recommendations.length === 0) {
     return (
-      <div className="p-8 text-center text-sm text-slate-500">
+      <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
         Aucune recommandation
       </div>
     );
   }
 
   return (
-    <ul className="divide-y divide-slate-200">
+    <ul className="divide-y divide-slate-200 dark:divide-slate-700">
       {recommendations.map((reco: any) => (
         <RecommendationItem
           key={reco.id}

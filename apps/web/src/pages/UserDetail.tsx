@@ -119,7 +119,7 @@ const fetchUser = async () => {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 dark:bg-slate-900 min-h-screen">
 
       <div>
         <div className="flex items-center gap-4">

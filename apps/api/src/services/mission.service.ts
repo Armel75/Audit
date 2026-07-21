@@ -196,3 +196,33 @@ function getActionType(
 
   return MISSION_ACTION_TYPE.START;
 }
+
+// Retourne les missions accessibles à l'utilisateur selon son rôle et les filtres
+export async function getAccessibleMissions(user: any, filters: any) {
+  // Si auditeur : missions où il est membre
+  if (user.role === 'AUDITOR') {
+    return prisma.auditMission.findMany({
+      where: {
+        members: {
+          some: { userId: user.id }
+        },
+        // Filtres premium (à compléter selon les besoins)
+        ...(filters.status && { status: filters.status }),
+        ...(filters.startDate && { startDate: { gte: filters.startDate } }),
+        ...(filters.endDate && { endDate: { lte: filters.endDate } }),
+        ...(filters.missionId && { id: Number(filters.missionId) })
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+  // Si manager/admin/autre : missions selon permissions (exemple : toutes)
+  return prisma.auditMission.findMany({
+    where: {
+      ...(filters.status && { status: filters.status }),
+      ...(filters.startDate && { startDate: { gte: filters.startDate } }),
+      ...(filters.endDate && { endDate: { lte: filters.endDate } }),
+      ...(filters.missionId && { id: Number(filters.missionId) })
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+}

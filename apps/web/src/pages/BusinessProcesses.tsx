@@ -65,11 +65,11 @@ export default function BusinessProcesses() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 px-6 lg:px-0">
 
       {/* HEADER */}
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-semibold text-slate-900">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
           Business Processes
         </h1>
 
@@ -82,9 +82,9 @@ export default function BusinessProcesses() {
       </div>
 
       {/* TABLE */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+          <thead className="bg-slate-50 dark:bg-slate-700">
             <tr>
               <th className="px-4 py-3 text-left text-sm">Code</th>
               <th className="px-4 py-3 text-left text-sm">Nom</th>

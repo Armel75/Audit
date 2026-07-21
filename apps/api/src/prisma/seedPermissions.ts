@@ -51,6 +51,13 @@ const permissions = [
   { code: 'risk_level:read', description: 'Voir les niveaux de risque' },
   { code: 'priority_level:read', description: 'Voir les niveaux de priorite' },
 
+
+  // ================= HIERARCHY COMMENTS (PREMIUM) =================
+  { code: 'comment:read', description: 'Voir les commentaires hiérarchiques premium' },
+  { code: 'comment:create', description: 'Créer un commentaire hiérarchique premium' },
+  { code: 'comment:update', description: 'Modifier un commentaire hiérarchique premium' },
+  { code: 'comment:delete', description: 'Supprimer (logique) un commentaire hiérarchique premium' },
+
   // ================= REFERENTIAL =================
   { code: 'referential:access', description: 'Acceder au referentiel' },
 

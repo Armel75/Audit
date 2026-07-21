@@ -15,10 +15,10 @@ interface AuditPlan {
 }
 
 const statusConfig = {
-  DRAFT: { label: 'Brouillon', color: 'bg-slate-100 text-slate-800 border-slate-200 dark:border-slate-700', icon: FileText },
-  PENDING_APPROVAL: { label: 'En attente DG', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: Clock },
-  VALIDATED: { label: 'Validé', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: CheckCircle },
-  REJECTED: { label: 'Rejeté', color: 'bg-rose-100 text-rose-800 border-rose-200', icon: XCircle },
+  DRAFT: { label: 'Brouillon', color: 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-600', icon: FileText },
+  PENDING_APPROVAL: { label: 'En attente DG', color: 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800', icon: Clock },
+  VALIDATED: { label: 'Validé', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800', icon: CheckCircle },
+  REJECTED: { label: 'Rejeté', color: 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800', icon: XCircle },
 };
 
 export default function AuditPlans() {
@@ -119,7 +119,7 @@ export default function AuditPlans() {
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Plans d'Audit Annuels</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Gérez la planification stratégique des audits par année.
           </p>
         </div>
@@ -147,10 +147,10 @@ export default function AuditPlans() {
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {plans.length === 0 && (
-            <div className="col-span-full p-12 text-center border-2 border-dashed border-slate-300 rounded-xl">
-              <Calendar className="mx-auto h-12 w-12 text-slate-400" />
+            <div className="col-span-full p-12 text-center border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl">
+              <Calendar className="mx-auto h-12 w-12 text-slate-400 dark:text-slate-500" />
               <h3 className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">Aucun plan d'audit</h3>
-              <p className="mt-1 text-sm text-slate-500">Commencez par créer un plan pour la prochaine année.</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Commencez par créer un plan pour la prochaine année.</p>
             </div>
           )}
           
@@ -163,9 +163,9 @@ export default function AuditPlans() {
                 <div className="p-6 flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-slate-400" />
+                      <Calendar className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                       <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{plan.year}</h3>
-                      <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md">v{plan.versionNumber}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md">v{plan.versionNumber}</span>
                     </div>
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${status.color}`}>
                       <StatusIcon className="w-3.5 h-3.5" />
@@ -173,11 +173,11 @@ export default function AuditPlans() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mb-4">
-                    <button onClick={() => handleOpenEdit(plan)} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                    <button onClick={() => handleOpenEdit(plan)} disabled={plan.status === 'VALIDATED'} title={plan.status === 'VALIDATED' ? 'Impossible de modifier un plan validé' : undefined} className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors ${plan.status === 'VALIDATED' ? 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 cursor-not-allowed bg-slate-50 dark:bg-slate-800' : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-700 dark:hover:text-blue-300'}`}>
                       <Edit2 className="w-3.5 h-3.5" />
                       Modifier
                     </button>
-                    <button onClick={() => handleDelete(plan.id)} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 transition-colors">
+                    <button onClick={() => handleDelete(plan.id)} disabled={plan.status === 'VALIDATED'} title={plan.status === 'VALIDATED' ? 'Impossible de supprimer un plan validé' : 'Supprimer ce plan'} className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors ${plan.status === 'VALIDATED' ? 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 cursor-not-allowed bg-slate-50 dark:bg-slate-800' : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-700 dark:hover:text-red-300'}`}>
                       <Trash2 className="w-3.5 h-3.5" />
                       Supprimer
                     </button>
@@ -186,28 +186,39 @@ export default function AuditPlans() {
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">
                     {plan.title || `Plan d'audit annuel ${plan.year}`}
                   </p>
-                  <p className="text-sm text-slate-500 line-clamp-2 mb-4">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4">
                     {plan.description || "Aucune description fournie."}
                   </p>
                   
-                  <div className="flex items-center gap-4 text-sm text-slate-500">
-                    <div className="flex items-center">
-                      <BriefcaseIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
-                      {plan._count?.missions || 0} mission(s)
+                  <div className="flex items-center gap-4">
+                    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-3 py-2">
+                      <BriefcaseIcon className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
+                      <div>
+                        <p className="text-base font-bold text-slate-900 dark:text-white">{plan._count?.missions || 0}</p>
+                        <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">missions</p>
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <FileText className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
-                      {plan._count?.versions || 0} version(s)
+                    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-3 py-2">
+                      <FileText className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
+                      <div>
+                        <p className="text-base font-bold text-slate-900 dark:text-white">{plan._count?.versions || 0}</p>
+                        <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">versions</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="bg-slate-50 px-6 py-3 border-t border-slate-100">
-                  <div className="text-sm">
-                    <Link to={`/plans/${plan.id}`} className="font-medium text-emerald-600 hover:text-emerald-500 flex items-center justify-between">
-                      Ouvrir le plan
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </div>
+                <div className="bg-slate-50 dark:bg-slate-700/50 px-6 py-3 border-t border-slate-100 dark:border-slate-700">
+                  <Link to={`/plans/${plan.id}`} className="group flex items-center justify-between rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950 px-4 py-2.5 transition-all hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900 hover:shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400">
+                        <ChevronRight className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Voir le détail du plan</p>
+                        <p className="text-[11px] text-emerald-600 dark:text-emerald-400">Gérer les missions, versions et statuts</p>
+                      </div>
+                    </div>
+                  </Link>
                 </div>
               </div>
             );
@@ -233,35 +244,35 @@ export default function AuditPlans() {
               </div>
               <form onSubmit={handleSubmit} className="mt-5 sm:mt-6 space-y-4">
                 <div>
-                  <label htmlFor="year" className="block text-sm font-medium text-slate-700">Année cible *</label>
+                  <label htmlFor="year" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Année cible *</label>
                   <input
                     type="number"
                     id="year"
                     value={formData.year}
                     onChange={(e) => setFormData({...formData, year: parseInt(e.target.value)})}
-                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="title" className="block text-sm font-medium text-slate-700">Titre</label>
+                  <label htmlFor="title" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Titre</label>
                   <input
                     type="text"
                     id="title"
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
                     placeholder="Ex: Plan Stratégique 2026"
-                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-slate-700">Description</label>
+                  <label htmlFor="description" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
                   <textarea
                     id="description"
                     rows={3}
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white px-3 py-2 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                   />
                 </div>
                 <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
@@ -274,7 +285,7 @@ export default function AuditPlans() {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 bg-white dark:bg-slate-800 px-4 py-2 text-base font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm"
+                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-base font-medium text-slate-700 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm"
                   >
                     Annuler
                   </button>

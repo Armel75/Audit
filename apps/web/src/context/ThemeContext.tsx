@@ -22,7 +22,7 @@ function getSystemTheme(): ResolvedTheme {
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    return stored ?? 'light';
+    return stored ?? 'dark';
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {

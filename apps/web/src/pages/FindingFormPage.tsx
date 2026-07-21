@@ -6,7 +6,7 @@ export default function FindingFormPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="p-6">
+    <div className="p-6 dark:bg-slate-900 min-h-screen">
       <FindingForm
         missionId={id!}
         onSuccess={() => navigate(`/missions/${id}/findings`)}

@@ -13,7 +13,7 @@ export default function CreateMission() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 dark:bg-slate-900 min-h-screen">
       <MissionForm
         onSuccess={handleSuccess}
         onCancel={handleCancel}

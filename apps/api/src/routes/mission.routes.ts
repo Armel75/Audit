@@ -45,6 +45,9 @@ router.post('/:id/report/generate', requireAnyPermission(['audit_mission:update'
 // Ordre de Mission
 router.get('/:id/order', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.generateMissionOrder);
 
+// Export infos mission (PDF)
+router.get('/:id/export-info', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.exportMissionInfo);
+
 // Aggregated Tickets
 router.get('/:id/tickets', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.getMissionTickets);
 

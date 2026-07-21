@@ -362,18 +362,18 @@ export default function AuditProgramDetails() {
   const canEdit = !['APPROVED'].includes(program.status) && ['PLANNED', 'READY'].includes(program.mission?.status ?? '');
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 px-6 lg:px-0">
       <div>
         <Link
           to={`/missions/${program.mission.id}`}
-          className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm transition hover:border-slate-300 dark:hover:border-slate-500 hover:text-slate-800 dark:hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Retour aux details de la mission</span>
         </Link>
         <div className="sm:flex sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{program.title}</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{program.title}</h1>
             <div className="flex gap-2 mt-4 sm:mt-0">
 
               {/* MODIFIER LE PROGRAMME */}
@@ -391,7 +391,7 @@ export default function AuditProgramDetails() {
                 }}
                 disabled={!canEdit}
                 title={!canEdit ? 'Modification impossible : programme approuvé ou mission en cours' : undefined}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-slate-200 text-slate-700 rounded-md hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
               >
                 <Edit className="w-4 h-4" />
                 Modifier le programme
@@ -433,8 +433,8 @@ export default function AuditProgramDetails() {
                 </button>
               )}
             </div>
-            <div className="mt-2 flex items-center space-x-4 text-sm text-slate-500">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+            <div className="mt-2 flex items-center space-x-4 text-sm text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
                 {programStatusLabels[program.status] ?? program.status}
               </span>
               {program.preparedBy && (
@@ -447,8 +447,8 @@ export default function AuditProgramDetails() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4 flex items-center">
               <Target className="w-5 h-5 mr-2 text-indigo-500" />
               Détails du programme
             </h3>
@@ -458,32 +458,32 @@ export default function AuditProgramDetails() {
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
                   {program.programType}
                 </span>
-                <span className="text-xs text-slate-400 font-mono">{program.code}</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">{program.code}</span>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-slate-900 mb-2">Objectif</h4>
-                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100 whitespace-pre-wrap">
-                  {program.objective || <span className="italic text-slate-400">Non renseigné</span>}
+                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Objectif</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 p-3 rounded-md border border-slate-100 dark:border-slate-600 whitespace-pre-wrap">
+                  {program.objective || <span className="italic text-slate-400 dark:text-slate-500">Non renseigné</span>}
                 </p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-slate-900 mb-2">Périmètre (Scope)</h4>
-                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100 whitespace-pre-wrap">
-                  {program.scopeDescription || <span className="italic text-slate-400">Non renseigné</span>}
+                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Périmètre (Scope)</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 p-3 rounded-md border border-slate-100 dark:border-slate-600 whitespace-pre-wrap">
+                  {program.scopeDescription || <span className="italic text-slate-400 dark:text-slate-500">Non renseigné</span>}
                 </p>
               </div>
               {(program.plannedStartDate || program.plannedEndDate) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="text-sm font-medium text-slate-900 mb-2">Début planifié</h4>
-                    <p className="text-sm text-slate-600">
-                      {program.plannedStartDate ? new Date(program.plannedStartDate).toLocaleDateString() : <span className="italic text-slate-400">Non défini</span>}
+                    <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Début planifié</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      {program.plannedStartDate ? new Date(program.plannedStartDate).toLocaleDateString() : <span className="italic text-slate-400 dark:text-slate-500">Non défini</span>}
                     </p>
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium text-slate-900 mb-2">Fin planifiée</h4>
-                    <p className="text-sm text-slate-600">
-                      {program.plannedEndDate ? new Date(program.plannedEndDate).toLocaleDateString() : <span className="italic text-slate-400">Non définie</span>}
+                    <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Fin planifiée</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      {program.plannedEndDate ? new Date(program.plannedEndDate).toLocaleDateString() : <span className="italic text-slate-400 dark:text-slate-500">Non définie</span>}
                     </p>
                   </div>
                 </div>
@@ -505,9 +505,9 @@ export default function AuditProgramDetails() {
             </div>
           </div>
 
-          <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-200 sm:flex sm:items-center sm:justify-between">
-              <h3 className="text-lg font-medium leading-6 text-slate-900 flex items-center">
+          <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 sm:flex sm:items-center sm:justify-between">
+              <h3 className="text-lg font-medium leading-6 text-slate-900 dark:text-white flex items-center">
                 <List className="w-5 h-5 mr-2 text-indigo-500" />
                 Procédures d'audit ({program.procedures.length})
               </h3>
@@ -525,19 +525,19 @@ export default function AuditProgramDetails() {
 
             <ul className="divide-y divide-slate-200">
               {program.procedures.length === 0 ? (
-                <li className="px-6 py-8 text-center text-sm text-slate-500">
+                <li className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                   Aucune procédure d'audit définie.
                 </li>
               ) : (
                 program.procedures.map(proc => (
-                  <li key={proc.id} className="p-6 hover:bg-slate-50 transition-colors">
+                  <li key={proc.id} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center mb-2">
                           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold mr-3">
                             {proc.sequenceNo}
                           </span>
-                          <h4 className="text-base font-medium text-slate-900">{proc.title}</h4>
+                          <h4 className="text-base font-medium text-slate-900 dark:text-white">{proc.title}</h4>
                           {(() => {
                             const cfg = procedureStatusConfig[proc.status] || procedureStatusConfig.PLANNED;
                             const StatusIcon = procedureStatusIcon[proc.status] || Clock;
@@ -552,14 +552,14 @@ export default function AuditProgramDetails() {
                         
                         <div className="ml-9 space-y-3">
                           {proc.description && (
-                            <p className="text-sm text-slate-600">{proc.description}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-300">{proc.description}</p>
                           )}
                           
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             {proc.procedureType && (
                               <div>
-                                <span className="font-medium text-slate-700">Type: </span>
-                                <span className="text-slate-600">{proc.procedureType}</span>
+                                <span className="font-medium text-slate-700 dark:text-slate-300">Type: </span>
+                                <span className="text-slate-600 dark:text-slate-400">{proc.procedureType}</span>
                               </div>
                             )}
                             {proc.expectedEvidence && (
@@ -570,8 +570,8 @@ export default function AuditProgramDetails() {
                             )}
                             {proc.dueDate && (
                               <div>
-                                <span className="font-medium text-slate-700">Échéance: </span>
-                                <span className="text-slate-600">{new Date(proc.dueDate).toLocaleDateString()}</span>
+                                <span className="font-medium text-slate-700 dark:text-slate-300">Échéance: </span>
+                                <span className="text-slate-600 dark:text-slate-400">{new Date(proc.dueDate).toLocaleDateString()}</span>
                               </div>
                             )}
                             {proc.performedBy && (
@@ -671,45 +671,45 @@ export default function AuditProgramDetails() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-sm font-medium text-slate-900 mb-4 uppercase tracking-wider">Informations</h3>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-4 uppercase tracking-wider">Informations</h3>
             <dl className="space-y-4 text-sm">
               <div>
-                <dt className="text-slate-500">Mission</dt>
-                <dd className="font-medium text-slate-900">
-                  <Link to={`/missions/${program.mission.id}`} className="text-indigo-600 hover:text-indigo-900">
+                <dt className="text-slate-500 dark:text-slate-400">Mission</dt>
+                <dd className="font-medium text-slate-900 dark:text-white">
+                  <Link to={`/missions/${program.mission.id}`} className="text-indigo-600 hover:text-indigo-900 dark:hover:text-indigo-400">
                     {program.mission.title}
                   </Link>
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">Code</dt>
-                <dd className="font-mono text-slate-800">{program.code}</dd>
+                <dt className="text-slate-500 dark:text-slate-400">Code</dt>
+                <dd className="font-mono text-slate-800 dark:text-slate-200">{program.code}</dd>
               </div>
               <div>
-                <dt className="text-slate-500">Type</dt>
-                <dd className="font-medium text-slate-900">{program.programType}</dd>
+                <dt className="text-slate-500 dark:text-slate-400">Type</dt>
+                <dd className="font-medium text-slate-900 dark:text-white">{program.programType}</dd>
               </div>
               <div>
-                <dt className="text-slate-500">Avancée</dt>
-                <dd className="font-medium text-slate-900">{program.progressPercent}%</dd>
+                <dt className="text-slate-500 dark:text-slate-400">Avancée</dt>
+                <dd className="font-medium text-slate-900 dark:text-white">{program.progressPercent}%</dd>
               </div>
               {program.isLocked && (
                 <div>
-                  <dt className="text-slate-500">Statut verrou</dt>
-                  <dd className="text-amber-600 font-medium">Verrouillé</dd>
+                  <dt className="text-slate-500 dark:text-slate-400">Statut verrou</dt>
+                  <dd className="text-amber-600 dark:text-amber-400 font-medium">Verrouillé</dd>
                 </div>
               )}
               {program.preparedBy && (
                 <div>
-                  <dt className="text-slate-500">Préparé par</dt>
-                  <dd className="font-medium text-slate-900">{program.preparedBy.firstName} {program.preparedBy.lastName}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400">Préparé par</dt>
+                  <dd className="font-medium text-slate-900 dark:text-white">{program.preparedBy.firstName} {program.preparedBy.lastName}</dd>
                 </div>
               )}
               {program.versions && program.versions.length > 0 && (
                 <div>
-                  <dt className="text-slate-500">Version actuelle</dt>
-                  <dd className="font-medium text-slate-900">v{program.versions[0].versionNumber}{program.versions[0].label ? ` — ${program.versions[0].label}` : ''}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400">Version actuelle</dt>
+                  <dd className="font-medium text-slate-900 dark:text-white">v{program.versions[0].versionNumber}{program.versions[0].label ? ` — ${program.versions[0].label}` : ''}</dd>
                 </div>
               )}
             </dl>
@@ -721,17 +721,17 @@ export default function AuditProgramDetails() {
       {isEditProgramModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
           <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsEditProgramModalOpen(false)} />
-          <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+          <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-6 border-b border-indigo-200">
+            <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-950/50 dark:to-indigo-900/30 px-8 py-6 border-b border-indigo-200 dark:border-indigo-800">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full">
                   <Edit className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-slate-900">Modifier le programme d'audit</h3>
-                  <p className="text-sm text-slate-600 mt-1">Mettez à jour les informations du programme</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Modifier le programme d'audit</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Mettez à jour les informations du programme</p>
                 </div>
               </div>
             </div>
@@ -742,7 +742,7 @@ export default function AuditProgramDetails() {
                 {/* Titre + Type */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                       Titre <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -750,19 +750,19 @@ export default function AuditProgramDetails() {
                       required
                       value={editProgramForm.title}
                       onChange={(e) => setEditProgramForm({ ...editProgramForm, title: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                     />
-                    <p className="text-xs text-slate-500 mt-2">Nom clair et descriptif du programme</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Nom clair et descriptif du programme</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                       Type de programme <span className="text-red-500">*</span>
                     </label>
                     <select
                       required
                       value={editProgramForm.programType}
                       onChange={(e) => setEditProgramForm({ ...editProgramForm, programType: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                     >
                       <option value="">Sélectionner un type</option>
                       <option value="COMPLIANCE">✅ Conformité</option>
@@ -776,57 +776,57 @@ export default function AuditProgramDetails() {
 
                 {/* Objectif */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">Objectif</label>
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Objectif</label>
                   <textarea
                     rows={3}
                     value={editProgramForm.objective}
                     onChange={(e) => setEditProgramForm({ ...editProgramForm, objective: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 resize-y"
                   />
-                  <p className="text-xs text-slate-500 mt-2">Ce que ce programme cherche à évaluer ou vérifier</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Ce que ce programme cherche à évaluer ou vérifier</p>
                 </div>
 
                 {/* Périmètre */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">Périmètre (Scope)</label>
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Périmètre (Scope)</label>
                   <textarea
                     rows={3}
                     value={editProgramForm.scopeDescription}
                     onChange={(e) => setEditProgramForm({ ...editProgramForm, scopeDescription: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 resize-y"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 resize-y"
                   />
-                  <p className="text-xs text-slate-500 mt-2">Définissez les limites et l'étendue de l'audit</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Définissez les limites et l'étendue de l'audit</p>
                 </div>
 
                 {/* Dates */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Date de début planifiée</label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Date de début planifiée</label>
                     <input
                       type="date"
                       value={editProgramForm.plannedStartDate}
                       onChange={(e) => setEditProgramForm({ ...editProgramForm, plannedStartDate: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Date de fin planifiée</label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Date de fin planifiée</label>
                     <input
                       type="date"
                       value={editProgramForm.plannedEndDate}
                       onChange={(e) => setEditProgramForm({ ...editProgramForm, plannedEndDate: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 dark:border-slate-600 pt-6 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => setIsEditProgramModalOpen(false)}
-                  className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
+                  className="rounded-xl border border-slate-300 dark:border-slate-600 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500"
                 >
                   Annuler
                 </button>
@@ -845,17 +845,17 @@ export default function AuditProgramDetails() {
       {isEditProcedureModalOpen && editingProcedure && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
           <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" onClick={() => setIsEditProcedureModalOpen(false)} />
-          <div className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+          <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-8 py-6 border-b border-indigo-200">
+            <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-950/50 dark:to-indigo-900/30 px-8 py-6 border-b border-indigo-200 dark:border-indigo-800">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full">
                   <Edit className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-slate-900">Modifier la procédure</h3>
-                  <p className="text-sm text-slate-600 mt-1">{editingProcedure.title}</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Modifier la procédure</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{editingProcedure.title}</p>
                 </div>
               </div>
             </div>
@@ -866,46 +866,46 @@ export default function AuditProgramDetails() {
                 {/* N° ordre + Titre */}
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">N° Ordre</label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">N° Ordre</label>
                     <input
                       type="number"
                       min={1}
                       value={procSequence}
                       onChange={(e) => setProcSequence(e.target.value ? Number(e.target.value) : '')}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 outline-none"
                     />
                   </div>
                   <div className="sm:col-span-3">
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Titre <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Titre <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       required
                       value={procTitle}
                       onChange={(e) => setProcTitle(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">Description</label>
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Description</label>
                   <textarea
                     rows={3}
                     value={procDesc}
                     onChange={(e) => setProcDesc(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none resize-y"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 outline-none resize-y"
                   />
                 </div>
 
                 {/* Type + Preuve */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Type de procédure</label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Type de procédure</label>
                     <select
                       value={procType}
                       onChange={(e) => setProcType(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 outline-none"
                     >
                       <option value="">-- Sélectionner --</option>
                       <option value="INTERVIEW">Entretien</option>
@@ -918,35 +918,35 @@ export default function AuditProgramDetails() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">Preuve attendue</label>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Preuve attendue</label>
                     <input
                       type="text"
                       value={procEvidence}
                       onChange={(e) => setProcEvidence(e.target.value)}
                       placeholder="ex. Rapport signé, relevé bancaire..."
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Échéance */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">Date d'échéance</label>
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Date d'échéance</label>
                   <input
                     type="date"
                     value={procDueDate}
                     onChange={(e) => setProcDueDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 hover:border-slate-300 outline-none"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 hover:border-slate-300 dark:hover:border-slate-500 outline-none"
                   />
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 dark:border-slate-600 pt-6 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => setIsEditProcedureModalOpen(false)}
-                  className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
+                  className="rounded-xl border border-slate-300 dark:border-slate-600 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500"
                 >
                   Annuler
                 </button>

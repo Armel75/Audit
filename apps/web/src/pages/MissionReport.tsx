@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Download, Printer, ShieldAlert, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Download, Printer, ShieldAlert, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { getRecommendationStatusMeta, getMissionStatusMeta, RecommendationStatus } from '../utils/status';
 
@@ -130,7 +130,11 @@ export default function MissionReport() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const [isExporting, setIsExporting] = useState(false);
+
   const generateReport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
     try {
       const res = await apiFetch(`${API_BASE}/missions/${id}/report/generate`, {
         method: 'POST'
@@ -159,6 +163,8 @@ export default function MissionReport() {
     } catch (err) {
       console.error(err);
       alert("Erreur génération rapport");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -199,7 +205,7 @@ export default function MissionReport() {
   }
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-12">
+    <div className="space-y-8 max-w-5xl mx-auto pb-12 px-6 lg:px-0">
       {/* Print / Navigation Header (Hidden when printing) */}
       <div className="print:hidden flex items-center justify-between">
         <Link to={`/missions/${id}`} className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700">
@@ -215,10 +221,15 @@ export default function MissionReport() {
           </button>
           <button
             onClick={generateReport}
-            className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            disabled={isExporting}
+            className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-wait"
           >
-            <Download className="-ml-1 mr-2 h-4 w-4" />
-            Exporter PDF
+            {isExporting ? (
+              <Loader2 className="-ml-1 mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="-ml-1 mr-2 h-4 w-4" />
+            )}
+            {isExporting ? 'Génération...' : 'Exporter PDF'}
           </button>
         </div>
       </div>

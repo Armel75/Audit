@@ -15,16 +15,16 @@ export class DashboardService {
     const cached = SimpleCache.get<DGDashboardData>(cacheKey);
     if (cached) return cached;
 
-    // 🧠 3. Snapshot
-    const snapshot = await DashboardSnapshotService.getLatest(
-      tenantId,
-      period?.year,
-      period?.month
-    );
-
-    if (snapshot) {
-      SimpleCache.set(cacheKey, snapshot, 5 * 60 * 1000);
-      return snapshot;
+    // 🧠 3. Snapshot — désactivé quand un filtre période est actif
+    // (les snapshots existants ont été générés sans le filtre createdAt)
+    if (!period) {
+      const snapshot = await DashboardSnapshotService.getLatest(
+        tenantId
+      );
+      if (snapshot) {
+        SimpleCache.set(cacheKey, snapshot, 5 * 60 * 1000);
+        return snapshot;
+      }
     }
 
     // 🔥 4. Risk max
@@ -40,12 +40,12 @@ export class DashboardService {
 
     if (period?.year) {
       dateFilter.gte = new Date(period.year, 0, 1);
-      dateFilter.lte = new Date(period.year, 11, 31);
+      dateFilter.lt = new Date(period.year + 1, 0, 1);
     }
 
     if (period?.month !== undefined && period?.year) {
       dateFilter.gte = new Date(period.year, period.month - 1, 1);
-      dateFilter.lte = new Date(period.year, period.month, 0);
+      dateFilter.lt = new Date(period.year, period.month, 1);
     }
 
     const createdAtFilter =
@@ -55,8 +55,8 @@ export class DashboardService {
     const criticalFindingsCount = await prisma.finding.count({
       where: {
         tenantId,
-        status: 'CONFIRMED',
-        riskLevel: { level: criticalLevel },
+        status: { notIn: ['CLOSED', 'REJECTED'] },
+        riskLevel: { level: { gte: 4 } },
         ...createdAtFilter,
       },
     });
@@ -152,6 +152,7 @@ export class DashboardService {
         tenantId,
         status: 'CONFIRMED',
         riskLevel: { level: criticalLevel },
+        ...createdAtFilter,
       },
       _count: { id: true },
     });
@@ -165,6 +166,7 @@ export class DashboardService {
           status: 'CONFIRMED',
           riskLevel: { level: criticalLevel },
         },
+        ...createdAtFilter,
       },
       _count: { id: true },
     });
@@ -219,7 +221,7 @@ export class DashboardService {
 
     // ── Top 1% DG: Plan execution ────────────────────
     const currentPlan = await prisma.auditPlan.findFirst({
-      where: { tenantId, status: 'APPROVED' },
+      where: { tenantId, status: 'VALIDATED', ...(period?.year ? { year: period.year } : {}) },
       orderBy: { year: 'desc' },
       select: {
         id: true, year: true, title: true,
@@ -249,28 +251,28 @@ export class DashboardService {
     // ── Top 1% DG: Coverage rate ─────────────────────
     const [totalAuditableEntities, coveredEntitiesRaw] = await Promise.all([
       prisma.auditableEntity.count({ where: { tenantId, isActive: true } }),
-      prisma.auditMissionScope.findMany({
+      ...(currentPlan ? [prisma.auditMissionScope.findMany({
         where: {
           tenantId, status: 'IN_SCOPE',
-          ...(currentPlan ? { mission: { planId: currentPlan.id } } : {}),
+          mission: { planId: currentPlan.id },
         },
         select: { auditableEntityId: true },
         distinct: ['auditableEntityId'],
-      }),
+      })] : [Promise.resolve([])]),
     ]);
-    const coveredEntitiesCount = coveredEntitiesRaw.length;
+    const coveredEntitiesCount = currentPlan ? coveredEntitiesRaw.length : 0;
     const coverageRate = totalAuditableEntities > 0 ? Math.round((coveredEntitiesCount / totalAuditableEntities) * 100) : 0;
 
     // ── Top 1% DG: Implementation rate ───────────────
     const recoImplementedAgg = await prisma.recommendation.aggregate({
-      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] } },
+      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] }, ...createdAtFilter },
       _avg: { implementedPercent: true },
     });
     const avgImplementation = Math.round(recoImplementedAgg._avg.implementedPercent ?? 0);
 
     // ── Top 1% DG: Overdue recos ─────────────────────
     const overdueRecos = await prisma.recommendation.findMany({
-      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED', 'VALIDATED'] }, targetDate: { lt: now } },
+      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED', 'VALIDATED'] }, targetDate: { lt: now }, ...createdAtFilter },
       select: { targetDate: true },
     });
     const recosOverdueCount = overdueRecos.length;
@@ -280,28 +282,28 @@ export class DashboardService {
 
     // ── Top 1% DG: Approvals ─────────────────────────
     const [approvalsPending, approvalsApproved, approvalsRejected] = await Promise.all([
-      prisma.approval.count({ where: { tenantId, decision: 'PENDING' } }),
-      prisma.approval.count({ where: { tenantId, decision: 'APPROVED' } }),
-      prisma.approval.count({ where: { tenantId, decision: 'REJECTED' } }),
+      prisma.approval.count({ where: { tenantId, decision: 'PENDING', ...createdAtFilter } }),
+      prisma.approval.count({ where: { tenantId, decision: 'APPROVED', ...createdAtFilter } }),
+      prisma.approval.count({ where: { tenantId, decision: 'REJECTED', ...createdAtFilter } }),
     ]);
 
     // ── Top 1% DG: Risks & controls ─────────────────
     const [risksActive, risksWithoutControls, totalControls] = await Promise.all([
-      prisma.risk.count({ where: { tenantId, isActive: true } }),
-      prisma.risk.count({ where: { tenantId, isActive: true, controlLinks: { none: {} } } }),
-      prisma.control.count({ where: { tenantId } }),
+      prisma.risk.count({ where: { tenantId, isActive: true, ...createdAtFilter } }),
+      prisma.risk.count({ where: { tenantId, isActive: true, controlLinks: { none: {} }, ...createdAtFilter } }),
+      prisma.control.count({ where: { tenantId, ...createdAtFilter } }),
     ]);
 
     // ── Top 1% DG: Procedure conformity ──────────────
     const [proceduresOk, proceduresTotal] = await Promise.all([
-      prisma.auditProcedure.count({ where: { tenantId, result: 'OK' } }),
-      prisma.auditProcedure.count({ where: { tenantId, result: { not: null } } }),
+      prisma.auditProcedure.count({ where: { tenantId, result: 'OK', ...createdAtFilter } }),
+      prisma.auditProcedure.count({ where: { tenantId, result: { not: null }, ...createdAtFilter } }),
     ]);
     const procedureConformityRate = proceduresTotal > 0 ? Math.round((proceduresOk / proceduresTotal) * 100) : 0;
 
     // ── Top 1% DG: Avg close times ──────────────────
     const closedFindings = await prisma.finding.findMany({
-      where: { tenantId, status: 'CLOSED' },
+      where: { tenantId, status: 'CLOSED', ...createdAtFilter },
       select: { createdAt: true, updatedAt: true },
     });
     const avgFindingCloseDays = closedFindings.length > 0
@@ -309,7 +311,7 @@ export class DashboardService {
       : 0;
 
     const closedRecommendations = await prisma.recommendation.findMany({
-      where: { tenantId, status: 'CLOSED', closedAt: { not: null } },
+      where: { tenantId, status: 'CLOSED', closedAt: { not: null }, ...createdAtFilter },
       select: { createdAt: true, closedAt: true },
     });
     const avgRecoCloseDays = closedRecommendations.length > 0
@@ -318,11 +320,11 @@ export class DashboardService {
 
     // ── Top 1% DG: Active missions ───────────────────
     const activeMissionsRaw = await prisma.auditMission.findMany({
-      where: { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW'] } },
+      where: { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW'] }, ...createdAtFilter },
       orderBy: { endDate: 'asc' },
       take: 6,
       select: {
-        id: true, title: true, status: true, endDate: true,
+        id: true, title: true, status: true, startDate: true, endDate: true,
         leader: { select: { firstName: true, lastName: true } },
         programs: { select: { progressPercent: true }, take: 1 },
       },
@@ -333,6 +335,7 @@ export class DashboardService {
       status: m.status,
       progress: m.programs?.[0]?.progressPercent ?? 0,
       leader: m.leader ? `${m.leader.firstName} ${m.leader.lastName}` : null,
+      startDate: m.startDate,
       endDate: m.endDate,
     }));
 
@@ -347,10 +350,10 @@ export class DashboardService {
     factors.push({ label: 'Résolution critiques', score: resolutionRate, weight: 25, status: resolutionRate >= 80 ? 'good' : resolutionRate >= 50 ? 'warning' : 'critical' });
 
     // Factor 3: Implémentation recos (weight 20)
-    factors.push({ label: 'Implémentation recos', score: avgImplementation, weight: 20, status: avgImplementation >= 70 ? 'good' : avgImplementation >= 40 ? 'warning' : 'critical' });
+    factors.push({ label: 'Implémentation recommandations', score: avgImplementation, weight: 20, status: avgImplementation >= 70 ? 'good' : avgImplementation >= 40 ? 'warning' : 'critical' });
 
     // Factor 4: Couverture univers (weight 15)
-    factors.push({ label: 'Couverture univers', score: coverageRate, weight: 15, status: coverageRate >= 60 ? 'good' : coverageRate >= 30 ? 'warning' : 'critical' });
+    factors.push({ label: 'Couverture entités auditées', score: coverageRate, weight: 15, status: coverageRate >= 60 ? 'good' : coverageRate >= 30 ? 'warning' : 'critical' });
 
     // Factor 5: Conformité procédures (weight 10)
     factors.push({ label: 'Conformité procédures', score: procedureConformityRate, weight: 10, status: procedureConformityRate >= 80 ? 'good' : procedureConformityRate >= 50 ? 'warning' : 'critical' });

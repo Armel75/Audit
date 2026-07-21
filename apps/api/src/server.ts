@@ -21,6 +21,7 @@ import auditPlanRoutes from './routes/audit-plan.routes';
 import adminRoutes from './routes/admin.routes';
 import auditProgramRoutes from './routes/auditProgram.routes';
 import glpiRoutes from './routes/glpi.routes';
+import exportRoutes from './routes/export.routes';
 import evidenceRoutes from './routes/evidence.routes';
 import approvalRoutes from './routes/approval.routes';
 import notificationRoutes from './routes/notification.routes';
@@ -30,6 +31,7 @@ import businessProcessRoutes from './routes/businessProcess.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import { startGlpiUserSyncCron } from './cron/glpiUserSync.cron';
 import { startGlpiTicketSyncCron } from './cron/glpiTicketSync.cron';
+import hierarchyCommentRoutes from './routes/hierarchyComment.routes';
 
 console.log('authRoutes:', authRoutes);
 console.log("ENV LOADED:", process.env.JWT_SECRET);
@@ -71,6 +73,8 @@ async function startServer() {
   app.use('/api/v1/auditable-entities', auditableEntityRoutes);
   app.use('/api/v1/business-processes', businessProcessRoutes);
   app.use('/api/v1/dashboard', dashboardRoutes);
+  app.use('/api/v1/hierarchy-comments', hierarchyCommentRoutes);
+    app.use('/api/v1', exportRoutes);
   app.use('/storage', express.static(STORAGE_PATH));
 
   app.get('/api/v1/health', (req, res) => {

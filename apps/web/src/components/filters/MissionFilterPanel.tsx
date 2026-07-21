@@ -135,6 +135,36 @@ export const MissionFilterPanel: React.FC<Props> = ({
     }
   };
 
+  {/* Export findings & recommendations */}
+  const handleExportFindingsRecommendations = async (format: 'pdf' | 'excel') => {
+    if (!appliedPayload) return;
+    try {
+      setExporting(format);
+      const params = new URLSearchParams({
+        logic: appliedPayload.logic,
+        filters: JSON.stringify(appliedPayload.filters),
+        mode
+      });
+      const res = await apiFetch(`${API_BASE}/export/findings-recommendations/${format}?` + params.toString(), {
+        method: 'GET',
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = format === 'pdf' ? `constats_recommandations_export.pdf` : `constats_recommandations_export.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Erreur lors de l\'export PDF constats & recommandations');
+    } finally {
+      setExporting(null);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -219,6 +249,80 @@ export const MissionFilterPanel: React.FC<Props> = ({
             >
               <FileSpreadsheet className="h-4 w-4" />
               {exporting === 'excel' ? 'Export…' : 'Exporter Excel'}
+            </button>
+          </div>
+
+          {/* Export findings & recommendations */}
+          <div className="flex gap-2 mt-2">
+            <button
+              disabled={!canExport || exporting === 'pdf'}
+              onClick={async () => {
+                if (!appliedPayload) return;
+                try {
+                  setExporting('pdf');
+                  const params = new URLSearchParams({
+                    logic: appliedPayload.logic,
+                    filters: JSON.stringify(appliedPayload.filters),
+                    mode
+                  });
+                  const res = await apiFetch(`${API_BASE}/export/findings-recommendations/pdf?` + params.toString(), {
+                    method: 'GET',
+                  });
+                  if (!res.ok) throw new Error(await res.text());
+                  const blob = await res.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `constats_recommandations_export.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  window.URL.revokeObjectURL(url);
+                } catch (err) {
+                  alert('Erreur lors de l\'export PDF constats & recommandations');
+                } finally {
+                  setExporting(null);
+                }
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FileText className="h-4 w-4" />
+              {exporting === 'pdf' ? 'Export…' : 'Exporter PDF constats & reco.'}
+            </button>
+            <button
+              disabled={!canExport || exporting === 'excel'}
+              onClick={async () => {
+                if (!appliedPayload) return;
+                try {
+                  setExporting('excel');
+                  const params = new URLSearchParams({
+                    logic: appliedPayload.logic,
+                    filters: JSON.stringify(appliedPayload.filters),
+                    mode
+                  });
+                  const res = await apiFetch(`${API_BASE}/export/findings-recommendations/excel?` + params.toString(), {
+                    method: 'GET',
+                  });
+                  if (!res.ok) throw new Error(await res.text());
+                  const blob = await res.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `constats_recommandations_export.xlsx`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  window.URL.revokeObjectURL(url);
+                } catch (err) {
+                  alert('Erreur lors de l\'export Excel constats & recommandations');
+                } finally {
+                  setExporting(null);
+                }
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              {exporting === 'excel' ? 'Export…' : 'Exporter Excel constats & reco.'}
             </button>
           </div>
 

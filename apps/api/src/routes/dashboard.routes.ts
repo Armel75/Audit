@@ -10,7 +10,11 @@ router.get('/dg', requireAuth, requireAnyPermission(['dashboard_dg:read', 'admin
   try {
     const tenantId = (req as any).user.tenantId;
 
-    const data = await DashboardService.getDGDashboard(tenantId);
+    const yr = req.query.year ? Number(req.query.year) : undefined;
+    const mo = req.query.month ? Number(req.query.month) : undefined;
+    const period = yr ? { year: yr, month: mo } : undefined;
+
+    const data = await DashboardService.getDGDashboard(tenantId, period);
 
     res.json(data);
   } catch (error) {
@@ -26,6 +30,22 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
     const userId = (req as any).user.id;
     const now = new Date();
 
+    // ── Période filter ────────────────────────────────
+    const year = req.query.year ? Number(req.query.year) : undefined;
+    const month = req.query.month ? Number(req.query.month) : undefined;
+
+    const periodFilter: any = {};
+    if (year) {
+      periodFilter.gte = new Date(year, 0, 1);
+      periodFilter.lt = new Date(year + 1, 0, 1);
+    }
+    if (month !== undefined && year) {
+      periodFilter.gte = new Date(year, month - 1, 1);
+      periodFilter.lt = new Date(year, month, 1);
+    }
+    const hasPeriodFilter = Object.keys(periodFilter).length > 0;
+    const createdAtFilter = hasPeriodFilter ? { createdAt: periodFilter } : {};
+
     // ── KPIs ──────────────────────────────────────────
     const [
       missionsActive,
@@ -39,25 +59,26 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
       approvalsPending,
       recoImplementedPercents,
     ] = await Promise.all([
-      prisma.auditMission.count({ where: { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW'] } } }),
-      prisma.auditMission.count({ where: { tenantId } }),
-      prisma.auditPlan.count({ where: { tenantId, status: 'APPROVED' } }),
-      prisma.auditPlan.count({ where: { tenantId } }),
-      prisma.finding.count({ where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] } } }),
+      prisma.auditMission.count({ where: { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW'] }, ...createdAtFilter } }),
+      prisma.auditMission.count({ where: { tenantId, ...createdAtFilter } }),
+      prisma.auditPlan.count({ where: { tenantId, status: 'VALIDATED', ...createdAtFilter } }),
+      prisma.auditPlan.count({ where: { tenantId, ...createdAtFilter } }),
+      prisma.finding.count({ where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] }, ...createdAtFilter } }),
       prisma.finding.count({
         where: {
           tenantId,
           status: { notIn: ['CLOSED', 'REJECTED'] },
           riskLevel: { level: { gte: 4 } },
+          ...createdAtFilter,
         },
       }),
-      prisma.recommendation.count({ where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED', 'VALIDATED'] } } }),
+      prisma.recommendation.count({ where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED', 'VALIDATED'] }, ...createdAtFilter } }),
       prisma.recommendation.count({
-        where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED', 'VALIDATED'] }, targetDate: { lt: now } },
+        where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED', 'VALIDATED'] }, targetDate: { lt: now }, ...createdAtFilter },
       }),
-      prisma.approval.count({ where: { tenantId, decision: 'PENDING' } }),
+      prisma.approval.count({ where: { tenantId, decision: 'PENDING', ...createdAtFilter } }),
       prisma.recommendation.aggregate({
-        where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] } },
+        where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] }, ...createdAtFilter },
         _avg: { implementedPercent: true },
       }),
     ]);
@@ -67,7 +88,7 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
     // ── Mission status distribution ──────────────────
     const missionsByStatus = await prisma.auditMission.groupBy({
       by: ['status'],
-      where: { tenantId },
+      where: { tenantId, ...createdAtFilter },
       _count: { id: true },
     });
 
@@ -78,7 +99,7 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
 
     // ── Plan execution ───────────────────────────────
     const currentPlan = await prisma.auditPlan.findFirst({
-      where: { tenantId, status: 'APPROVED' },
+      where: { tenantId, status: 'VALIDATED', ...(year ? { year } : {}) },
       orderBy: { year: 'desc' },
       select: {
         id: true,
@@ -120,13 +141,14 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
 
     // ── Top missions ─────────────────────────────────
     const topMissions = await prisma.auditMission.findMany({
-      where: { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW', 'PLANNED'] } },
+      where: { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW', 'PLANNED'] }, ...createdAtFilter },
       orderBy: { endDate: 'asc' },
       take: 5,
       select: {
         id: true,
         title: true,
         status: true,
+        startDate: true,
         endDate: true,
         leader: { select: { firstName: true, lastName: true } },
         plan: { select: { title: true } },
@@ -137,7 +159,7 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
     // ── Findings by risk level ───────────────────────
     const findingsByRiskRaw = await prisma.finding.groupBy({
       by: ['riskLevelId'],
-      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] }, riskLevelId: { not: null } },
+      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] }, riskLevelId: { not: null }, ...createdAtFilter },
       _count: { id: true },
     });
 
@@ -156,13 +178,13 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
     // ── Findings summary ─────────────────────────────
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
     const [findingsPendingValidation, findingsRecent] = await Promise.all([
-      prisma.finding.count({ where: { tenantId, status: 'SUBMITTED' } }),
+      prisma.finding.count({ where: { tenantId, status: 'SUBMITTED', ...createdAtFilter } }),
       prisma.finding.count({ where: { tenantId, createdAt: { gte: sevenDaysAgo } } }),
     ]);
 
     // ── Top findings ─────────────────────────────────
     const topFindings = await prisma.finding.findMany({
-      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] } },
+      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] }, ...createdAtFilter },
       orderBy: { createdAt: 'desc' },
       take: 5,
       select: {
@@ -182,13 +204,14 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
         tenantId,
         status: { notIn: ['CLOSED', 'REJECTED', 'VALIDATED'] },
         targetDate: { gte: now, lte: sevenDaysFromNow },
+        ...createdAtFilter,
       },
     });
 
     // ── Recommendations by department ────────────────
     const recosByDeptRaw = await prisma.recommendation.groupBy({
       by: ['departmentId'],
-      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] } },
+      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED'] }, ...createdAtFilter },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
       take: 8,
@@ -207,7 +230,7 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
 
     // ── Top recommendations ──────────────────────────
     const topRecommendations = await prisma.recommendation.findMany({
-      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED', 'VALIDATED'] } },
+      where: { tenantId, status: { notIn: ['CLOSED', 'REJECTED', 'VALIDATED'] }, ...createdAtFilter },
       orderBy: { targetDate: 'asc' },
       take: 5,
       select: {
@@ -226,12 +249,12 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
 
     // ── Approvals ────────────────────────────────────
     const [approvalsApproved, approvalsRejected] = await Promise.all([
-      prisma.approval.count({ where: { tenantId, decision: 'APPROVED' } }),
-      prisma.approval.count({ where: { tenantId, decision: 'REJECTED' } }),
+      prisma.approval.count({ where: { tenantId, decision: 'APPROVED', ...createdAtFilter } }),
+      prisma.approval.count({ where: { tenantId, decision: 'REJECTED', ...createdAtFilter } }),
     ]);
 
     const recentApprovals = await prisma.approval.findMany({
-      where: { tenantId },
+      where: { tenantId, ...createdAtFilter },
       orderBy: { createdAt: 'desc' },
       take: 5,
       select: {
@@ -259,13 +282,13 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
 
     // ── Tickets GLPI ─────────────────────────────────
     const [ticketsOpen, ticketsBlocked, ticketsResolved] = await Promise.all([
-      prisma.ticket.count({ where: { tenantId, status: 'OPEN' } }),
-      prisma.ticket.count({ where: { tenantId, status: 'BLOCKED' } }),
-      prisma.ticket.count({ where: { tenantId, status: { in: ['RESOLVED', 'CLOSED'] } } }),
+      prisma.ticket.count({ where: { tenantId, status: 'OPEN', ...createdAtFilter } }),
+      prisma.ticket.count({ where: { tenantId, status: 'BLOCKED', ...createdAtFilter } }),
+      prisma.ticket.count({ where: { tenantId, status: { in: ['RESOLVED', 'CLOSED'] }, ...createdAtFilter } }),
     ]);
 
     const recentTicketLinks = await prisma.recommendationTicket.findMany({
-      where: { tenantId },
+      where: { tenantId, ...createdAtFilter },
       orderBy: { createdAt: 'desc' },
       take: 5,
       select: {
@@ -279,25 +302,25 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
 
     // ── Documents / Evidences ────────────────────────
     const [totalDocuments, totalEvidence, sensitiveEvidence] = await Promise.all([
-      prisma.document.count({ where: { tenantId } }),
-      prisma.evidence.count({ where: { tenantId } }),
-      prisma.evidence.count({ where: { tenantId, isSensitive: true } }),
+      prisma.document.count({ where: { tenantId, ...createdAtFilter } }),
+      prisma.evidence.count({ where: { tenantId, ...createdAtFilter } }),
+      prisma.evidence.count({ where: { tenantId, isSensitive: true, ...createdAtFilter } }),
     ]);
 
     // ── Risks / Controls ─────────────────────────────
     const [activeRisks, totalControls, totalRiskControlLinks] = await Promise.all([
-      prisma.risk.count({ where: { tenantId, isActive: true } }),
-      prisma.control.count({ where: { tenantId } }),
-      prisma.riskControl.count({ where: { tenantId } }),
+      prisma.risk.count({ where: { tenantId, isActive: true, ...createdAtFilter } }),
+      prisma.control.count({ where: { tenantId, ...createdAtFilter } }),
+      prisma.riskControl.count({ where: { tenantId, ...createdAtFilter } }),
     ]);
 
     const risksWithoutControls = await prisma.risk.count({
-      where: { tenantId, isActive: true, controlLinks: { none: {} } },
+      where: { tenantId, isActive: true, controlLinks: { none: {} }, ...createdAtFilter },
     });
 
     // ── Activity log ─────────────────────────────────
     const recentLogs = await prisma.auditLog.findMany({
-      where: { tenantId },
+      where: { tenantId, ...createdAtFilter },
       orderBy: { createdAt: 'desc' },
       take: 8,
       select: {
@@ -312,7 +335,7 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
 
     // ── Notifications unread ─────────────────────────
     const unreadNotifications = await prisma.notification.count({
-      where: { tenantId, recipientUserId: userId, readAt: null },
+      where: { tenantId, recipientUserId: userId, readAt: null, ...createdAtFilter },
     });
 
     // ── Performance & couverture (top 1%) ────────────
@@ -320,23 +343,20 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
     // 1. Taux de couverture de l'univers d'audit
     const [totalAuditableEntities, coveredEntities] = await Promise.all([
       prisma.auditableEntity.count({ where: { tenantId, isActive: true } }),
-      prisma.auditMissionScope.findMany({
-        where: {
-          tenantId,
-          status: 'IN_SCOPE',
-          ...(currentPlan ? { mission: { planId: currentPlan.id } } : {}),
-        },
+      ...(currentPlan ? [prisma.auditMissionScope.findMany({
+        where: { tenantId, status: 'IN_SCOPE', mission: { planId: currentPlan.id } },
         select: { auditableEntityId: true },
         distinct: ['auditableEntityId'],
-      }),
+      })] : [Promise.resolve([])]),
     ]);
+    const coveredEntitiesCountVal = currentPlan ? coveredEntities.length : 0;
     const coverageRate = totalAuditableEntities > 0
-      ? Math.round((coveredEntities.length / totalAuditableEntities) * 100)
+      ? Math.round((coveredEntitiesCountVal / totalAuditableEntities) * 100)
       : 0;
 
     // 2. Délai moyen de clôture des constats (jours)
     const closedFindings = await prisma.finding.findMany({
-      where: { tenantId, status: 'CLOSED' },
+      where: { tenantId, status: 'CLOSED', ...createdAtFilter },
       select: { createdAt: true, updatedAt: true },
     });
     const avgFindingCloseDays = closedFindings.length > 0
@@ -345,7 +365,7 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
 
     // 3. Délai moyen de clôture des recommandations (jours)
     const closedRecos = await prisma.recommendation.findMany({
-      where: { tenantId, status: 'CLOSED', closedAt: { not: null } },
+      where: { tenantId, status: 'CLOSED', closedAt: { not: null }, ...createdAtFilter },
       select: { createdAt: true, closedAt: true },
     });
     const avgRecoCloseDays = closedRecos.length > 0
@@ -354,8 +374,8 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
 
     // 4. Taux de conformité des procédures (% OK)
     const [proceduresOk, proceduresTotal] = await Promise.all([
-      prisma.auditProcedure.count({ where: { tenantId, result: 'OK' } }),
-      prisma.auditProcedure.count({ where: { tenantId, result: { not: null } } }),
+      prisma.auditProcedure.count({ where: { tenantId, result: 'OK', ...createdAtFilter } }),
+      prisma.auditProcedure.count({ where: { tenantId, result: { not: null }, ...createdAtFilter } }),
     ]);
     const procedureConformityRate = proceduresTotal > 0
       ? Math.round((proceduresOk / proceduresTotal) * 100)
@@ -364,7 +384,7 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
     // 5. Charge par auditeur (top 5)
     const auditorLoad = await prisma.auditMissionMember.groupBy({
       by: ['userId'],
-      where: { tenantId, assignmentStatus: 'ACTIVE' },
+      where: { tenantId, assignmentStatus: 'ACTIVE', ...(hasPeriodFilter ? { assignedAt: periodFilter } : {}) },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
       take: 5,
@@ -380,15 +400,15 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
       missions: a._count.id,
     }));
 
-    // 6. Tendance mensuelle des constats (6 derniers mois)
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    // 6. Tendance mensuelle des constats (selon période ou 6 derniers mois)
+    const trendDateFilter = hasPeriodFilter ? periodFilter : { gte: new Date(now.getFullYear(), now.getMonth() - 5, 1) };
     const [findingsCreatedRaw, findingsClosedRaw] = await Promise.all([
       prisma.finding.findMany({
-        where: { tenantId, createdAt: { gte: sixMonthsAgo } },
+        where: { tenantId, createdAt: trendDateFilter },
         select: { createdAt: true },
       }),
       prisma.finding.findMany({
-        where: { tenantId, status: 'CLOSED', updatedAt: { gte: sixMonthsAgo } },
+        where: { tenantId, status: 'CLOSED', updatedAt: trendDateFilter },
         select: { updatedAt: true },
       }),
     ]);
@@ -408,9 +428,9 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
 
     // 7. Respect des échéances missions
     const missionsLate = await prisma.auditMission.count({
-      where: { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW'] }, endDate: { lt: now } },
+      where: { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW'] }, endDate: { lt: now }, ...createdAtFilter },
     });
-    const completedMissionsCount = await prisma.auditMission.count({ where: { tenantId, status: 'COMPLETED' } });
+    const completedMissionsCount = await prisma.auditMission.count({ where: { tenantId, status: 'COMPLETED', ...createdAtFilter } });
     const missionsOnTimeRate = (completedMissionsCount + missionsLate) > 0
       ? Math.round((completedMissionsCount / (completedMissionsCount + missionsLate)) * 100)
       : 100;
@@ -435,6 +455,7 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
         id: m.id,
         title: m.title,
         status: m.status,
+        startDate: m.startDate,
         endDate: m.endDate,
         leader: m.leader ? `${m.leader.firstName} ${m.leader.lastName}` : null,
         plan: m.plan?.title || null,
@@ -529,7 +550,7 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
       performance: {
         coverageRate,
         totalAuditableEntities,
-        coveredEntitiesCount: coveredEntities.length,
+        coveredEntitiesCount: coveredEntitiesCountVal,
         avgFindingCloseDays,
         avgRecoCloseDays,
         procedureConformityRate,

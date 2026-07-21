@@ -105,7 +105,7 @@ function toPrismaCondition(f: FilterItem): any {
 // =====================================================
 // Construit le where Prisma complet
 // =====================================================
-function buildWhere(body: QueryBody, tenantId: number, accessFilter?: any): any {
+export function buildWhere(body: QueryBody, tenantId: number, accessFilter?: any): any {
   const base: any = { tenantId };
 
   if (body.mode === 'active') base.status = { not: 'CLOSED' };
@@ -132,7 +132,7 @@ function buildWhere(body: QueryBody, tenantId: number, accessFilter?: any): any 
  * Returns a Prisma WHERE filter for mission access based on user permissions.
  * Returns null if user has read_all (no restriction).
  */
-function getMissionAccessFilter(user: Express.Request['user']): any | null {
+export function getMissionAccessFilter(user: Express.Request['user']): any | null {
   if (!user) return null;
   const perms = user.permissions.map((p: string) => p.toLowerCase());
   if (perms.includes('audit_mission:read_all')) return null;

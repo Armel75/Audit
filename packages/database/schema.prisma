@@ -64,6 +64,8 @@ model Tenant {
   userDepartments             UserDepartment[]
   auditLogs                   AuditLog[]
 
+  hierarchyComments          HierarchyComment[]
+
   createdAt                   DateTime                      @default(now())
   updatedAt                   DateTime?                      @updatedAt
 }
@@ -131,6 +133,9 @@ model User {
   notifications                Notification[]                 @relation("NotificationRecipient")
   recommendationTicketLinks    RecommendationTicket[]         @relation("RecommendationTicketLinkedBy")
   auditLogs                    AuditLog[]
+
+  hierarchyComments           HierarchyComment[]
+  hierarchyCommentsUpdated    HierarchyComment[] @relation("UserUpdatedHierarchyComments")
 
   refreshTokens                RefreshToken[]
   resetTokens                  PasswordResetToken[]
@@ -1272,6 +1277,9 @@ model Document {
   procedureId Int?
   procedure   AuditProcedure? @relation(fields: [procedureId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
+  hierarchyCommentId Int?
+  hierarchyComment   HierarchyComment? @relation(fields: [hierarchyCommentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
   uploadedById     Int
   uploadedBy       User             @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
@@ -1466,4 +1474,45 @@ model DashboardSnapshot {
   createdAt   DateTime @default(now())
 
   @@index([tenantId, year, month])
+}
+
+// ================= PREMIUM: COMMENTAIRES HIÉRARCHIQUES =================
+model HierarchyComment {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  contextType    String   // "MISSION", "RECOMMENDATION", etc. (cible du commentaire)
+  contextId      Int      // id de la cible (missionId, recommendationId, etc.)
+  type           String   // "DIRECTOR_CONCLUSION", "SERVICE_OBSERVATION", etc.
+  title          String   @db.VarChar(4000)
+  content        String   @db.NVarChar(Max)
+
+  status         String   @default("PUBLISHED")
+
+  updatedById    Int?
+  updatedBy      User?    @relation("UserUpdatedHierarchyComments", fields: [updatedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  deletedAt      DateTime?
+  isPinned       Boolean  @default(false)
+  visibility     String   @default("PUBLIC") // e.g. PUBLIC, PRIVATE, DIRECTION_ONLY
+  parentCommentId Int?
+  parentComment   HierarchyComment? @relation("HierarchyCommentParent", fields: [parentCommentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  childComments   HierarchyComment[] @relation("HierarchyCommentParent")
+
+  createdById    Int
+  createdBy      User     @relation(fields: [createdById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  permissionCode String   // Code de la permission requise pour poster ce commentaire
+
+  documents      Document[]
+
+  @@index([tenantId, contextType, contextId])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([permissionCode])
+  @@index([visibility])
+  @@index([parentCommentId])
+  @@index([deletedAt])
 }

@@ -159,11 +159,11 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
             <select
               value={selectedLeaderId}
               onChange={(e) => setSelectedLeaderId(e.target.value)}
-              className="outline-none text-sm bg-transparent text-slate-800 dark:text-white min-w-[180px]"
+              className="outline-none text-sm bg-transparent text-slate-800 dark:text-white dark:bg-slate-800 min-w-[180px]"
             >
-              <option value="">Tous les pilotes</option>
+              <option value="" className="dark:bg-slate-800 dark:text-white">Tous les pilotes</option>
               {leaders.map(l => (
-                <option key={l.id} value={l.id}>
+                <option key={l.id} value={l.id} className="dark:bg-slate-800 dark:text-white">
                   {l.firstName} {l.lastName}
                 </option>
               ))}

@@ -222,12 +222,12 @@ export default function Referential() {
 
   const renderForm = () => {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-slate-900">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             {currentRecord ? 'Modifier' : 'Créer'} un élément
           </h3>
-          <button onClick={() => setIsEditing(false)} className="text-slate-400 hover:text-slate-500">
+          <button onClick={() => setIsEditing(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-500">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -237,23 +237,23 @@ export default function Referential() {
           {activeTab !== 'risk-controls' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Code *</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Code *</label>
                 <input
                   type="text"
                   required
                   value={formData.code || ''}
                   onChange={e => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nom *</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nom *</label>
                 <input
                   type="text"
                   required
                   value={formData.name || ''}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -264,72 +264,72 @@ export default function Referential() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Type d'entité *</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Type d'entité *</label>
                   <select
                     required
                     value={formData.entityType || ''}
                     onChange={e => setFormData({ ...formData, entityType: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Sélectionner...</option>
-                    <option value="FILIALE">Filiale</option>
-                    <option value="DIRECTION">Direction</option>
-                    <option value="AGENCE">Agence</option>
-                    <option value="PROJET">Projet</option>
-                    <option value="PROCESSUS">Processus</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Sélectionner...</option>
+                    <option value="FILIALE" className="dark:bg-slate-700 dark:text-white">Filiale</option>
+                    <option value="DIRECTION" className="dark:bg-slate-700 dark:text-white">Direction</option>
+                    <option value="AGENCE" className="dark:bg-slate-700 dark:text-white">Agence</option>
+                    <option value="PROJET" className="dark:bg-slate-700 dark:text-white">Projet</option>
+                    <option value="PROCESSUS" className="dark:bg-slate-700 dark:text-white">Processus</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Criticité</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Criticité</label>
                   <select
                     value={formData.criticality || ''}
                     onChange={e => setFormData({ ...formData, criticality: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Sélectionner...</option>
-                    <option value="HAUTE">Haute</option>
-                    <option value="MOYENNE">Moyenne</option>
-                    <option value="BASSE">Basse</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Sélectionner...</option>
+                    <option value="HAUTE" className="dark:bg-slate-700 dark:text-white">Haute</option>
+                    <option value="MOYENNE" className="dark:bg-slate-700 dark:text-white">Moyenne</option>
+                    <option value="BASSE" className="dark:bg-slate-700 dark:text-white">Basse</option>
                   </select>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Entité Parente</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Entité Parente</label>
                   <select
                     value={formData.parentId || ''}
                     onChange={e => setFormData({ ...formData, parentId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Aucune</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Aucune</option>
                     {entities.filter(e => e.id !== formData.id).map(e => (
-                      <option key={e.id} value={e.id}>{e.name}</option>
+                      <option key={e.id} value={e.id} className="dark:bg-slate-700 dark:text-white">{e.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Département Propriétaire</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Département Propriétaire</label>
                   <select
                     value={formData.ownerDepartmentId || ''}
                     onChange={e => setFormData({ ...formData, ownerDepartmentId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Aucun</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Aucun</option>
                     {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
+                      <option key={d.id} value={d.id} className="dark:bg-slate-700 dark:text-white">{d.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Manager</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Manager</label>
                   <select
                     value={formData.managerUserId || ''}
                     onChange={e => setFormData({ ...formData, managerUserId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Aucun</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Aucun</option>
                     {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
+                      <option key={u.id} value={u.id} className="dark:bg-slate-700 dark:text-white">{u.firstName} {u.lastName}</option>
                     ))}
                   </select>
                 </div>
@@ -341,28 +341,28 @@ export default function Referential() {
           {activeTab === 'processes' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Entité Auditable</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Entité Auditable</label>
                 <select
                   value={formData.auditableEntityId || ''}
                   onChange={e => setFormData({ ...formData, auditableEntityId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="">Aucune</option>
+                  <option value="" className="dark:bg-slate-700 dark:text-white">Aucune</option>
                   {entities.map(e => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
+                    <option key={e.id} value={e.id} className="dark:bg-slate-700 dark:text-white">{e.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Département Propriétaire</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Département Propriétaire</label>
                 <select
                   value={formData.ownerDepartmentId || ''}
                   onChange={e => setFormData({ ...formData, ownerDepartmentId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="">Aucun</option>
+                  <option value="" className="dark:bg-slate-700 dark:text-white">Aucun</option>
                   {departments.map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
+                    <option key={d.id} value={d.id} className="dark:bg-slate-700 dark:text-white">{d.name}</option>
                   ))}
                 </select>
               </div>
@@ -374,62 +374,62 @@ export default function Referential() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Type de contrôle</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Type de contrôle</label>
                   <select
                     value={formData.controlType || ''}
                     onChange={e => setFormData({ ...formData, controlType: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Sélectionner...</option>
-                    <option value="PREVENTIF">Préventif</option>
-                    <option value="DETECTIF">Détectif</option>
-                    <option value="DIRECTIF">Directif</option>
-                    <option value="MANUEL">Manuel</option>
-                    <option value="AUTOMATIQUE">Automatique</option>
-                    <option value="HIERARCHIQUE">Hiérarchique</option>
-                    <option value="CORRECTIF">Correctif</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Sélectionner...</option>
+                    <option value="PREVENTIF" className="dark:bg-slate-700 dark:text-white">Préventif</option>
+                    <option value="DETECTIF" className="dark:bg-slate-700 dark:text-white">Détectif</option>
+                    <option value="DIRECTIF" className="dark:bg-slate-700 dark:text-white">Directif</option>
+                    <option value="MANUEL" className="dark:bg-slate-700 dark:text-white">Manuel</option>
+                    <option value="AUTOMATIQUE" className="dark:bg-slate-700 dark:text-white">Automatique</option>
+                    <option value="HIERARCHIQUE" className="dark:bg-slate-700 dark:text-white">Hiérarchique</option>
+                    <option value="CORRECTIF" className="dark:bg-slate-700 dark:text-white">Correctif</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Fréquence</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fréquence</label>
                   <select
                     value={formData.frequency || ''}
                     onChange={e => setFormData({ ...formData, frequency: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Sélectionner...</option>
-                    <option value="QUOTIDIEN">Quotidien</option>
-                    <option value="HEBDOMADAIRE">Hebdomadaire</option>
-                    <option value="MENSUEL">Mensuel</option>
-                    <option value="ANNUEL">Annuel</option>
-                    <option value="CONTINU">Continu</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Sélectionner...</option>
+                    <option value="QUOTIDIEN" className="dark:bg-slate-700 dark:text-white">Quotidien</option>
+                    <option value="HEBDOMADAIRE" className="dark:bg-slate-700 dark:text-white">Hebdomadaire</option>
+                    <option value="MENSUEL" className="dark:bg-slate-700 dark:text-white">Mensuel</option>
+                    <option value="ANNUEL" className="dark:bg-slate-700 dark:text-white">Annuel</option>
+                    <option value="CONTINU" className="dark:bg-slate-700 dark:text-white">Continu</option>
                   </select>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Processus Métier</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Processus Métier</label>
                   <select
                     value={formData.businessProcessId || ''}
                     onChange={e => setFormData({ ...formData, businessProcessId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Aucun</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Aucun</option>
                     {processes.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id} className="dark:bg-slate-700 dark:text-white">{p.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Département Propriétaire</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Département Propriétaire</label>
                   <select
                     value={formData.ownerDepartmentId || ''}
                     onChange={e => setFormData({ ...formData, ownerDepartmentId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Aucun</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Aucun</option>
                     {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
+                      <option key={d.id} value={d.id} className="dark:bg-slate-700 dark:text-white">{d.name}</option>
                     ))}
                   </select>
                 </div>
@@ -442,7 +442,7 @@ export default function Referential() {
                     onChange={e => setFormData({ ...formData, isKey: e.target.checked })}
                     className="rounded text-emerald-600 focus:ring-emerald-500"
                   />
-                  <span className="text-sm text-slate-700">Contrôle Clé</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-300">Contrôle Clé</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -451,7 +451,7 @@ export default function Referential() {
                     onChange={e => setFormData({ ...formData, isAutomated: e.target.checked })}
                     className="rounded text-emerald-600 focus:ring-emerald-500"
                   />
-                  <span className="text-sm text-slate-700">Automatisé</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-300">Automatisé</span>
                 </label>
               </div>
             </>
@@ -462,77 +462,77 @@ export default function Referential() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Catégorie</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Catégorie</label>
                   <select
                     value={formData.category || ''}
                     onChange={e => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Sélectionner...</option>
-                    <option value="OPERATIONNEL">Opérationnel</option>
-                    <option value="FINANCIER">Financier</option>
-                    <option value="CONFORMITE">Conformité</option>
-                    <option value="STRATEGIQUE">Stratégique</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Sélectionner...</option>
+                    <option value="OPERATIONNEL" className="dark:bg-slate-700 dark:text-white">Opérationnel</option>
+                    <option value="FINANCIER" className="dark:bg-slate-700 dark:text-white">Financier</option>
+                    <option value="CONFORMITE" className="dark:bg-slate-700 dark:text-white">Conformité</option>
+                    <option value="STRATEGIQUE" className="dark:bg-slate-700 dark:text-white">Stratégique</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Impact Inhérent (1-5)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Impact Inhérent (1-5)</label>
                   <input
                     type="number"
                     min="1" max="5"
                     value={formData.inherentImpact || ''}
                     onChange={e => setFormData({ ...formData, inherentImpact: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Probabilité Inhérente (1-5)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Probabilité Inhérente (1-5)</label>
                   <input
                     type="number"
                     min="1" max="5"
                     value={formData.inherentLikelihood || ''}
                     onChange={e => setFormData({ ...formData, inherentLikelihood: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Processus Métier</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Processus Métier</label>
                   <select
                     value={formData.businessProcessId || ''}
                     onChange={e => setFormData({ ...formData, businessProcessId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Aucun</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Aucun</option>
                     {processes.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id} className="dark:bg-slate-700 dark:text-white">{p.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Entité Auditable</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Entité Auditable</label>
                   <select
                     value={formData.auditableEntityId || ''}
                     onChange={e => setFormData({ ...formData, auditableEntityId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Aucune</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Aucune</option>
                     {entities.map(e => (
-                      <option key={e.id} value={e.id}>{e.name}</option>
+                      <option key={e.id} value={e.id} className="dark:bg-slate-700 dark:text-white">{e.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Département Propriétaire</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Département Propriétaire</label>
                   <select
                     value={formData.ownerDepartmentId || ''}
                     onChange={e => setFormData({ ...formData, ownerDepartmentId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Aucun</option>
+                    <option value="" className="dark:bg-slate-700 dark:text-white">Aucun</option>
                     {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
+                      <option key={d.id} value={d.id} className="dark:bg-slate-700 dark:text-white">{d.name}</option>
                     ))}
                   </select>
                 </div>
@@ -544,57 +544,57 @@ export default function Referential() {
           {activeTab === 'risk-controls' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Risque *</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Risque *</label>
                 <select
                   required
                   value={formData.riskId || ''}
                   onChange={e => setFormData({ ...formData, riskId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="">Sélectionner...</option>
+                  <option value="" className="dark:bg-slate-700 dark:text-white">Sélectionner...</option>
                   {risks.map(r => (
-                    <option key={r.id} value={r.id}>[{r.code}] {r.name}</option>
+                    <option key={r.id} value={r.id} className="dark:bg-slate-700 dark:text-white">[{r.code}] {r.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Contrôle *</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contrôle *</label>
                 <select
                   required
                   value={formData.controlId || ''}
                   onChange={e => setFormData({ ...formData, controlId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="">Sélectionner...</option>
+                  <option value="" className="dark:bg-slate-700 dark:text-white">Sélectionner...</option>
                   {controls.map(c => (
-                    <option key={c.id} value={c.id}>[{c.code}] {c.name}</option>
+                    <option key={c.id} value={c.id} className="dark:bg-slate-700 dark:text-white">[{c.code}] {c.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Efficacité de conception</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Efficacité de conception</label>
                 <select
                   value={formData.designEffectiveness || ''}
                   onChange={e => setFormData({ ...formData, designEffectiveness: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="">Sélectionner...</option>
-                  <option value="EFFICACE">Efficace</option>
-                  <option value="PARTIELLEMENT_EFFICACE">Partiellement Efficace</option>
-                  <option value="INEFFICACE">Inefficace</option>
+                  <option value="" className="dark:bg-slate-700 dark:text-white">Sélectionner...</option>
+                  <option value="EFFICACE" className="dark:bg-slate-700 dark:text-white">Efficace</option>
+                  <option value="PARTIELLEMENT_EFFICACE" className="dark:bg-slate-700 dark:text-white">Partiellement Efficace</option>
+                  <option value="INEFFICACE" className="dark:bg-slate-700 dark:text-white">Inefficace</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Efficacité opérationnelle</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Efficacité opérationnelle</label>
                 <select
                   value={formData.operatingEffectiveness || ''}
                   onChange={e => setFormData({ ...formData, operatingEffectiveness: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="">Sélectionner...</option>
-                  <option value="EFFICACE">Efficace</option>
-                  <option value="PARTIELLEMENT_EFFICACE">Partiellement Efficace</option>
-                  <option value="INEFFICACE">Inefficace</option>
+                  <option value="" className="dark:bg-slate-700 dark:text-white">Sélectionner...</option>
+                  <option value="EFFICACE" className="dark:bg-slate-700 dark:text-white">Efficace</option>
+                  <option value="PARTIELLEMENT_EFFICACE" className="dark:bg-slate-700 dark:text-white">Partiellement Efficace</option>
+                  <option value="INEFFICACE" className="dark:bg-slate-700 dark:text-white">Inefficace</option>
                 </select>
               </div>
             </div>
@@ -603,12 +603,12 @@ export default function Referential() {
           {/* Description for most tabs */}
           {activeTab !== 'risk-controls' && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
               <textarea
                 rows={3}
                 value={formData.description || ''}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           )}
@@ -623,7 +623,7 @@ export default function Referential() {
                 onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
                 className="rounded text-emerald-600 focus:ring-emerald-500"
               />
-              <label htmlFor="isActive" className="text-sm text-slate-700">Actif</label>
+              <label htmlFor="isActive" className="text-sm text-slate-700 dark:text-slate-300">Actif</label>
             </div>
           )}
 
@@ -631,7 +631,7 @@ export default function Referential() {
             <button
               type="button"
               onClick={() => setIsEditing(false)}
-              className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
               Annuler
             </button>
@@ -652,10 +652,10 @@ export default function Referential() {
     if (data.length === 0) return <div className="text-center py-8 text-slate-500">Aucune donnée trouvée.</div>;
 
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-slate-900 font-medium border-b border-slate-200">
+          <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium border-b border-slate-200 dark:border-slate-600">
               <tr>
                 {activeTab !== 'risk-controls' && <th className="px-6 py-4">Code</th>}
                 {activeTab !== 'risk-controls' && <th className="px-6 py-4">Nom</th>}
@@ -673,11 +673,11 @@ export default function Referential() {
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {data.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50">
-                  {activeTab !== 'risk-controls' && <td className="px-6 py-4 font-medium text-slate-900">{item.code}</td>}
-                  {activeTab !== 'risk-controls' && <td className="px-6 py-4">{item.name}</td>}
+                <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  {activeTab !== 'risk-controls' && <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{item.code}</td>}
+                  {activeTab !== 'risk-controls' && <td className="px-6 py-4 dark:text-slate-300">{item.name}</td>}
 
                   {activeTab === 'entities' && <td className="px-6 py-4">{item.entityType}</td>}
                   {activeTab === 'processes' && <td className="px-6 py-4">{item.auditableEntity?.name || '-'}</td>}
@@ -729,11 +729,11 @@ export default function Referential() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-6 lg:px-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Référentiel Métier</h1>
-          <p className="text-slate-500 mt-1">Gérez l'univers d'audit, les processus, risques et contrôles.</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Référentiel Métier</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez l'univers d'audit, les processus, risques et contrôles.</p>
         </div>
         {!isEditing && (
           <button
@@ -761,11 +761,11 @@ export default function Referential() {
       )}
 
       {/* Tabs */}
-      <div className="flex overflow-x-auto border-b border-slate-200">
+      <div className="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700">
         {hasPerm('entities') && (
         <button
           onClick={() => { setActiveTab('entities'); setIsEditing(false); }}
-          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'entities' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'entities' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
             }`}
         >
           <Building2 className="w-4 h-4" />
@@ -775,7 +775,7 @@ export default function Referential() {
         {hasPerm('processes') && (
         <button
           onClick={() => { setActiveTab('processes'); setIsEditing(false); }}
-          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'processes' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'processes' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
             }`}
         >
           <GitMerge className="w-4 h-4" />
@@ -785,7 +785,7 @@ export default function Referential() {
         {hasPerm('risks') && (
         <button
           onClick={() => { setActiveTab('risks'); setIsEditing(false); }}
-          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'risks' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'risks' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
             }`}
         >
           <AlertTriangle className="w-4 h-4" />
@@ -795,7 +795,7 @@ export default function Referential() {
         {hasPerm('controls') && (
         <button
           onClick={() => { setActiveTab('controls'); setIsEditing(false); }}
-          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'controls' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'controls' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
             }`}
         >
           <ShieldCheck className="w-4 h-4" />
@@ -805,7 +805,7 @@ export default function Referential() {
         {hasPerm('risk-controls') && (
         <button
           onClick={() => { setActiveTab('risk-controls'); setIsEditing(false); }}
-          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'risk-controls' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'risk-controls' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
             }`}
         >
           <LinkIcon className="w-4 h-4" />

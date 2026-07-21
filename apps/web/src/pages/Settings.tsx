@@ -183,21 +183,21 @@ export default function Settings() {
   };
 
   const renderForm = (endpoint: string, fields: { name: string, label: string, type: string, options?: any[] }[], isComposite = false) => (
-    <form onSubmit={(e) => handleSubmit(e, endpoint, isComposite)} className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4">
+    <form onSubmit={(e) => handleSubmit(e, endpoint, isComposite)} className="bg-slate-50 dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 mb-8">
+      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
         {isEditing ? 'Modifier' : 'Ajouter'} un élément
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {fields.map(f => (
           <div key={f.name}>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{f.label}</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{f.label}</label>
             {f.type === 'select' ? (
               <select
                 value={formData[f.name] || ''}
                 onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
                 required={!isEditing || !isComposite} // disable changing IDs on edit for composite
                 disabled={isEditing && isComposite && (f.name === 'userId' || f.name === 'departmentId')}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
               >
                 <option value="">Sélectionner</option>
                 {f.options?.map(opt => (
@@ -210,9 +210,9 @@ export default function Settings() {
                   type="checkbox"
                   checked={formData[f.name] || false}
                   onChange={(e) => setFormData({ ...formData, [f.name]: e.target.checked })}
-                  className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                  className="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500"
                 />
-                <span className="ml-2 text-sm text-slate-700">{f.label}</span>
+                <span className="ml-2 text-sm text-slate-700 dark:text-slate-300">{f.label}</span>
               </div>
             ) : (
               <input
@@ -220,7 +220,7 @@ export default function Settings() {
                 value={formData[f.name] || ''}
                 onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
                 required={f.type !== 'date' && f.type !== 'color'}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             )}
           </div>
@@ -231,7 +231,7 @@ export default function Settings() {
           <button
             type="button"
             onClick={() => { setIsEditing(false); setFormData({}); setCurrentId(null); }}
-            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+            className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600"
           >
             Annuler
           </button>
@@ -247,10 +247,10 @@ export default function Settings() {
   );
 
   const renderTable = (data: any[], endpoint: string, columns: { key: string, label: string, render?: (item: any) => React.ReactNode }[], isComposite = false) => (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-sm text-left">
-          <thead className="bg-slate-50 text-slate-500 font-medium">
+        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-sm text-left">
+          <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium">
             <tr>
               {columns.map(c => (
                 <th key={c.key} className="px-6 py-3 uppercase tracking-wider">
@@ -262,13 +262,13 @@ export default function Settings() {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {data.map((item, idx) => {
               const id = isComposite ? { userId: item.user.id, departmentId: item.department.id } : item.id;
               return (
-                <tr key={idx} className="hover:bg-slate-50">
+                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                   {columns.map(c => (
-                    <td key={c.key} className="px-6 py-4 whitespace-nowrap text-slate-900">
+                    <td key={c.key} className="px-6 py-4 whitespace-nowrap text-slate-900 dark:text-white">
                       {c.render ? c.render(item) : item[c.key]}
                     </td>
                   ))}
@@ -300,7 +300,7 @@ export default function Settings() {
             })}
             {data.length === 0 && (
               <tr>
-                <td colSpan={columns.length + 1} className="px-6 py-8 text-center text-slate-500">
+                <td colSpan={columns.length + 1} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
                   Aucune donnée disponible.
                 </td>
               </tr>
@@ -312,14 +312,14 @@ export default function Settings() {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 px-6 lg:px-0">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <SettingsIcon className="w-6 h-6 text-indigo-600" />
             Paramétrage
           </h1>
-          <p className="text-slate-500 mt-1">Gérez les référentiels de votre organisation.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez les référentiels de votre organisation.</p>
         </div>
       </div>
 
@@ -335,7 +335,7 @@ export default function Settings() {
       )}
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+      <div className="flex flex-wrap gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
         {[
           { id: 'departments', label: 'Départements' },
           { id: 'userDepartments', label: 'Affectations (Users ↔ Depts)' },
@@ -351,7 +351,7 @@ export default function Settings() {
               setFormData({});
               setCurrentId(null);
             }}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'
               }`}
           >
             {tab.label}
@@ -360,7 +360,7 @@ export default function Settings() {
       </div>
 
       {/* Content */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6">
         {activeTab === 'departments' && hasPerm('departments') && (
           <>
             {renderForm('departments', [
@@ -369,7 +369,7 @@ export default function Settings() {
             ])}
             {renderTable(departments, 'departments', [
               { key: 'name', label: 'Nom' },
-              { key: 'code', label: 'Code', render: (item) => <span className="font-mono text-xs bg-slate-100 px-2 py-1 rounded">{item.code}</span> }
+              { key: 'code', label: 'Code', render: (item) => <span className="font-mono text-xs bg-slate-100 dark:bg-slate-600 dark:text-slate-200 px-2 py-1 rounded">{item.code}</span> }
             ])}
           </>
         )}
@@ -427,7 +427,7 @@ export default function Settings() {
               {
                 key: 'color', label: 'Couleur', render: (item) => (
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: item.color || '#ccc' }}></div>
+                    <div className="w-4 h-4 rounded-full border border-slate-200 dark:border-slate-600" style={{ backgroundColor: item.color || '#ccc' }}></div>
                     <span className="font-mono text-xs">{item.color || 'N/A'}</span>
                   </div>
                 )

@@ -409,20 +409,20 @@ export default function RecommendationDetails() {
   const missionTitle = recommendation.finding.mission?.title ?? `Mission ${missionId}`;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 px-6 lg:px-0">
       {/* Header */}
       <div>
         <Link
           to={`/missions/${missionId}`}
-          className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm transition hover:border-slate-300 dark:hover:border-slate-500 hover:text-slate-800 dark:hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Retour aux details de la mission</span>
         </Link>
         <div className="sm:flex sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{recommendation.title}</h1>
-            <div className="mt-2 flex items-center space-x-4 text-sm text-slate-500">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{recommendation.title}</h1>
+            <div className="mt-2 flex items-center space-x-4 text-sm text-slate-500 dark:text-slate-400">
               <span className="flex items-center">
                 <User className="w-4 h-4 mr-1" />
                 Auteur : {recommendation.author ? `${recommendation.author.firstName} ${recommendation.author.lastName}` : 'Inconnu'}
@@ -456,17 +456,17 @@ export default function RecommendationDetails() {
             {/* Action buttons based on status */}
             <div className="flex space-x-2 mt-2">
               {recommendation.status === 'DRAFT' && (
-                <button onClick={() => handleStatusChange('OPEN')} className="text-xs inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                <button onClick={() => handleStatusChange('OPEN')} className="text-xs inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/50">
                   <Play className="w-3 h-3 mr-1" /> Ouvrir
                 </button>
               )}
               {recommendation.status === 'OPEN' && (
-                <button onClick={() => handleStatusChange('IN_PROGRESS')} className="text-xs inline-flex items-center px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200">
+                <button onClick={() => handleStatusChange('IN_PROGRESS')} className="text-xs inline-flex items-center px-2 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800/50">
                   <Play className="w-3 h-3 mr-1" /> Démarrer
                 </button>
               )}
               {recommendation.status === 'IN_PROGRESS' && (
-                <button onClick={() => handleStatusChange('IMPLEMENTED')} className="text-xs inline-flex items-center px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">
+                <button onClick={() => handleStatusChange('IMPLEMENTED')} className="text-xs inline-flex items-center px-2 py-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded hover:bg-emerald-200 dark:hover:bg-emerald-800/50">
                   <CheckSquare className="w-3 h-3 mr-1" /> Marquer comme mis en œuvre
                 </button>
               )}
@@ -476,7 +476,7 @@ export default function RecommendationDetails() {
                   const hasPending = recommendation.approvals?.some(a => a.decision === 'PENDING');
                   if (hasApproved) {
                     return (
-                      <button onClick={() => handleStatusChange('VALIDATED')} className="text-xs inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200">
+                      <button onClick={() => handleStatusChange('VALIDATED')} className="text-xs inline-flex items-center px-2 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800/50">
                         <CheckCircle className="w-3 h-3 mr-1" /> Valider
                       </button>
                     );
@@ -526,38 +526,38 @@ export default function RecommendationDetails() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Constat lie</p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-900">{recommendation.finding.title}</h2>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Constat lie</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{recommendation.finding.title}</h2>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
               {recommendation.finding.description}
             </p>
           </div>
           <Link
             to={`/findings/${recommendation.finding.id}`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white"
           >
             <span>Voir le constat</span>
           </Link>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 md:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-100 dark:border-slate-700 pt-4 md:grid-cols-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Mission</p>
-            <p className="mt-1 text-sm text-slate-700">{missionTitle}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Mission</p>
+            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{missionTitle}</p>
           </div>
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Processus</p>
-            <p className="mt-1 text-sm text-slate-700">
-              {recommendation.finding.process || <span className="italic text-slate-400">Non renseigne</span>}
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Processus</p>
+            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+              {recommendation.finding.process || <span className="italic text-slate-400 dark:text-slate-500">Non renseigne</span>}
             </p>
           </div>
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Impact</p>
-            <p className="mt-1 text-sm text-slate-700">
-              {recommendation.finding.impact || <span className="italic text-slate-400">Non renseigne</span>}
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Impact</p>
+            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+              {recommendation.finding.impact || <span className="italic text-slate-400 dark:text-slate-500">Non renseigne</span>}
             </p>
           </div>
         </div>
@@ -566,53 +566,53 @@ export default function RecommendationDetails() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-medium text-slate-900 mb-4">Plan d'action</h3>
-            <div className="prose prose-sm max-w-none text-slate-600">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4">Plan d'action</h3>
+            <div className="prose prose-sm max-w-none text-slate-600 dark:text-slate-300">
               <p className="whitespace-pre-wrap">{recommendation.actionPlan}</p>
             </div>
             
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100">
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100 dark:border-slate-700">
                 <div>
-                <h4 className="text-sm font-medium text-slate-900 mb-2">Responsable</h4>
-                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100">
+                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Responsable</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 p-3 rounded-md border border-slate-100 dark:border-slate-600">
                   {(() => {
                     const responsables = getRecommendationResponsibles(recommendation);
-                    return responsables.length > 0 ? responsables.join(' • ') : <span className="text-slate-400 italic">Non assigné</span>;
+                    return responsables.length > 0 ? responsables.join(' • ') : <span className="text-slate-400 dark:text-slate-500 italic">Non assigné</span>;
                   })()}
                 </p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-slate-900 mb-2">Département</h4>
-                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100">
-                  {recommendation.department?.name || <span className="text-slate-400 italic">Non renseigné</span>}
+                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Département</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 p-3 rounded-md border border-slate-100 dark:border-slate-600">
+                  {recommendation.department?.name || <span className="text-slate-400 dark:text-slate-500 italic">Non renseigné</span>}
                 </p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-slate-900 mb-2">Date cible</h4>
-                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100">
-                  {recommendation.targetDate ? new Date(recommendation.targetDate).toLocaleDateString() : <span className="text-slate-400 italic">Non renseignée</span>}
+                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Date cible</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 p-3 rounded-md border border-slate-100 dark:border-slate-600">
+                  {recommendation.targetDate ? new Date(recommendation.targetDate).toLocaleDateString() : <span className="text-slate-400 dark:text-slate-500 italic">Non renseignée</span>}
                 </p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-slate-900 mb-2">Avancement</h4>
-                <div className="bg-slate-50 p-3 rounded-md border border-slate-100 flex items-center">
+                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Avancement</h4>
+                <div className="bg-slate-50 dark:bg-slate-700 p-3 rounded-md border border-slate-100 dark:border-slate-600 flex items-center">
                   <div className="flex-1 mr-4">
-                    <div className="w-full bg-slate-200 rounded-full h-2.5">
+                    <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2.5">
                       <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${recommendation.implementedPercent}%` }}></div>
                     </div>
                   </div>
-                  <span className="text-sm font-medium text-slate-700">{recommendation.implementedPercent}%</span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{recommendation.implementedPercent}%</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Evidences */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-slate-900 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-slate-400" />
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-slate-400 dark:text-slate-500" />
                 Preuves ({recommendation.evidences?.length || 0})
               </h3>
               <button className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1 rounded">
@@ -620,30 +620,30 @@ export default function RecommendationDetails() {
               </button>
             </div>
             {recommendation.evidences && recommendation.evidences.length > 0 ? (
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-700">
                 {recommendation.evidences.map(evidence => (
                   <li key={evidence.id} className="py-3 flex items-start">
                     <div className="flex-shrink-0">
-                      <FileText className="w-5 h-5 text-slate-400" />
+                      <FileText className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                     </div>
                     <div className="ml-3 flex-1">
-                      <p className="text-sm font-medium text-slate-900">{evidence.title}</p>
-                      <p className="text-xs text-slate-500">{evidence.evidenceType} - {evidence.source}</p>
-                      {evidence.description && <p className="text-sm text-slate-600 mt-1">{evidence.description}</p>}
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{evidence.title}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{evidence.evidenceType} - {evidence.source}</p>
+                      {evidence.description && <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{evidence.description}</p>}
                     </div>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-slate-500 italic">Aucune preuve associée.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 italic">Aucune preuve associée.</p>
             )}
           </div>
 
           {/* Tickets Section */}
-          <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-200 sm:flex sm:items-center sm:justify-between">
+          <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 sm:flex sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-lg font-medium leading-6 text-slate-900 flex items-center">
+                <h3 className="text-lg font-medium leading-6 text-slate-900 dark:text-white flex items-center">
                   <Target className="w-5 h-5 mr-2 text-indigo-500" />
                   Tickets GLPI ({recommendation.ticketLinks?.length || 0})
                 </h3>
@@ -660,24 +660,24 @@ export default function RecommendationDetails() {
               </div>
             </div>
 
-            <ul className="divide-y divide-slate-200">
+            <ul className="divide-y divide-slate-200 dark:divide-slate-700">
               {!recommendation.ticketLinks || recommendation.ticketLinks.length === 0 ? (
-                <li className="px-6 py-8 text-center text-sm text-slate-500">
+                <li className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                   Aucun ticket GLPI lié à cette recommandation.
                 </li>
               ) : (
                 recommendation.ticketLinks.map((link) => (
-                  <li key={link.id} className="hover:bg-slate-50 transition-colors">
+                  <li key={link.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                     <div className="px-6 py-4 flex items-center justify-between">
                       <div>
-                        <span className="text-sm font-medium text-slate-900">
+                        <span className="text-sm font-medium text-slate-900 dark:text-white">
                           {link.ticket.ticketNumber ? `#${link.ticket.ticketNumber} - ` : ''}{link.ticket.title}
                         </span>
                         <div className="flex items-center mt-1 space-x-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
                             {link.ticket.status}
                           </span>
-                          <span className="text-xs text-slate-500">Lien: {link.linkType}</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Lien: {link.linkType}</span>
                         </div>
                       </div>
                       <button 
@@ -694,10 +694,10 @@ export default function RecommendationDetails() {
           </div>
 
           {/* Approvals */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-slate-900 flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2 text-slate-400" />
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white flex items-center">
+                <CheckCircle className="w-5 h-5 mr-2 text-slate-400 dark:text-slate-500" />
                 Approbations ({recommendation.approvals?.length || 0})
               </h3>
               {!recommendation.approvals?.some(a => a.decision === 'PENDING' || a.decision === 'APPROVED') && (
@@ -764,10 +764,10 @@ export default function RecommendationDetails() {
           </div>
 
           {/* Follow-ups Section */}
-          <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-200 sm:flex sm:items-center sm:justify-between">
+          <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 sm:flex sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-lg font-medium leading-6 text-slate-900 flex items-center">
+                <h3 className="text-lg font-medium leading-6 text-slate-900 dark:text-white flex items-center">
                   <Target className="w-5 h-5 mr-2 text-indigo-500" />
                   Suivis ({recommendation.followUps?.length || 0})
                 </h3>
@@ -784,17 +784,17 @@ export default function RecommendationDetails() {
               </div>
             </div>
 
-            <ul className="divide-y divide-slate-200">
+            <ul className="divide-y divide-slate-200 dark:divide-slate-700">
               {!recommendation.followUps || recommendation.followUps.length === 0 ? (
-                <li className="px-6 py-8 text-center text-sm text-slate-500">
+                <li className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                   Aucun suivi pour cette recommandation.
                 </li>
               ) : (
                 recommendation.followUps.map((followUp) => (
-                  <li key={followUp.id} className="hover:bg-slate-50 transition-colors">
+                  <li key={followUp.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                     <div className="px-6 py-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-slate-900">
+                        <span className="text-sm font-medium text-slate-900 dark:text-white">
                           {followUp.author ? `${followUp.author.firstName} ${followUp.author.lastName}` : 'Auteur inconnu'}
                         </span>
                         <span className="text-xs text-slate-500">
@@ -817,27 +817,27 @@ export default function RecommendationDetails() {
           </div>
 
           {/* Comments Section */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4 flex items-center">
               <MessageSquare className="w-5 h-5 mr-2 text-indigo-500" />
               Commentaires ({recommendation.comments.length})
             </h3>
             
             <div className="space-y-4 mb-6">
               {recommendation.comments.length === 0 ? (
-                <p className="text-sm text-slate-500 italic">Aucun commentaire pour le moment.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 italic">Aucun commentaire pour le moment.</p>
               ) : (
                 recommendation.comments.map(comment => (
-                  <div key={comment.id} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <div key={comment.id} className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg border border-slate-100 dark:border-slate-600">
                     <div className="flex justify-between items-start mb-2">
-                      <span className="text-sm font-medium text-slate-900">
+                      <span className="text-sm font-medium text-slate-900 dark:text-white">
                         {comment.author ? `${comment.author.firstName} ${comment.author.lastName}` : 'Auteur inconnu'}
                       </span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
                         {new Date(comment.createdAt).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.content}</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{comment.content}</p>
                   </div>
                 ))
               )}
@@ -848,7 +848,7 @@ export default function RecommendationDetails() {
               <textarea
                 id="comment"
                 rows={3}
-                className="block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className="block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white py-2 px-3 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 placeholder="Ajouter un commentaire..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
@@ -866,41 +866,41 @@ export default function RecommendationDetails() {
           </div>
 
           {/* Status History */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4 flex items-center">
               <Clock className="w-5 h-5 mr-2 text-indigo-500" />
               Historique des statuts
             </h3>
             
             <div className="space-y-4">
               {recommendation.statusHistory && recommendation.statusHistory.length > 0 ? (
-                <ul className="divide-y divide-slate-100">
+                <ul className="divide-y divide-slate-100 dark:divide-slate-700">
                   {recommendation.statusHistory.map(history => (
                     <li key={history.id} className="py-3">
                       <div className="flex justify-between">
-                        <span className="text-sm font-medium text-slate-900">
+                        <span className="text-sm font-medium text-slate-900 dark:text-white">
                           {history.previousStatus
                             ? `${recoStatusConfig[history.previousStatus as keyof typeof recoStatusConfig]?.label ?? history.previousStatus} → `
                             : ''}
                           {recoStatusConfig[history.newStatus as keyof typeof recoStatusConfig]?.label ?? history.newStatus}
                         </span>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
                           {new Date(history.changedAt).toLocaleString()}
                         </span>
                       </div>
                       {history.changedBy && (
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                           Par {history.changedBy.firstName} {history.changedBy.lastName}
                         </p>
                       )}
                       {history.reason && (
-                        <p className="text-sm text-slate-600 mt-2 italic">"{history.reason}"</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 italic">"{history.reason}"</p>
                       )}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-slate-500 italic">Aucun historique disponible.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 italic">Aucun historique disponible.</p>
               )}
             </div>
           </div>
@@ -909,14 +909,14 @@ export default function RecommendationDetails() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Attachments */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4 flex items-center">
               <Paperclip className="w-5 h-5 mr-2 text-indigo-500" />
               Pièces jointes ({recommendation.documents.length})
             </h3>
             
             {recommendation.documents.length === 0 ? (
-              <p className="text-sm text-slate-500 italic mb-4">Aucun document attaché.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 italic mb-4">Aucun document attaché.</p>
             ) : (
               <ul className="divide-y divide-slate-100 mb-4">
                 {recommendation.documents.map(doc => (
@@ -963,17 +963,17 @@ export default function RecommendationDetails() {
           </div>
 
           {/* Metadata */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-sm font-medium text-slate-900 mb-4 uppercase tracking-wider">Méta-données</h3>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-4 uppercase tracking-wider">Méta-données</h3>
             <dl className="space-y-4 text-sm">
               <div>
-                <dt className="text-slate-500">Dernière mise à jour</dt>
-                <dd className="font-medium text-slate-900">{new Date(recommendation.updatedAt).toLocaleString()}</dd>
+                <dt className="text-slate-500 dark:text-slate-400">Dernière mise à jour</dt>
+                <dd className="font-medium text-slate-900 dark:text-white">{new Date(recommendation.updatedAt).toLocaleString()}</dd>
               </div>
               {recommendation.validator && (
                 <div>
-                  <dt className="text-slate-500">Validé par</dt>
-                  <dd className="font-medium text-slate-900">{recommendation.validator.firstName} {recommendation.validator.lastName}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400">Validé par</dt>
+                  <dd className="font-medium text-slate-900 dark:text-white">{recommendation.validator.firstName} {recommendation.validator.lastName}</dd>
                 </div>
               )}
             </dl>

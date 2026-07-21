@@ -128,7 +128,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-white font-sans">
       <div className="grid min-h-screen lg:grid-cols-[1.08fr_0.92fr]">
         {/* LEFT PANEL */}
         <section className="relative hidden overflow-hidden lg:flex">

@@ -62,18 +62,18 @@ export default function ApprovalCenter() {
 
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Centre d'approbation</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Centre d'approbation</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           {loading ? 'Chargement...' : `${approvals.length} demande(s) en attente`}
         </p>
       </div>
 
       {/* Empty state */}
       {!loading && approvals.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-slate-100 shadow-sm text-center">
+        <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm text-center">
           <CheckCircle className="w-12 h-12 text-emerald-400 mb-4" />
-          <h3 className="text-lg font-semibold text-slate-800">Tout est a jour !</h3>
-          <p className="text-sm text-slate-400 mt-1">Aucune demande d'approbation en attente.</p>
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Tout est a jour !</h3>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Aucune demande d'approbation en attente.</p>
         </div>
       )}
 

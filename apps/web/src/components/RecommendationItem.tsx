@@ -188,32 +188,32 @@ export default function RecommendationItem({ reco, onRefresh }: any) {
 
   return (
     <>
-    <li className="px-6 py-5 hover:bg-slate-50">
+    <li className="px-6 py-5 hover:bg-slate-50 dark:hover:bg-slate-700/50">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <p className="text-sm font-medium text-indigo-600">{reco.title}</p>
+          <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">{reco.title}</p>
 
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Constat : {reco.finding.title}
           </p>
 
           {(() => {
             const assignees = getAssigneeLabels(reco);
             return assignees.length > 0 ? (
-              <p className="text-xs text-slate-500 mt-2">
-                <span className="font-medium text-slate-700">Responsable{assignees.length > 1 ? 's' : ''}:</span>{' '}
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                <span className="font-medium text-slate-700 dark:text-slate-300">Responsable{assignees.length > 1 ? 's' : ''}:</span>{' '}
                 {assignees.join(' • ')}
               </p>
             ) : null;
           })()}
 
-          <p className="text-sm text-slate-600 mt-2">{reco.actionPlan}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">{reco.actionPlan}</p>
 
-          <div className="mt-2 flex items-center gap-3 text-xs">
+          <div className="mt-2 flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
             <span className="font-medium">Statut : {recoStatusLabels[reco.status] ?? reco.status}</span>
             <span>Avancement : {reco.implementedPercent}%</span>
 
-            <span className={isOverdue ? 'text-red-500' : ''}>
+            <span className={isOverdue ? 'text-red-500 dark:text-red-400' : ''}>
               Échéance : {new Date(reco.targetDate).toLocaleDateString()}
             </span>
           </div>
@@ -221,8 +221,8 @@ export default function RecommendationItem({ reco, onRefresh }: any) {
 
         <div className="flex items-start gap-4">
           <div className="text-right text-xs space-y-3">
-          {reco.priority && <div>Priorité: {reco.priority.name}</div>}
-          {reco.department && <div>Dept: {reco.department.name}</div>}
+          {reco.priority && <div className="text-slate-600 dark:text-slate-300">Priorité: {reco.priority.name}</div>}
+          {reco.department && <div className="text-slate-600 dark:text-slate-300">Dept: {reco.department.name}</div>}
 
           {/* WORKFLOW */}
           {reco.status === 'DRAFT' && (
@@ -285,7 +285,7 @@ export default function RecommendationItem({ reco, onRefresh }: any) {
           )}
 
           {approvalStatus === 'PENDING' && (
-            <span className="text-yellow-600 font-semibold">
+            <span className="text-yellow-600 dark:text-yellow-400 font-semibold">
               En attente de validation
             </span>
           )}
@@ -301,11 +301,11 @@ export default function RecommendationItem({ reco, onRefresh }: any) {
           )}
 
           {reco.status === 'VALIDATED' && (
-            <span className="text-green-600 font-semibold">Validée</span>
+            <span className="text-green-600 dark:text-green-400 font-semibold">Validée</span>
           )}
 
           {reco.status === 'REJECTED' && (
-            <span className="text-red-600 font-semibold">Rejetée</span>
+            <span className="text-red-600 dark:text-red-400 font-semibold">Rejetée</span>
           )}
             <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
               <button
@@ -313,13 +313,13 @@ export default function RecommendationItem({ reco, onRefresh }: any) {
                 onClick={() => setIsEditModalOpen(true)}
                 disabled={['VALIDATED', 'CLOSED'].includes(reco.status)}
                 title={['VALIDATED', 'CLOSED'].includes(reco.status) ? 'Modification impossible : recommandation validée' : 'Modifier la recommandation'}
-                className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40 disabled:pointer-events-none"
+                className="inline-flex items-center gap-2 rounded-md border border-slate-200 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white disabled:opacity-40 disabled:pointer-events-none"
               >
                 <Edit2 className="h-4 w-4" />
                 <span>Modifier recommandation</span>
               </button>
               <label
-                className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-800"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white"
                 title="Ajouter une piece jointe"
               >
                 <Paperclip className="h-4 w-4" />
@@ -331,7 +331,7 @@ export default function RecommendationItem({ reco, onRefresh }: any) {
 
           <Link
             to={`/recommendations/${reco.id}`}
-            className="mt-1 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-700"
+            className="mt-1 inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-500 dark:text-slate-300 shadow-sm transition hover:border-slate-300 dark:hover:border-slate-500 hover:text-slate-700 dark:hover:text-white"
             title="Voir les details de la recommandation"
           >
             <span>Voir details</span>
