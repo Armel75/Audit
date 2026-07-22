@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+const prisma = require('@audit/database').default;
 
 // GLPI Users
 export const getGLPIUsers = async (req: Request, res: Response) => {

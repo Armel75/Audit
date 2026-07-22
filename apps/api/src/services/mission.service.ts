@@ -7,6 +7,8 @@ import { MISSION_ACTION_TYPE } from '../constants/missionActionType';
 // 🔵 NOUVEAU — Vérifie si mission prête (cadrage OK)
 export function isMissionReady(mission: any) {
   return (
+    !!mission?.planId &&
+    !!mission?.leaderId &&
     mission?.scopes?.length > 0 &&
     mission?.members?.length > 0 &&
     mission?.programs?.some((p: any) => p.status === 'APPROVED')
@@ -21,6 +23,14 @@ export function validateMissionStart(mission: any) {
 
   if (!mission.members?.length) {
     throw new Error('Membres requis');
+  }
+
+  if (!mission.planId) {
+    throw new Error("Plan d'audit requis");
+  }
+
+  if (!mission.leaderId) {
+    throw new Error('Chef de mission requis');
   }
 
   const approvedProgram = mission.programs?.some(

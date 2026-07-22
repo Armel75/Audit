@@ -1,4 +1,6 @@
 // GET: Liste premium de tous les commentaires hiérarchiques liés aux missions accessibles à l'utilisateur
+import { Request, Response } from 'express';
+const prisma = require('@audit/database').default;
 import { getMissionAccessFilter } from './mission.controller';
 
 export const getHierarchyCommentsOverview = async (req: Request, res: Response) => {
@@ -59,10 +61,7 @@ export const getHierarchyCommentsOverview = async (req: Request, res: Response) 
     res.status(500).json({ error: 'Erreur lors de la récupération des commentaires hiérarchiques' });
   }
 };
-import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { DocumentService } from '../services/document.service';
-const prisma = new PrismaClient();
 
 // GET: Liste des commentaires hiérarchiques par contexte (ex: mission, recommendation)
 export const getHierarchyComments = async (req: Request, res: Response) => {

@@ -27,6 +27,8 @@ model Tenant {
   missionMembers              AuditMissionMember[]
   missionScopes               AuditMissionScope[]
   missionStatusHistory        MissionStatusHistory[]
+  missionPreparations         AuditMissionPreparation[]
+  missionPreparationHistory   AuditMissionPreparationHistory[]
 
   departments                 Department[]
   auditTypes                  AuditType[]
@@ -94,6 +96,7 @@ model User {
   departmentMemberships        UserDepartment[]
   managedAuditableEntities     AuditableEntity[]              @relation("AuditableEntityManager")
   missionsLed                  AuditMission[]                 @relation("MissionLeader")
+  missionsCreated              AuditMission[]                 @relation("MissionCreatedBy")
   missionMemberships           AuditMissionMember[]
 
   auditProgramsPrepared        AuditProgram[]                 @relation("AuditProgramPreparedBy")
@@ -122,8 +125,15 @@ model User {
 
   planStatusChanges            AuditPlanStatusHistory[]       @relation("PlanStatusChangedBy")
   missionStatusChanges         MissionStatusHistory[]         @relation("MissionStatusChangedBy")
+  missionPreparationChanges    AuditMissionPreparationHistory[] @relation("MissionPreparationChangedBy")
   findingStatusChanges         FindingStatusHistory[]         @relation("FindingStatusChangedBy")
   recommendationStatusChanges  RecommendationStatusHistory[]  @relation("RecommendationStatusChangedBy")
+
+  // 🔒 Verrouillage et complétion des phases de préparation
+  preparationsLocked           AuditMissionPreparation[]       @relation("PreparationLockedBy")
+  intakeCompletions            AuditMissionPreparation[]       @relation("PreparationIntakeCompletedBy")
+  enrichmentCompletions        AuditMissionPreparation[]       @relation("PreparationEnrichmentCompletedBy")
+  reviewCompletions            AuditMissionPreparation[]       @relation("PreparationReviewCompletedBy")
 
   followUpsAuthored            RecommendationFollowUp[]       @relation("FollowUpAuthor")
 
@@ -648,14 +658,17 @@ model AuditMission {
   endDate          DateTime?
   status           String                @default("PLANNED") @db.VarChar(100)
 
-  planId           Int
-  plan             AuditPlan             @relation(fields: [planId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  planId           Int?
+  plan             AuditPlan?            @relation(fields: [planId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   auditTypeId      Int?
   auditType        AuditType?            @relation(fields: [auditTypeId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
-  leaderId         Int
-  leader           User                  @relation("MissionLeader", fields: [leaderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  leaderId         Int?
+  leader           User?                 @relation("MissionLeader", fields: [leaderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  createdById      Int?
+  createdBy        User?                 @relation("MissionCreatedBy", fields: [createdById], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   members          AuditMissionMember[]
   scopes           AuditMissionScope[]
@@ -664,7 +677,9 @@ model AuditMission {
   documents        Document[]
   evidences        Evidence[]
   approvals        Approval[]
+  preparation      AuditMissionPreparation?
   statusHistory    MissionStatusHistory[]
+  preparationHistory AuditMissionPreparationHistory[]
   notifications    Notification[]
 
   createdAt        DateTime              @default(now())
@@ -673,6 +688,74 @@ model AuditMission {
   @@index([tenantId, status])
   @@index([planId])
   @@index([leaderId])
+}
+
+model AuditMissionPreparation {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missionId      Int      @unique
+  mission        AuditMission @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: Cascade)
+
+  phase          String   @default("INTAKE") @db.VarChar(100)
+
+  // 🔒 Optimistic locking
+  version        Int      @default(1)
+
+  // 🔒 Verrouillage concurrentiel
+  lockedById     Int?
+  lockedBy       User?    @relation("PreparationLockedBy", fields: [lockedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  lockedAt       DateTime?
+
+  // ✅ Traçabilité par phase — qui a complété quoi
+  intakeCompletedById        Int?
+  intakeCompletedBy          User?    @relation("PreparationIntakeCompletedBy", fields: [intakeCompletedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  intakeCompletedAt          DateTime?
+
+  enrichmentCompletedById    Int?
+  enrichmentCompletedBy      User?    @relation("PreparationEnrichmentCompletedBy", fields: [enrichmentCompletedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  enrichmentCompletedAt      DateTime?
+
+  reviewCompletedById        Int?
+  reviewCompletedBy          User?    @relation("PreparationReviewCompletedBy", fields: [reviewCompletedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  reviewCompletedAt          DateTime?
+
+  readyAt                    DateTime?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  history        AuditMissionPreparationHistory[]
+
+  @@index([tenantId, phase])
+  @@index([tenantId, missionId])
+  @@index([lockedById])
+}
+
+model AuditMissionPreparationHistory {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  missionId      Int
+  mission        AuditMission @relation(fields: [missionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  preparationId  Int?
+  preparation    AuditMissionPreparation? @relation(fields: [preparationId], references: [id], onUpdate: NoAction, onDelete: Cascade)
+
+  fromPhase      String?  @db.VarChar(100)
+  toPhase        String   @db.VarChar(100)
+  reason         String?  @db.VarChar(4000)
+  actionType     String?  @db.VarChar(100)
+
+  changedById    Int?
+  changedBy      User?    @relation("MissionPreparationChangedBy", fields: [changedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  changedAt      DateTime @default(now())
+
+  @@index([tenantId, missionId, changedAt])
+  @@index([tenantId, missionId, toPhase, changedAt])
 }
 
 model AuditMissionMember {

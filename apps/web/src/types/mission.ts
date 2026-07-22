@@ -16,15 +16,15 @@ export interface Mission {
   startDate: string | null;
   endDate: string | null;
 
-  leader: {
+  leader?: {
     firstName: string;
     lastName: string;
-  };
+  } | null;
 
-  plan: {
+  plan?: {
     year: number;
     title: string | null;
-  };
+  } | null;
 
   auditType: {
     name: string;
@@ -34,6 +34,7 @@ export interface Mission {
   members: MissionMember[];
   scopes: MissionScope[];
   statusHistory: MissionStatusHistory[];
+  preparation?: MissionPreparation | null;
 
   programs: MissionProgram[];
   documents: MissionDocument[];
@@ -76,3 +77,27 @@ export type Finding = any;
 export type MissionMember = any;
 export type MissionScope = any;
 export type MissionStatusHistory = any;
+
+export interface MissionPreparationHistory {
+  id: number;
+  fromPhase: string | null;
+  toPhase: string;
+  reason: string | null;
+  actionType: string | null;
+  changedAt: string;
+  changedBy: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  } | null;
+}
+
+export interface MissionPreparation {
+  id: number;
+  phase: 'INTAKE' | 'ENRICHMENT' | 'REVIEW' | string;
+  intakeCompletedAt: string | null;
+  enrichmentCompletedAt: string | null;
+  reviewCompletedAt: string | null;
+  readyAt: string | null;
+  history: MissionPreparationHistory[];
+}

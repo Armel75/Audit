@@ -1,0 +1,23 @@
+import type { WorkflowRules } from './workflow.engine';
+
+export const MISSION_PREPARATION_PHASE = {
+  INTAKE: 'INTAKE',
+  ENRICHMENT: 'ENRICHMENT',
+  REVIEW: 'REVIEW',
+} as const;
+
+export type MissionPreparationPhase =
+  typeof MISSION_PREPARATION_PHASE[keyof typeof MISSION_PREPARATION_PHASE];
+
+export const missionPreparationWorkflow: WorkflowRules = {
+  [MISSION_PREPARATION_PHASE.INTAKE]: [
+    MISSION_PREPARATION_PHASE.ENRICHMENT,
+  ],
+  [MISSION_PREPARATION_PHASE.ENRICHMENT]: [
+    MISSION_PREPARATION_PHASE.REVIEW,
+    MISSION_PREPARATION_PHASE.INTAKE,
+  ],
+  [MISSION_PREPARATION_PHASE.REVIEW]: [
+    MISSION_PREPARATION_PHASE.ENRICHMENT,
+  ],
+};

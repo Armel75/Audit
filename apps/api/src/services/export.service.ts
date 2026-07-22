@@ -1,13 +1,12 @@
 // Service pour récupérer toutes les données findings/recommendations filtrées et sécurisées
 // (ne rien inventer, utiliser les services existants)
-import { PrismaClient } from '@prisma/client';
+const prisma = require('@audit/database').default;
 import { getMissionAccessFilter, buildWhere } from '../controllers/missionExport.controller';
 import { FindingService } from './finding.service';
 import { RecommendationService } from './recommendation.service';
 
 export async function getFindingsRecommendationsExportData(user: any, filters: any) {
   // 1. Construire le filtre premium comme l'export missions
-  const prisma = new PrismaClient();
   const tenantId = user?.tenantId;
   let body = filters;
   // Si filters vient de la query, il peut manquer logic/filters/mode, on normalise

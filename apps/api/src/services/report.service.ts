@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+const prisma = require('@audit/database').default;
 import puppeteer from 'puppeteer';
 import { Buffer } from 'buffer';
 import path from 'path';
@@ -64,8 +64,6 @@ type MissionReport = Prisma.AuditMissionGetPayload<{
 //   };
 //   findings?: Finding[];
 // };
-
-const prisma = new PrismaClient();
 
 export const getMissionReportData = async (missionId: number, tenantId: number) => {
   return prisma.auditMission.findFirst({

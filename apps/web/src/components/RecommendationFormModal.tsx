@@ -362,7 +362,7 @@ export default function RecommendationFormModal({
                     Affectation
                   </h4>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Tu peux conserver les trois modes d&apos;assignation selon le contexte.
+                    Vous pouvez conserver les trois modes d&apos;assignation selon le contexte.
                   </p>
                 </div>
 
@@ -426,7 +426,7 @@ export default function RecommendationFormModal({
                     Pieces jointes
                   </h4>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Tu peux ajouter plusieurs fichiers en une fois. L&apos;upload est fait apres la sauvegarde.
+                    Vous pouvez ajouter plusieurs fichiers en une fois. L&apos;upload est fait apres la sauvegarde.
                   </p>
                 </div>
 
@@ -459,8 +459,8 @@ export default function RecommendationFormModal({
                   }`}
                 >
                   <Paperclip className="mb-3 h-10 w-10 text-slate-300 dark:text-slate-500" />
-                  <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Upload a file</span>
-                  <span className="mt-1 text-sm text-slate-600 dark:text-slate-300">or drag and drop</span>
+                  <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Ajouter un fichier</span>
+                  <span className="mt-1 text-sm text-slate-600 dark:text-slate-300">ou glisser-déposer</span>
                   <span className="mt-1 text-xs text-slate-400 dark:text-slate-500">PDF, Word, Excel, JPG, PNG, GIF jusqu&apos;a 20MB</span>
                 </button>
 

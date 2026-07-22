@@ -74,7 +74,7 @@ export default function Settings() {
         setUsers(await usersRes.json());
       }
     } catch (err: any) {
-      showMessage(err.message || 'Error loading settings', true);
+      showMessage(err.message || 'Erreur de chargement des paramètres', true);
     }
   };
 

@@ -171,7 +171,7 @@ export default function Dashboard() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-slate-200 bg-slate-50 dark:border-slate-600 dark:bg-slate-700 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
-                    Audit command center
+                    Centre de pilotage
                   </span>
                   {planExecution && (
                     <span className="rounded-full border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950 px-2.5 py-1 text-[11px] font-medium text-blue-700 dark:text-blue-300">
@@ -492,19 +492,38 @@ export default function Dashboard() {
 
             <div className="mt-5 space-y-3">
               {(topFindings || []).map((finding: any) => (
-                <div key={finding.id} className="rounded-2xl border border-slate-200 dark:border-slate-600 p-4">
+                <Link
+                  key={finding.id}
+                  to={`/findings/${finding.id}`}
+                  className="group block rounded-2xl border border-slate-200 p-4 transition-colors hover:border-blue-300 hover:bg-blue-50/40 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:hover:border-blue-700 dark:hover:bg-blue-950/20"
+                  aria-label={`Ouvrir le constat ${finding.id}`}
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     {finding.riskLevel && <span className="inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800">{finding.riskLevel}</span>}
                     <StatusBadge value={finding.status} />
                   </div>
-                  <p className="mt-3 text-sm font-semibold leading-6 text-slate-900 dark:text-white">{finding.title}</p>
-                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-3 text-base font-semibold leading-6 text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300">{finding.title}</p>
+                  {(finding.process || finding.impact || finding.criteria) && (
+                    <div className="mt-3 space-y-1.5 border-l-2 border-slate-200 pl-3 text-sm leading-5 text-slate-600 dark:border-slate-600 dark:text-slate-300">
+                      {finding.process && <p><span className="font-semibold text-slate-800 dark:text-slate-100">Périmètre :</span> {finding.process}</p>}
+                      {finding.impact && <p><span className="font-semibold text-slate-800 dark:text-slate-100">Enjeu :</span> {finding.impact}</p>}
+                      {!finding.impact && finding.criteria && <p><span className="font-semibold text-slate-800 dark:text-slate-100">Référence :</span> {finding.criteria}</p>}
+                    </div>
+                  )}
+                  <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                     <span>#{finding.id}</span>
-                    {finding.mission && <><span>•</span><span>{finding.mission}</span></>}
-                    <span>•</span>
-                    <span>{Math.ceil((Date.now() - new Date(finding.createdAt).getTime()) / 86400000)} j</span>
+                    {finding.mission && (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-700/60 dark:text-slate-200">
+                        Mission : {finding.mission}
+                      </span>
+                    )}
+                    <span>Ouvert depuis {Math.ceil((Date.now() - new Date(finding.createdAt).getTime()) / 86400000)} j</span>
                   </div>
-                </div>
+                  <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-all group-hover:bg-blue-500 group-hover:shadow-md">
+                    Ouvrir le constat
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                </Link>
               ))}
             </div>
           </SectionCard>

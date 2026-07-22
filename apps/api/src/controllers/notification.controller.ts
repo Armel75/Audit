@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+const prisma = require('@audit/database').default;
 
 export const getNotifications = async (req: Request, res: Response) => {
   try {

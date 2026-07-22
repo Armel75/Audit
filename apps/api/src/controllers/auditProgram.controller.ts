@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import type { Prisma } from '@prisma/client';
+const prisma = require('@audit/database').default;
 
 export const getAuditPrograms = async (req: Request, res: Response) => {
   try {
@@ -147,7 +146,7 @@ export const createAuditProgram = async (req: Request, res: Response) => {
       return res.status(400).json({ error: `Un programme avec le code "${code}" existe déjà` });
     }
 
-    const program = await prisma.$transaction(async (tx) => {
+    const program = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const prog = await tx.auditProgram.create({
         data: {
           tenantId,

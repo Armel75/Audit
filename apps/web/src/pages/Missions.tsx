@@ -11,18 +11,23 @@ import type { QueryPayload } from '../components/filters/types';
 export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archive' }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const canCreate = user?.permissions?.includes('audit_mission:create') ?? false;
-  const canUpdate = user?.permissions?.includes('audit_mission:update') ?? false;
-  const canDelete = user?.permissions?.includes('audit_mission:delete') ?? false;
-  const canFilter = user?.permissions?.includes('audit_mission:filter') ?? false;
+  const userPermissions = (user?.permissions ?? []).map((p: string) => p.toLowerCase());
+  const canCreate = userPermissions.includes('audit_mission:create');
+  const canUpdate = userPermissions.includes('audit_mission:update');
+  const canDelete = userPermissions.includes('audit_mission:delete');
+  const canFilter = userPermissions.includes('audit_mission:filter');
+  const canIntake = userPermissions.includes('audit_mission:intake');
+  const canEnrich = userPermissions.includes('audit_mission:enrich') || userPermissions.includes('audit_mission:update');
 
-  //const [missions, setMissions] = useState<any[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [leaders, setLeaders] = useState<{ id: number; firstName: string; lastName: string }[]>([]);
   const [selectedLeaderId, setSelectedLeaderId] = useState('');
+  // Par défaut : onglet Préparation pour ceux qui créent des missions, Actives pour les autres
+  const defaultTab = mode === 'archive' ? 'archive' : canIntake ? 'preparation' : 'active';
+  const [tabMode, setTabMode] = useState<'preparation' | 'active' | 'archive'>(defaultTab);
 
   // FILTER PANEL
   const [filterOpen, setFilterOpen] = useState(false);
@@ -31,17 +36,18 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
 
   // PAGINATION
   const [page, setPage] = useState(1);
+  const [transmittingId, setTransmittingId] = useState<number | null>(null);
   const limit = 10;
   const [totalPages, setTotalPages] = useState(1);
   const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     fetchMissions();
-  }, [page, mode, selectedLeaderId]);
+  }, [page, tabMode, selectedLeaderId]);
 
   useEffect(() => {
     setPage(1);
-  }, [mode, selectedLeaderId]);
+  }, [tabMode, selectedLeaderId]);
 
   useEffect(() => {
     if (!canFilter) return;
@@ -55,8 +61,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
     try {
       setLoading(true);
 
-      //const res = await apiFetch(`${API_BASE}/missions?page=${page}&limit=${limit}`);
-      const typeQuery = mode === 'archive' ? 'archive' : 'active';
+      const typeQuery = tabMode === 'archive' ? 'archive' : tabMode === 'preparation' ? 'active' : 'active';
 
       let url = `${API_BASE}/missions?type=${typeQuery}&page=${page}&limit=${limit}`;
       if (selectedLeaderId) {
@@ -110,7 +115,22 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
 
   const displayMissions = filteredMissionsData ?? missions;
 
-  const filteredMissions = displayMissions.filter(m =>
+  // Filtrer par phase de préparation
+  const tabFilteredMissions = displayMissions.filter(m => {
+    if (tabMode === 'preparation') {
+      return m.status === 'PLANNED' && (m.preparation?.phase === 'INTAKE' || m.preparation?.phase === 'ENRICHMENT' || !m.preparation);
+    }
+    if (tabMode === 'active') {
+      // Exclure les missions en préparation (PLANNED avec preparation phase)
+      if (m.status === 'PLANNED' && (m.preparation?.phase === 'INTAKE' || m.preparation?.phase === 'ENRICHMENT')) {
+        return false;
+      }
+      return m.status !== 'CLOSED';
+    }
+    return true; // archive: tout
+  });
+
+  const filteredMissions = tabFilteredMissions.filter(m =>
     m.title?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -119,17 +139,60 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
     <div className="p-8 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 min-h-screen">
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-800 dark:text-white">
-            {mode === 'archive' ? 'Archives des missions' : 'Missions'}
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Gestion et suivi des missions d’audit
-          </p>
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-6">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-800 dark:text-white">Missions</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Gestion et suivi des missions d’audit
+            </p>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-1 rounded-2xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 self-start mt-1">
+            <button
+              onClick={() => { setTabMode('preparation'); setPage(1); }}
+              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
+                tabMode === 'preparation'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+            >
+              <span className="flex flex-col items-center leading-tight">
+                <span>Préparation</span>
+                <span className="text-[10px] font-normal opacity-70">Saisie en cours</span>
+              </span>
+            </button>
+            <button
+              onClick={() => { setTabMode('active'); setPage(1); }}
+              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
+                tabMode === 'active'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+            >
+              <span className="flex flex-col items-center leading-tight">
+                <span>Actives</span>
+                <span className="text-[10px] font-normal opacity-70">En exécution</span>
+              </span>
+            </button>
+            <button
+              onClick={() => { setTabMode('archive'); setPage(1); }}
+              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
+                tabMode === 'archive'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+            >
+              <span className="flex flex-col items-center leading-tight">
+                <span>Archives</span>
+                <span className="text-[10px] font-normal opacity-70">Terminées</span>
+              </span>
+            </button>
+          </div>
         </div>
 
-        {canCreate && (
+        {canCreate && canIntake && (
           <button
             onClick={() => navigate('/missions/new')}
             className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2.5 rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
@@ -246,7 +309,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                   <tr
                     key={m.id}
                     className="border-t hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer group"
-                    onClick={() => navigate(`/missions/${m.id}`)}
+                    onClick={() => navigate(tabMode === 'preparation' ? `/missions/${m.id}/edit` : `/missions/${m.id}`)}
                   >
                     <td className="p-4 font-medium text-slate-800 dark:text-white">
                       {m.title}
@@ -272,9 +335,20 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                     </td>
 
                     <td className="p-4">
-                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusMeta.class}`}>
-                        {statusMeta.label}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusMeta.class}`}>
+                          {statusMeta.label}
+                        </span>
+                        {m.preparation?.phase && m.preparation.phase !== 'REVIEW' && (
+                          <span className={`px-2.5 py-0.5 text-[10px] font-semibold rounded-full uppercase tracking-wider ${
+                            m.preparation.phase === 'INTAKE'
+                              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                          }`}>
+                            {m.preparation.phase === 'INTAKE' ? 'Brouillon' : 'En cours'}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="p-4 text-right">
@@ -290,7 +364,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                           Voir détails mission
                         </button>
 
-                        {canUpdate && (
+                        {(canUpdate || (canIntake && m.status === 'PLANNED')) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -306,7 +380,42 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                               : 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed'
                           }`}
                         >
-                          Modifier mission
+                          {m.preparation?.phase && ['INTAKE', 'ENRICHMENT'].includes(m.preparation.phase) ? 'Compléter les informations' : 'Modifier mission'}
+                        </button>
+                        )}
+
+                        {tabMode === 'preparation' && m.preparation?.phase === 'INTAKE' && canIntake && (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!confirm('Transmettre cette mission au chef du service audit ?')) return;
+                            setTransmittingId(m.id);
+                            try {
+                              const res = await apiFetch(`${API_BASE}/missions/${m.id}/preparation`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ phase: 'ENRICHMENT', reason: 'Saisie initiale terminée' }),
+                              });
+                              const data = res.ok ? null : await res.json().catch(() => null);
+                              if (res.ok) {
+                                fetchMissions();
+                              } else {
+                                alert(data?.error || 'Erreur lors de la transmission');
+                              }
+                            } catch (err) {
+                              alert('Erreur réseau lors de la transmission');
+                              console.error(err);
+                            } finally {
+                              setTransmittingId(null);
+                            }
+                          }}
+                          disabled={transmittingId === m.id}
+                          className={`px-3 py-1.5 rounded-lg border transition text-sm font-semibold ${transmittingId === m.id
+                            ? 'border-indigo-100 dark:border-indigo-900 bg-indigo-100 dark:bg-indigo-900/20 text-indigo-400 dark:text-indigo-500 cursor-wait'
+                            : 'border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+                          }`}
+                        >
+                          {transmittingId === m.id ? 'Transmission...' : 'Transmettre'}
                         </button>
                         )}
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { 
   AlertCircle, 
   CheckCircle, 
@@ -10,7 +11,9 @@ import {
   FileText,
   Briefcase,
   ChevronRight,
-  X
+  X,
+  Shield,
+  Lock
 } from 'lucide-react';
 
 interface MissionFormProps {
@@ -20,6 +23,21 @@ interface MissionFormProps {
 }
 
 export default function MissionForm({ onSuccess, onCancel, mission }: MissionFormProps) {
+  const { user } = useAuth();
+  const isEditMode = !!mission;
+
+  // 🔒 Permissions RBAC
+  const userPermissions = (user?.permissions ?? []).map((p: string) => p.toLowerCase());
+  const canIntake = userPermissions.includes('audit_mission:intake');
+  const canEnrich = userPermissions.includes('audit_mission:enrich') || userPermissions.includes('audit_mission:update');
+
+  // 🔒 Verrouillage des champs selon la phase : la secrétaire doit passer en
+  // ENRICHMENT pour que le chef puisse modifier les champs d'enrichissement
+  const prepPhase = mission?.preparation?.phase;
+  const intakeLocked = isEditMode && (prepPhase === 'ENRICHMENT' || prepPhase === 'REVIEW');
+  const enrichmentLocked = isEditMode && (prepPhase === 'INTAKE' || prepPhase === 'REVIEW');
+  const allLocked = isEditMode && prepPhase === 'REVIEW';
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [objective, setObjective] = useState('');
@@ -66,8 +84,9 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
 
     if (name === 'title' && !value) nextError = 'Le titre est obligatoire';
     if (name === 'description' && !value) nextError = 'La description est obligatoire';
-    if (name === 'planId' && !value) nextError = 'Le plan est obligatoire';
-    if (name === 'leaderId' && !value) nextError = 'Le chef de mission est obligatoire';
+    if (name === 'objective' && !value) nextError = 'L\'objectif est obligatoire';
+    if (isEditMode && name === 'planId' && !value) nextError = 'Le plan est obligatoire';
+    if (isEditMode && name === 'leaderId' && !value) nextError = 'Le chef de mission est obligatoire';
 
     if (name === 'dates') {
       const dateErrors = getDateValidationErrors(startDate, endDate);
@@ -104,29 +123,32 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
       setStartDate(today);
     }
 
-    apiFetch(`${API_BASE}/plans?status=VALIDATED`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setPlans(data.filter((p: any) => p.status === 'VALIDATED'));
-        }
-      });
+    // 🔒 Chargement des listes d'enrichissement uniquement si nécessaire
+    if (canEnrich) {
+      apiFetch(`${API_BASE}/plans?status=VALIDATED`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setPlans(data.filter((p: any) => p.status === 'VALIDATED'));
+          }
+        });
 
-    apiFetch(`${API_BASE}/settings/audit-types`)
-      .then(res => res.json())
-      .then(data => Array.isArray(data) && setAuditTypes(data))
-      .catch(err => console.error('Failed to fetch audit types', err));
+      apiFetch(`${API_BASE}/settings/audit-types`)
+        .then(res => res.json())
+        .then(data => Array.isArray(data) && setAuditTypes(data))
+        .catch(err => console.error('Erreur chargement types audit', err));
 
-    apiFetch(`${API_BASE}/users`)
-      .then(res => res.json())
-      .then(data => Array.isArray(data) && setUsers(data))
-      .catch(err => console.error('Failed to fetch users', err));
+      apiFetch(`${API_BASE}/users`)
+        .then(res => res.json())
+        .then(data => Array.isArray(data) && setUsers(data))
+        .catch(err => console.error('Erreur chargement utilisateurs', err));
 
-    apiFetch(`${API_BASE}/auditable-entities`)
-      .then(res => res.json())
-      .then(data => Array.isArray(data) && setAuditableEntities(data))
-      .catch(err => console.error('Failed to fetch auditable entities', err));
-  }, [mission]);
+      apiFetch(`${API_BASE}/auditable-entities`)
+        .then(res => res.json())
+        .then(data => Array.isArray(data) && setAuditableEntities(data))
+        .catch(err => console.error('Erreur chargement entités', err));
+    }
+  }, [mission, canEnrich]);
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -142,10 +164,13 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
 
     validateField('title', title);
     validateField('description', description);
-    validateField('planId', planId);
-    validateField('leaderId', leaderId);
+    validateField('objective', objective);
+    if (isEditMode) {
+      validateField('planId', planId);
+      validateField('leaderId', leaderId);
+    }
 
-    if (!title || !description || !planId || !leaderId) {
+    if (!title || !description || !objective || (isEditMode && (!planId || !leaderId))) {
       setSubmitting(false);
       return;
     }
@@ -166,19 +191,25 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
       const url = mission ? `${API_BASE}/missions/${mission.id}` : `${API_BASE}/missions`;
       const method = mission ? 'PUT' : 'POST';
 
-      const payload: any = {
-        title,
-        description,
-        objective,
-        scopeDescription,
-        methodology,
-        planId: planId ? Number(planId) : null,
-        auditTypeId: auditTypeId ? Number(auditTypeId) : null,
-        leaderId: leaderId ? Number(leaderId) : null,
-      };
+      const payload: any = {};
 
-      if (startDate) payload.startDate = new Date(startDate).toISOString();
-      if (endDate) payload.endDate = new Date(endDate).toISOString();
+      // 🔒 Champs intake (secrétaire uniquement)
+      if (canIntake) {
+        payload.title = title;
+        payload.description = description;
+        payload.objective = objective;
+        if (startDate) payload.startDate = new Date(startDate).toISOString();
+        if (endDate) payload.endDate = new Date(endDate).toISOString();
+      }
+
+      // 🔒 Champs enrichissement (chef du service audit / pilote)
+      if (canEnrich) {
+        payload.scopeDescription = scopeDescription;
+        payload.methodology = methodology;
+        payload.planId = planId ? Number(planId) : null;
+        payload.auditTypeId = auditTypeId ? Number(auditTypeId) : null;
+        payload.leaderId = leaderId ? Number(leaderId) : null;
+      }
 
       const res = await apiFetch(url, {
         method,
@@ -208,13 +239,27 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
             <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full">
               <Briefcase className="w-6 h-6 text-white" />
             </div>
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
                 {mission ? 'Modifier la mission' : 'Nouvelle mission'}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {mission ? 'Mise à jour des informations de la mission' : 'Créez une nouvelle mission d\'audit'}
               </p>
+            </div>
+            <div className="flex gap-2">
+              {canIntake && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
+                  <Shield className="h-3.5 w-3.5" />
+                  Saisie de base
+                </span>
+              )}
+              {canEnrich && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  <Shield className="h-3.5 w-3.5" />
+                  Enrichissement
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -236,112 +281,134 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
             <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 px-6 py-4 border-b border-indigo-200 dark:border-indigo-900">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                Informations générales
+                {canIntake && canEnrich
+                  ? 'Informations générales'
+                  : canIntake
+                    ? 'Saisie de base'
+                    : 'Cadrage de la mission'
+                }
+                {(intakeLocked || enrichmentLocked) && <Lock className="w-4 h-4 text-slate-400 ml-1" />}
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Détails principaux de la mission</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                {allLocked
+                  ? 'Mission verrouillée (phase REVUE).'
+                  : canIntake && canEnrich
+                    ? 'Remplissez les informations de la mission.'
+                    : canIntake
+                      ? 'Renseignez le socle de départ pour créer le dossier.'
+                      : 'Complétez le cadrage et le périmètre d\'audit.'
+                }
+              </p>
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Titre */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                  Titre <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => {
-                    setTitle(e.target.value);
-                    validateField('title', e.target.value);
-                  }}
-                  placeholder="Ex: Audit de la trésorerie 2026"
-                  className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium
-                    ${fieldErrors.title 
-                      ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100 placeholder:text-red-400' 
-                      : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                    }`}
-                />
-                {fieldErrors.title && (
-                  <p className="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" /> {fieldErrors.title}
-                  </p>
-                )}
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                  Description <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => {
-                    setDescription(e.target.value);
-                    validateField('description', e.target.value);
-                  }}
-                  placeholder="Décrivez le contexte et la portée générale de cette mission..."
-                  rows={4}
-                  className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 resize-none
-                    ${fieldErrors.description 
-                      ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100 placeholder:text-red-400' 
-                      : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                    }`}
-                />
-                {fieldErrors.description && (
-                  <p className="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" /> {fieldErrors.description}
-                  </p>
-                )}
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{description.length} caractères</p>
-              </div>
-
-              {/* Objectif */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                  <Target className="w-4 h-4 inline mr-2 text-indigo-600" />
-                  Objectif
-                </label>
-                <textarea
-                  value={objective}
-                  onChange={(e) => setObjective(e.target.value)}
-                  placeholder="Quels sont les objectifs spécifiques de cette mission ?"
-                  rows={3}
-                  className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200 resize-none"
-                />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{objective.length} caractères</p>
-              </div>
-
-              {/* Méthodologie et Scope */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Champs Intake — Titre, Description, Objectif */}
+              {canIntake && (<>
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                    <BookOpen className="w-4 h-4 inline mr-2 text-indigo-600" />
-                    Méthodologie
+                    Titre <span className="text-red-500">*</span>
                   </label>
-                  <textarea
-                    value={methodology}
-                    onChange={(e) => setMethodology(e.target.value)}
-                    placeholder="Approches et méthodes utilisées..."
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200 resize-none"
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      validateField('title', e.target.value);
+                    }}
+                    disabled={intakeLocked}
+                    placeholder="Ex: Audit de la trésorerie 2026"
+                    className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium
+                      ${fieldErrors.title 
+                        ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100 placeholder:text-red-400' 
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                      }`}
                   />
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{methodology.length} caractères</p>
+                  {fieldErrors.title && (
+                    <p className="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" /> {fieldErrors.title}
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                    Périmètre
+                    Description <span className="text-red-500">*</span>
                   </label>
                   <textarea
-                    value={scopeDescription}
-                    onChange={(e) => setScopeDescription(e.target.value)}
-                    placeholder="Décrire le périmètre et les limites..."
+                    value={description}
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      validateField('description', e.target.value);
+                    }}
+                    disabled={intakeLocked}
+                    placeholder="Décrivez le contexte et la portée générale de cette mission..."
+                    rows={4}
+                    className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 resize-none
+                      ${fieldErrors.description 
+                        ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100 placeholder:text-red-400' 
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                      }`}
+                  />
+                  {fieldErrors.description && (
+                    <p className="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" /> {fieldErrors.description}
+                    </p>
+                  )}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{description.length} caractères</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
+                    <Target className="w-4 h-4 inline mr-2 text-indigo-600" />
+                    Objectif <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={objective}
+                    onChange={(e) => setObjective(e.target.value)}
+                    disabled={intakeLocked}
+                    placeholder="Quels sont les objectifs spécifiques de cette mission ?"
                     rows={3}
                     className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200 resize-none"
                   />
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{scopeDescription.length} caractères</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{objective.length} caractères</p>
                 </div>
-              </div>
+              </>)}
+
+              {/* Méthodologie et Scope — Enrichissement */}
+              {canEnrich && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
+                      <BookOpen className="w-4 h-4 inline mr-2 text-indigo-600" />
+                      Méthodologie
+                      {enrichmentLocked && <Lock className="w-3.5 h-3.5 inline ml-1.5 text-slate-400" />}
+                    </label>
+                    <textarea
+                      value={methodology}
+                      onChange={(e) => setMethodology(e.target.value)}
+                      disabled={enrichmentLocked}
+                      placeholder="Approches et méthodes utilisées..."
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200 resize-none"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{methodology.length} caractères</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
+                      Périmètre
+                    </label>
+                    <textarea
+                      value={scopeDescription}
+                      onChange={(e) => setScopeDescription(e.target.value)}
+                      placeholder="Décrire le périmètre et les limites..."
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200 resize-none"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{scopeDescription.length} caractères</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -350,84 +417,93 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
             <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 px-6 py-4 border-b border-emerald-200 dark:border-emerald-900">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                Planification et responsabilités
+                {canEnrich ? 'Planification et responsabilités' : 'Calendrier'}
+                {(intakeLocked && canIntake) && <Lock className="w-4 h-4 text-slate-400 ml-1" />}
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Plan, responsable et calendrier</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                {allLocked ? 'Mission verrouillée.' : canEnrich ? 'Plan, responsable et calendrier' : 'Calendrier de la mission'}
+              </p>
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Plan et Chef de mission */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Plan */}
-                <div>
+              {/* Plan et Chef de mission — Enrichissement */}
+              {canEnrich && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Plan */}
+                  <div>
                   <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                    Plan d'audit <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={planId}
-                    onChange={(e) => {
-                      setPlanId(e.target.value);
-                      validateField('planId', e.target.value);
-                    }}
-                    className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium appearance-none bg-no-repeat bg-right
-                      ${fieldErrors.planId 
-                        ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100' 
-                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
-                      }`}
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E")`,
-                      paddingRight: '2.5rem'
-                    }}
-                  >
-                    <option value="">Sélectionner un plan...</option>
-                    {plans.map((p: any) => (
-                      <option key={p.id} value={p.id}>{p.year} - {p.title}</option>
-                    ))}
-                  </select>
-                  {fieldErrors.planId && (
-                    <p className="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" /> {fieldErrors.planId}
-                    </p>
-                  )}
-                </div>
+                      Plan d'audit {isEditMode ? <span className="text-red-500">*</span> : null}
+                      {enrichmentLocked && <Lock className="w-3.5 h-3.5 inline ml-1.5 text-slate-400" />}
+                    </label>
+                    <select
+                      value={planId}
+                      onChange={(e) => {
+                        setPlanId(e.target.value);
+                        validateField('planId', e.target.value);
+                      }}
+                      disabled={enrichmentLocked}
+                      className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium appearance-none bg-no-repeat bg-right
+                        ${fieldErrors.planId 
+                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100' 
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
+                        }`}
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E")`,
+                        paddingRight: '2.5rem'
+                      }}
+                    >
+                      <option value="">Sélectionner un plan...</option>
+                      {plans.map((p: any) => (
+                        <option key={p.id} value={p.id}>{p.year} - {p.title}</option>
+                      ))}
+                    </select>
+                    {fieldErrors.planId && (
+                      <p className="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" /> {fieldErrors.planId}
+                      </p>
+                    )}
+                  </div>
 
-                {/* Chef de mission */}
-                <div>
+                  {/* Chef de mission */}
+                  <div>
                   <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                     <User className="w-4 h-4 inline mr-2 text-emerald-600" />
-                    Chef de mission <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={leaderId}
-                    onChange={(e) => {
-                      setLeaderId(e.target.value);
-                      validateField('leaderId', e.target.value);
-                    }}
-                    className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium appearance-none bg-no-repeat bg-right
-                      ${fieldErrors.leaderId 
-                        ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100' 
-                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
-                      }`}
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E")`,
-                      paddingRight: '2.5rem'
-                    }}
-                  >
-                    <option value="">Sélectionner un responsable...</option>
-                    {users.map((u: any) => (
-                      <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
-                    ))}
-                  </select>
-                  {fieldErrors.leaderId && (
-                    <p className="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" /> {fieldErrors.leaderId}
-                    </p>
-                  )}
+                      Chef de mission {isEditMode ? <span className="text-red-500">*</span> : null}
+                      {enrichmentLocked && <Lock className="w-3.5 h-3.5 inline ml-1.5 text-slate-400" />}
+                    </label>
+                    <select
+                      value={leaderId}
+                      onChange={(e) => {
+                        setLeaderId(e.target.value);
+                        validateField('leaderId', e.target.value);
+                      }}
+                      disabled={enrichmentLocked}
+                      className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium appearance-none bg-no-repeat bg-right
+                        ${fieldErrors.leaderId 
+                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100' 
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
+                        }`}
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E")`,
+                        paddingRight: '2.5rem'
+                      }}
+                    >
+                      <option value="">Sélectionner un responsable...</option>
+                      {users.map((u: any) => (
+                        <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
+                      ))}
+                    </select>
+                    {fieldErrors.leaderId && (
+                      <p className="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" /> {fieldErrors.leaderId}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Dates */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Dates — Intake */}
+              {canIntake && (<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                     Date de début <span className="text-red-500">*</span>
@@ -447,6 +523,7 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
                           endDate: dateErrors.endDate
                         }));
                       }}
+                      disabled={intakeLocked}
                       max={endDate || undefined}
                       className={`w-full pl-10 pr-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium
                         ${fieldErrors.startDate 
@@ -481,6 +558,7 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
                           endDate: dateErrors.endDate
                         }));
                       }}
+                      disabled={intakeLocked}
                       min={startDate || undefined}
                       className={`w-full pl-10 pr-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium
                         ${fieldErrors.endDate 
@@ -495,29 +573,33 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
                     </p>
                   )}
                 </div>
-              </div>
+              </div>)}
 
-              {/* Type d'audit */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                  <Briefcase className="w-4 h-4 inline mr-2 text-emerald-600" />
-                  Type d'audit
-                </label>
-                <select
-                  value={auditTypeId}
-                  onChange={(e) => setAuditTypeId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all duration-200 appearance-none bg-no-repeat bg-right font-medium"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E")`,
-                    paddingRight: '2.5rem'
-                  }}
-                >
-                  <option value="">Sélectionner un type...</option>
-                  {auditTypes.map((t: any) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Type d'audit — Enrichissement */}
+              {canEnrich && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
+                    <Briefcase className="w-4 h-4 inline mr-2 text-emerald-600" />
+                    Type d'audit {isEditMode ? <span className="text-red-500">*</span> : null}
+                    {enrichmentLocked && <Lock className="w-3.5 h-3.5 inline ml-1.5 text-slate-400" />}
+                  </label>
+                  <select
+                    value={auditTypeId}
+                    onChange={(e) => setAuditTypeId(e.target.value)}
+                    disabled={enrichmentLocked}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all duration-200 appearance-none bg-no-repeat bg-right font-medium"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E")`,
+                      paddingRight: '2.5rem'
+                    }}
+                  >
+                    <option value="">Sélectionner un type...</option>
+                    {auditTypes.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 
@@ -534,10 +616,15 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || allLocked}
               className="px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
             >
-              {submitting ? (
+              {allLocked ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  Mission en phase REVUE
+                </>
+              ) : submitting ? (
                 <>
                   <span className="inline-block animate-spin">⏳</span>
                   Enregistrement...

@@ -33,7 +33,8 @@ export function getMissionAccessFilter(user: Express.Request['user']): any | nul
   return {
     OR: [
       { leaderId: user.id },
-      { members: { some: { userId: user.id, assignmentStatus: 'ACTIVE' } } }
+      { members: { some: { userId: user.id, assignmentStatus: 'ACTIVE' } } },
+      { createdById: user.id }
     ]
   };
 }
@@ -132,6 +133,9 @@ export const getMissions = async (req: Request, res: Response) => {
           },
           auditType: {
             select: { id: true, name: true }
+          },
+          preparation: {
+            select: { phase: true }
           },
           _count: {
             select: { findings: true, documents: true, members: true, scopes: true }
@@ -263,6 +267,18 @@ export const getMission = async (req: Request, res: Response) => {
         approvals: {
           include: { approver: { select: { firstName: true, lastName: true } } },
           orderBy: { createdAt: 'desc' }
+        },
+        preparation: {
+          include: {
+            history: {
+              include: {
+                changedBy: {
+                  select: { id: true, firstName: true, lastName: true }
+                }
+              },
+              orderBy: { changedAt: 'desc' }
+            }
+          }
         }
       }
     });
@@ -327,14 +343,14 @@ export const createMission = async (req: Request, res: Response) => {
     const auditableEntityIds = Array.isArray(req.body.auditableEntityIds)
       ? req.body.auditableEntityIds
       : [];
-    const parsedPlanId = Number(planId);
-    const parsedLeaderId = Number(leaderId);
+    const parsedPlanId = planId ? Number(planId) : null;
+    const parsedLeaderId = leaderId ? Number(leaderId) : null;
     const parsedAuditTypeId = auditTypeId ? Number(auditTypeId) : null;
     const parsedStartDate = startDate ? new Date(startDate) : null;
     const parsedEndDate = endDate ? new Date(endDate) : null;
 
-    if (!title || !description || !parsedPlanId || !parsedLeaderId) {
-      return res.status(400).json({ error: 'Titre, description, plan et chef de mission sont requis' });
+    if (!title || !description || !objective || !parsedStartDate || !parsedEndDate) {
+      return res.status(400).json({ error: 'Titre, description, objectif et dates sont requis' });
     }
 
     if (parsedStartDate && parsedEndDate && parsedEndDate < parsedStartDate) {
@@ -343,24 +359,28 @@ export const createMission = async (req: Request, res: Response) => {
       });
     }
 
-    const plan = await prisma.auditPlan.findFirst({
-      where: { id: parsedPlanId, tenantId }
-    });
-
-    if (!plan) {
-      return res.status(404).json({ error: "Plan d'audit non trouvé" });
-    }
-
-    if (plan.status !== "VALIDATED") {
-      return res.status(400).json({
-        error: `Le plan doit être validé (status actuel: ${plan.status})`
+    if (parsedPlanId) {
+      const plan = await prisma.auditPlan.findFirst({
+        where: { id: parsedPlanId, tenantId }
       });
+
+      if (!plan) {
+        return res.status(404).json({ error: "Plan d'audit non trouvé" });
+      }
+
+      if (plan.status !== "VALIDATED") {
+        return res.status(400).json({
+          error: `Le plan doit être validé (status actuel: ${plan.status})`
+        });
+      }
     }
 
-    const leader = await prisma.user.findFirst({
-      where: { id: parsedLeaderId, tenantId }
-    });
-    if (!leader) return res.status(404).json({ error: 'Chef de mission non trouvé' });
+    if (parsedLeaderId) {
+      const leader = await prisma.user.findFirst({
+        where: { id: parsedLeaderId, tenantId }
+      });
+      if (!leader) return res.status(404).json({ error: 'Chef de mission non trouvé' });
+    }
 
     const mission = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newMission = await tx.auditMission.create({
@@ -377,7 +397,8 @@ export const createMission = async (req: Request, res: Response) => {
           status: 'PLANNED',
           planId: parsedPlanId,
           auditTypeId: parsedAuditTypeId,
-          leaderId: parsedLeaderId
+          leaderId: parsedLeaderId,
+          createdById: userId
         }
       });
 
@@ -388,6 +409,26 @@ export const createMission = async (req: Request, res: Response) => {
           previousStatus: null,
           newStatus: 'PLANNED',
           reason: 'Création de la mission',
+          changedById: userId
+        }
+      });
+
+      await tx.auditMissionPreparation.create({
+        data: {
+          tenantId,
+          missionId: newMission.id,
+          phase: 'INTAKE'
+        }
+      });
+
+      await tx.auditMissionPreparationHistory.create({
+        data: {
+          tenantId,
+          missionId: newMission.id,
+          fromPhase: null,
+          toPhase: 'INTAKE',
+          reason: 'Initialisation de la mission',
+          actionType: 'INIT',
           changedById: userId
         }
       });
@@ -442,6 +483,9 @@ export const createMission = async (req: Request, res: Response) => {
   }
 };
 
+const PREPARATION_INTAKE_FIELDS = ['title', 'description', 'objective', 'startDate', 'endDate'];
+const PREPARATION_ENRICHMENT_FIELDS = ['scopeDescription', 'methodology', 'planId', 'auditTypeId', 'leaderId'];
+
 export const updateMission = async (req: Request, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -466,7 +510,12 @@ export const updateMission = async (req: Request, res: Response) => {
     const parsedEndDate = endDate ? new Date(endDate) : null;
 
     const existing = await prisma.auditMission.findFirst({
-      where: { id: parseInt(id), tenantId }
+      where: { id: parseInt(id), tenantId },
+      include: {
+        preparation: {
+          select: { phase: true }
+        }
+      }
     });
 
     if (!existing) return res.status(404).json({ error: 'Mission non trouvée' });
@@ -477,20 +526,49 @@ export const updateMission = async (req: Request, res: Response) => {
       });
     }
 
+    // 🔒 Vérifier les champs autorisés selon la phase de préparation
+    const prepPhase = (existing as any).preparation?.phase;
+    const bodyFields = Object.keys(req.body);
+
+    if (prepPhase === 'INTAKE') {
+      // Phase INTAKE : seuls les champs intake sont modifiables
+      const forbidden = bodyFields.filter(
+        (f) => !PREPARATION_INTAKE_FIELDS.includes(f) && f !== 'conclusion'
+      );
+      if (forbidden.some((f) => req.body[f] !== undefined && (existing as any)[f] !== req.body[f])) {
+        return res.status(403).json({
+          error: 'Phase INTAKE : seuls le titre, la description, l\'objectif et les dates sont modifiables'
+        });
+      }
+    } else if (prepPhase === 'ENRICHMENT') {
+      // Phase ENRICHMENT : les champs intake sont verrouillés
+      const hasIntakeField = bodyFields.some((f) => PREPARATION_INTAKE_FIELDS.includes(f));
+      if (hasIntakeField) {
+        return res.status(403).json({
+          error: 'Phase ENRICHMENT : les champs de base (titre, description, objectif, dates) sont verrouillés'
+        });
+      }
+    } else if (prepPhase === 'REVIEW') {
+      return res.status(403).json({
+        error: 'Phase REVUE : aucune modification autorisée, la mission est en attente de publication'
+      });
+    }
+    // Pas de phase de préparation = comportement existant (tous les champs autorisés)
+
     const updated = await prisma.auditMission.update({
       where: { id: parseInt(id) },
       data: {
-        title,
-        description,
-        objective,
-        scopeDescription,
-        methodology,
-        conclusion,
-        startDate: parsedStartDate,
-        endDate: parsedEndDate,
-        planId: planId ? parseInt(planId) : undefined,
-        auditTypeId: auditTypeId ? parseInt(auditTypeId) : null,
-        leaderId: leaderId ? parseInt(leaderId) : undefined
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(objective !== undefined && { objective }),
+        ...(scopeDescription !== undefined && { scopeDescription }),
+        ...(methodology !== undefined && { methodology }),
+        ...(conclusion !== undefined && { conclusion }),
+        ...(startDate !== undefined && { startDate: parsedStartDate }),
+        ...(endDate !== undefined && { endDate: parsedEndDate }),
+        ...(planId !== undefined && { planId: planId ? parseInt(planId) : null }),
+        ...(auditTypeId !== undefined && { auditTypeId: auditTypeId ? parseInt(auditTypeId) : null }),
+        ...(leaderId !== undefined && { leaderId: leaderId ? parseInt(leaderId) : null })
       }
     });
 

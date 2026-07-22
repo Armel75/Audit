@@ -7,6 +7,7 @@ import HierarchyCommentTabs from '../components/hierarchy-comments/HierarchyComm
 import { apiFetch } from '../lib/api';
 import RecommendationList from '../components/RecommendationList';
 import RecommendationFormModal from '../components/RecommendationFormModal';
+import MissionPreparationPanel from '../components/missions/MissionPreparationPanel';
 import { useAuth } from '../context/AuthContext';
 interface Finding {
   id: number;
@@ -61,8 +62,8 @@ interface Mission {
   status: string;
   startDate: string | null;
   endDate: string | null;
-  leader: { firstName: string; lastName: string };
-  plan: { year: number; title: string | null };
+  leader?: { firstName: string; lastName: string } | null;
+  plan?: { year: number; title: string | null } | null;
   auditType: { name: string } | null;
   findings: Finding[];
   members: MissionMember[];
@@ -92,6 +93,23 @@ interface Mission {
     createdAt: string;
     approver: { firstName: string; lastName: string };
   }>;
+  preparation?: {
+    id: number;
+    phase: string;
+    intakeCompletedAt: string | null;
+    enrichmentCompletedAt: string | null;
+    reviewCompletedAt: string | null;
+    readyAt: string | null;
+    history: Array<{
+      id: number;
+      fromPhase: string | null;
+      toPhase: string;
+      reason: string | null;
+      actionType: string | null;
+      changedAt: string;
+      changedBy: { id: number; firstName: string; lastName: string } | null;
+    }>;
+  } | null;
 }
 
 const findingStatusConfig = {
@@ -258,6 +276,7 @@ export default function MissionDetails() {
       });
   };
   const fetchRecommendations = async () => {
+    if (!userPerms.includes('recommendation:read')) return;
     try {
       const res = await apiFetch(`${API_BASE}/recommendations/mission/${id}`);
       if (!res.ok) return;
@@ -269,6 +288,7 @@ export default function MissionDetails() {
   };
 
   const fetchMissionTickets = async () => {
+    if (!userPerms.includes('glpi:read')) return;
     try {
       const res = await apiFetch(`${API_BASE}/missions/${id}/tickets`);
       if (!res.ok) return;
@@ -279,45 +299,51 @@ export default function MissionDetails() {
     }
   };
 
+  const userPerms = (user?.permissions ?? []).map((p: string) => p.toLowerCase());
+  const canAssignMembers = userPerms.includes('audit_mission:assign');
+
   useEffect(() => {
     fetchMission();
     fetchRecommendations();
     fetchMissionTickets();
-    // Fetch users for members modal
-    apiFetch(`${API_BASE}/users`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setUsers(data);
-      })
-      .catch(console.error);
 
-    apiFetch(`${API_BASE}/glpi/users`)
-      .then(res => {
-        if (!res.ok) return [];
-        return res.json();
-      })
-      .then(data => {
-        if (Array.isArray(data)) setGlpiUsers(data);
-      })
-      .catch(console.error);
+    // 🔒 Chargement des listes d'enrichissement uniquement si nécessaire
+    if (canAssignMembers) {
+      apiFetch(`${API_BASE}/users`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setUsers(data);
+        })
+        .catch(() => {});
 
-    apiFetch(`${API_BASE}/missions/external-participants`)
-      .then(res => {
-        if (!res.ok) return [];
-        return res.json();
-      })
-      .then(data => {
-        if (Array.isArray(data)) setExternalParticipants(data);
-      })
-      .catch(console.error);
-    // Fetch entities for scope modal
-    apiFetch(`${API_BASE}/referential/auditable-entities`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setEntities(data);
-      })
-      .catch(console.error);
-  }, [id]);
+      apiFetch(`${API_BASE}/glpi/users`)
+        .then(res => {
+          if (!res.ok) return [];
+          return res.json();
+        })
+        .then(data => {
+          if (Array.isArray(data)) setGlpiUsers(data);
+        })
+        .catch(() => {});
+
+      apiFetch(`${API_BASE}/missions/external-participants`)
+        .then(res => {
+          if (!res.ok) return [];
+          return res.json();
+        })
+        .then(data => {
+          if (Array.isArray(data)) setExternalParticipants(data);
+        })
+        .catch(() => {});
+
+      apiFetch(`${API_BASE}/referential/auditable-entities`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setEntities(data);
+        })
+        .catch(() => {});
+    }
+  }, [id, canAssignMembers]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -737,7 +763,8 @@ export default function MissionDetails() {
   });
   const canCreateFinding = mission.status === 'IN_PROGRESS';
   const canViewReport = ['UNDER_REVIEW', 'APPROVED', 'CLOSED'].includes(mission.status);
-  const canEditCadrage = ['PLANNED', 'READY'].includes(mission.status);
+  const prepPhase = mission.preparation?.phase;
+  const canEditCadrage = ['PLANNED', 'READY'].includes(mission.status) && prepPhase && prepPhase !== 'INTAKE';
   const canCreateRecommendation = mission.status === 'IN_PROGRESS';
   const handleQuickStatusChange = async (nextStatus: string) => {
     try {
@@ -921,12 +948,14 @@ export default function MissionDetails() {
           <div>
             <h1 className="text-3xl font-semibold tracking-tighter text-slate-900 dark:text-white">{mission.title}</h1>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-x-3">
-              <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl">Plan {mission.plan.year}</span>
+              <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl">
+                Plan {mission.plan?.year ?? '—'}
+              </span>
               {mission.auditType ? (
                 <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl">Type: {mission.auditType.name}</span>
               ) : null}
               <span className="inline-flex items-center text-slate-400 dark:text-slate-500">•</span>
-              <span className="font-medium">Chef de mission :</span> {mission.leader.firstName} {mission.leader.lastName}
+              <span className="font-medium">Chef de mission :</span> {mission.leader ? `${mission.leader.firstName} ${mission.leader.lastName}` : 'Non assigné'}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-6 text-sm text-slate-600 dark:text-slate-300">
               {mission.startDate && (
@@ -1017,6 +1046,9 @@ export default function MissionDetails() {
             </button>
           </div>
         </div>
+      </div>
+      <div className="mb-8">
+        <MissionPreparationPanel mission={mission as any} onUpdated={fetchMission} />
       </div>
       {/* Tabs */}
       <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-3xl shadow-sm px-6">

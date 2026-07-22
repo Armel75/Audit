@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+const prisma = require('@audit/database').default;
 import { ApprovalType } from '../types/approval';
 import { evaluateMissionReadiness } from './mission.controller';
-
-const prisma = new PrismaClient();
 
 export const getApprovals = async (req: Request, res: Response) => {
   try {
@@ -191,7 +190,7 @@ export const decideApproval = async (req: Request, res: Response) => {
     }
 
     // 🔒 TRANSACTION CRITIQUE
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const updatedApproval = await tx.approval.update({
         where: { id: approval.id },
         data: {

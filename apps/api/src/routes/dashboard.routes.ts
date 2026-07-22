@@ -190,10 +190,15 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
       select: {
         id: true,
         title: true,
+        description: true,
+        criteria: true,
+        process: true,
+        impact: true,
         status: true,
         createdAt: true,
         riskLevel: { select: { name: true, level: true } },
         mission: { select: { title: true } },
+        businessProcess: { select: { name: true } },
       },
     });
 
@@ -476,6 +481,10 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
         riskLevel: f.riskLevel?.name || null,
         riskScore: f.riskLevel?.level || 0,
         mission: f.mission?.title || null,
+        description: f.description,
+        criteria: f.criteria || null,
+        process: f.process || f.businessProcess?.name || null,
+        impact: f.impact || null,
       })),
       recommendationSummary: {
         open: recosTotal,

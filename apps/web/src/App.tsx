@@ -106,7 +106,7 @@ export default function App() {
             <Route path="admin" element={<PermissionRoute requiredPermissions={['admin:access']}><AdminSettings /></PermissionRoute>} />
             <Route path="users/:id" element={<PermissionRoute requiredPermissions={['user:read']}><UserDetail /></PermissionRoute>} />
             <Route path="/missions/new" element={<PermissionRoute requiredPermissions={['audit_mission:create']}><CreateMission /></PermissionRoute>} />
-            <Route path="/missions/:id/edit" element={<PermissionRoute requiredPermissions={['audit_mission:update']}><MissionEdit /></PermissionRoute>} />
+            <Route path="/missions/:id/edit" element={<PermissionRoute requiredPermissions={['audit_mission:update', 'audit_mission:intake']}><MissionEdit /></PermissionRoute>} />
             <Route path="/missions/:id/findings" element={<PermissionRoute requiredPermissions={['finding:read']}><MissionFindings /></PermissionRoute>} />
             <Route path="/missions/:id/findings/new" element={<PermissionRoute requiredPermissions={['finding:create']}><FindingFormPage /></PermissionRoute>} />
             <Route path="/findings/:id/edit" element={<PermissionRoute requiredPermissions={['finding:update']}><FindingEdit /></PermissionRoute>} />

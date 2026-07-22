@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+const prisma = require('@audit/database').default;
 import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
 
 // 🔒 AJOUT UNIQUEMENT
 const CRITICAL_PERMISSIONS = [
@@ -364,7 +363,7 @@ export const syncRolePermissions = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Interdit' });
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.rolePermission.deleteMany({ where: { roleId } });
 
       if (permissionIds?.length) {

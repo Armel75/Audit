@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+const prisma = require('@audit/database').default;
 import { DocumentService } from '../services/document.service';
-
-const prisma = new PrismaClient();
 
 export const getEvidences = async (req: Request, res: Response) => {
   try {

@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+const prisma = require('@audit/database').default;
 import { getRecommendationsByMission } from '../services/recommendation.service';
 import { recommendationWorkflow } from '../services/workflow/recommendation.workflow'; // ✅ AJOUT
-
-const prisma = new PrismaClient();
 
 // ✅ AJOUT helper local
 const canTransition = (current: string, next: string) => {
@@ -118,7 +117,7 @@ export const createRecommendation = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Titre et constat sont requis' });
     }
 
-    const recommendation = await prisma.$transaction(async (tx) => {
+    const recommendation = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newReco = await tx.recommendation.create({
         data: {
           tenantId,
@@ -252,7 +251,7 @@ export const updateRecommendationStatus = async (req: Request, res: Response) =>
       }
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.recommendation.update({
         where: { id: Number(id) },
         data: {

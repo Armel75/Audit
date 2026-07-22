@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import type { Prisma } from '@prisma/client';
+const prisma = require('@audit/database').default;
 
 // ==========================================
 // AUDIT PLAN
@@ -82,7 +81,7 @@ export const createPlan = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'L\'année est requise' });
     }
 
-    const newPlan = await prisma.$transaction(async (tx) => {
+    const newPlan = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Create the plan
       const plan = await tx.auditPlan.create({
         data: {
@@ -187,7 +186,7 @@ export const updatePlanStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Le plan a déjà ce statut' });
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const updateData: any = { status };
       
       if (status === 'VALIDATED') {
@@ -376,7 +375,7 @@ export const createPlanVersion = async (req: Request, res: Response) => {
 
     const newVersionNumber = plan.versionNumber + 1;
 
-    const newVersion = await prisma.$transaction(async (tx) => {
+    const newVersion = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Update plan version number
       await tx.auditPlan.update({
         where: { id: plan.id },

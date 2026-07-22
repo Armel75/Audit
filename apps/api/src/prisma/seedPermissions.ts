@@ -89,6 +89,12 @@ const permissions = [
   { code: 'audit_mission:cancel', description: 'Annuler une mission (statut annulé)' },
   { code: 'audit_mission:approve', description: 'Approuver une mission (valider après revue)' },
 
+  // ================= MISSION PREPARATION =================
+  { code: 'audit_mission:intake', description: 'Saisir les informations de base d\'une mission (secrétaire)' },
+  { code: 'audit_mission:enrich', description: 'Enrichir le cadrage d\'une mission (chef du service audit / pilote)' },
+  { code: 'audit_mission:review_preparation', description: 'Soumettre la préparation en revue (chef du service audit)' },
+  { code: 'audit_mission:finalize_preparation', description: 'Finaliser la préparation et passer en READY (chef du service audit)' },
+
   // ================= AUDIT PROGRAM =================
   { code: 'audit_program:create', description: 'Creer un programme d audit' },
   { code: 'audit_program:read', description: 'Voir les programmes' },

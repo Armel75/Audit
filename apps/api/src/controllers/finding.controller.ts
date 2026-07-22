@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+const prisma = require('@audit/database').default;
 import { findingWorkflow } from '../services/workflow/finding.workflow'; // ✅ AJOUT
-const prisma = new PrismaClient();
 
 
 // ✅ AJOUT — helper local (pas intrusif)
@@ -108,7 +108,7 @@ export const createFinding = async (req: Request, res: Response) => {
       });
     }
     
-    const finding = await prisma.$transaction(async (tx) => {
+    const finding = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newFinding = await tx.finding.create({
         data: {
           tenantId,
@@ -194,7 +194,7 @@ export const updateFinding = async (req: Request, res: Response) => {
       severityScore: severityScore ? Number(severityScore) : null,
     };
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.finding.update({
         where: { id: Number(id) },
         data: updatedData,
@@ -312,7 +312,7 @@ export const updateFindingStatus = async (req: Request, res: Response) => {
       }
     }
     
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.finding.update({
         where: { id: Number(id) },
         data: { status }
