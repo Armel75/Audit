@@ -17,11 +17,13 @@ export interface Mission {
   endDate: string | null;
 
   leader?: {
+    id: number;
     firstName: string;
     lastName: string;
   } | null;
 
   plan?: {
+    id: number;
     year: number;
     title: string | null;
   } | null;

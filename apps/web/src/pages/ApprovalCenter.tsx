@@ -92,7 +92,7 @@ export default function ApprovalCenter() {
           return (
             <div
               key={a.id}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden"
+              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden"
             >
               {/* Top color stripe */}
               <div className="h-1 w-full bg-gradient-to-r from-indigo-400 to-violet-400" />
@@ -113,7 +113,7 @@ export default function ApprovalCenter() {
                         <Clock className="w-3 h-3" />
                         Demande le {formatDate(a.createdAt)}
                       </span>
-                      <span className="inline-flex items-center px-2 py-0.5 bg-amber-50 border border-amber-200 rounded-full text-xs font-medium text-amber-700">
+                      <span className="inline-flex items-center px-2 py-0.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-full text-xs font-medium text-amber-700 dark:text-amber-300">
                         En attente
                       </span>
                     </div>
@@ -128,7 +128,7 @@ export default function ApprovalCenter() {
                             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Programme</p>
                             <Link
                               to={`/programs/${a.auditProgram.id}`}
-                              className="font-semibold text-slate-800 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                              className="font-semibold text-slate-800 dark:text-white hover:text-indigo-600 transition-colors flex items-center gap-1"
                             >
                               {a.auditProgram.title}
                               <ChevronRight className="w-3 h-3" />
@@ -148,7 +148,7 @@ export default function ApprovalCenter() {
                               return (
                                 <Link
                                   to={`/missions/${m.id}`}
-                                  className="font-semibold text-slate-800 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                                  className="font-semibold text-slate-800 dark:text-white hover:text-indigo-600 transition-colors flex items-center gap-1"
                                 >
                                   {m.title}
                                   <ChevronRight className="w-3 h-3" />
@@ -164,7 +164,7 @@ export default function ApprovalCenter() {
                           <FileText className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
                           <div>
                             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Plan d'audit</p>
-                            <p className="font-semibold text-slate-800">{a.plan.title ?? `Plan ${a.plan.year}`}</p>
+                            <p className="font-semibold text-slate-800 dark:text-slate-200">{a.plan.title ?? `Plan ${a.plan.year}`}</p>
                           </div>
                         </div>
                       )}
@@ -174,7 +174,7 @@ export default function ApprovalCenter() {
                           <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
                           <div>
                             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Constat</p>
-                            <p className="font-semibold text-slate-800">{a.finding.title}</p>
+                            <p className="font-semibold text-slate-800 dark:text-slate-200">{a.finding.title}</p>
                             <p className="text-xs text-slate-400">{a.finding.status}</p>
                           </div>
                         </div>
@@ -185,7 +185,7 @@ export default function ApprovalCenter() {
                           <Lightbulb className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
                           <div>
                             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Recommandation</p>
-                            <p className="font-semibold text-slate-800">{a.recommendation.title}</p>
+                            <p className="font-semibold text-slate-800 dark:text-slate-200">{a.recommendation.title}</p>
                             <p className="text-xs text-slate-400">{a.recommendation.status}</p>
                           </div>
                         </div>
@@ -196,7 +196,7 @@ export default function ApprovalCenter() {
                           <User className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                           <div>
                             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Demande par</p>
-                            <p className="font-semibold text-slate-800">
+                            <p className="font-semibold text-slate-800 dark:text-slate-200">
                               {a.requestedBy.firstName} {a.requestedBy.lastName}
                             </p>
                           </div>
@@ -207,13 +207,13 @@ export default function ApprovalCenter() {
                         <Calendar className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                         <div>
                           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Niveau</p>
-                          <p className="font-semibold text-slate-800">Niveau {a.level}</p>
+                          <p className="font-semibold text-slate-800 dark:text-slate-200">Niveau {a.level}</p>
                         </div>
                       </div>
                     </div>
 
                     {a.comments && (
-                      <p className="text-sm text-slate-600 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 italic">
+                      <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 italic">
                         {a.comments}
                       </p>
                     )}
@@ -233,7 +233,7 @@ export default function ApprovalCenter() {
                     <button
                       onClick={() => handleDecision(a.id, 'REJECTED')}
                       disabled={isDeciding}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-red-300 text-red-600 hover:bg-red-50 text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <XCircle className="w-4 h-4" />
                       {isDeciding ? '...' : 'Rejeter'}

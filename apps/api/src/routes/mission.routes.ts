@@ -20,7 +20,7 @@ router.get('/', requireAnyPermission(['audit_mission:read', 'audit_mission:read_
 router.get('/external-participants', requirePermission('audit_mission:assign'), missionController.getExternalParticipants);
 router.get('/:id', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.getMission);
 router.post('/', requireAnyPermission(['audit_mission:create', 'audit_mission:intake']), missionController.createMission);
-router.put('/:id', requirePermission('audit_mission:update'), missionController.updateMission);
+router.put('/:id', requireAnyPermission(['audit_mission:update', 'audit_mission:intake']), missionController.updateMission);
 router.delete('/:id', requireAnyPermission(['audit_mission:delete', 'audit_mission:update']), missionController.deleteMission);
 
 // Mission Status

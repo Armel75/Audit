@@ -50,6 +50,39 @@ import {
 import type { PeriodFilterValue } from '../components/dashboard';
 import type { Tone } from '../components/dashboard';
 
+/* ─── Traductions activité récente ─── */
+
+const actionLabels: Record<string, string> = {
+  FINDING_UPDATE_WITH_REASON: 'a modifié',
+  FINDING_CREATE: 'a créé',
+  FINDING_STATUS_CHANGE: 'a changé le statut de',
+  MISSION_CREATE: 'a créé',
+  MISSION_UPDATE: 'a modifié',
+  MISSION_STATUS_CHANGE: 'a changé le statut de',
+  RECOMMENDATION_CREATE: 'a créé',
+  RECOMMENDATION_UPDATE: 'a modifié',
+  USER_LOGIN: 's\'est connecté',
+  USER_LOGOUT: 's\'est déconnecté',
+};
+
+const entityLabels: Record<string, string> = {
+  Finding: 'constat',
+  Mission: 'mission',
+  Recommendation: 'recommandation',
+  AuditMission: 'mission',
+  AuditPlan: 'plan d\'audit',
+  AuditProgram: 'programme',
+  User: 'utilisateur',
+};
+
+function translateAction(action: string, entityLabel?: string | null): string {
+  const actionText = actionLabels[action] || action.replace(/_/g, ' ').toLowerCase();
+  // Extraire le nom de l'entité depuis le label (ex: "Finding #123" → "Finding")
+  const entityName = entityLabel?.split(' #')[0] ?? '';
+  const entityText = entityName ? (entityLabels[entityName] || entityName) : '';
+  return entityText ? `${actionText} ${entityText}` : actionText;
+}
+
 /* ─── Helpers ─── */
 
 function computeHealthScore(kpis: any, planExecution: any, performance: any): { score: number; label: string; factors: Array<{ label: string; score: number; weight: number }> } {
@@ -75,8 +108,9 @@ const detailTabOptions = ["approbations", "tickets", "activite", "documents"] as
 type DetailTab = typeof detailTabOptions[number];
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const API_BASE = import.meta.env.VITE_API_URL;
+  const userPerms = (user?.permissions ?? []).map((p: string) => p.toLowerCase());
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<DetailTab>("approbations");
@@ -85,23 +119,53 @@ export default function Dashboard() {
   const [period, setPeriod] = useState<PeriodFilterValue>({ year: now.getFullYear(), month: null });
 
   useEffect(() => {
+    if (!userPerms.includes('dashboard:read')) {
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const params = new URLSearchParams();
     params.set('year', String(period.year));
     if (period.month !== null) params.set('month', String(period.month + 1));
     apiFetch(`${API_BASE}/dashboard/main?${params.toString()}`)
-      .then(res => {
-        if (!res.ok) throw new Error('Erreur lors du chargement du tableau de bord');
+      .then(async res => {
+        if (!res.ok) {
+          if (res.status === 403) {
+            const body = await res.json().catch(() => null);
+            throw new Error(body?.message || 'Accès refusé : vous n\'avez pas les permissions nécessaires pour accéder au tableau de bord');
+          }
+          throw new Error('Erreur lors du chargement du tableau de bord');
+        }
         return res.json();
       })
       .then(d => { setData(d); setLoading(false); })
       .catch(err => { setError(err.message); setLoading(false); });
-  }, [period]);
+  }, [period, user?.permissions]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex h-screen items-center justify-center dark:bg-slate-950">
         <Loader2 className="h-8 w-8 animate-spin text-slate-400 dark:text-slate-500" />
+      </div>
+    );
+  }
+
+  if (!userPerms.includes('dashboard:read')) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
+        <div className="max-w-md text-center px-6">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+            <LayoutGrid className="h-10 w-10 text-slate-400 dark:text-slate-500" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-2">
+            Tableau de bord
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+            Vous n&apos;avez pas les permissions nécessaires pour accéder au tableau de bord. 
+            Contactez votre administrateur si vous pensez que cela est une erreur.
+          </p>
+        </div>
       </div>
     );
   }
@@ -692,7 +756,8 @@ export default function Dashboard() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm leading-6 text-slate-700 dark:text-slate-300">
-                        <span className="font-semibold text-slate-900 dark:text-white">{activity.actor}</span> {activity.action}
+                        <span className="font-semibold text-slate-900 dark:text-white">{activity.actor}</span>{' '}
+                        {translateAction(activity.action, activity.entity)}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                         {activity.entity && <span className="rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-1 font-medium text-slate-600 dark:text-slate-300">{activity.entity}</span>}

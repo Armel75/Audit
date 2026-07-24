@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import type { Prisma } from '@prisma/client';
 const prisma = require('@audit/database').default;
-import { findingWorkflow } from '../services/workflow/finding.workflow'; // ✅ AJOUT
+import { findingWorkflow } from '../services/workflow/finding.workflow';
+import { NotificationService, NOTIFICATION_TYPES } from '../services/notification.service';
 
 
 // ✅ AJOUT — helper local (pas intrusif)
@@ -17,7 +18,18 @@ export const getFindings = async (req: Request, res: Response) => {
     const findings = await prisma.finding.findMany({
       where: { tenantId },
       include: {
-        mission: { select: { title: true } },
+        mission: {
+          select: {
+            id: true,
+            title: true,
+            members: {
+              select: {
+                user: { select: { firstName: true, lastName: true } },
+                roleInMission: true,
+              },
+            },
+          },
+        },
         author: { select: { firstName: true, lastName: true } },
         validator: { select: { firstName: true, lastName: true } },
         riskLevel: true,
@@ -95,7 +107,8 @@ export const createFinding = async (req: Request, res: Response) => {
       where: {
         id: Number(missionId),
         tenantId
-      }
+      },
+      include: { members: true }
     });
 
     if (!mission) {
@@ -139,6 +152,20 @@ export const createFinding = async (req: Request, res: Response) => {
 
       return newFinding;
     });
+
+    // 🔔 Notification aux membres + leader de la mission
+    try {
+      await NotificationService.notifyMissionMembers(
+        tenantId,
+        { id: mission.id, leaderId: mission.leaderId, members: mission.members },
+        NOTIFICATION_TYPES.FINDING_CREATED,
+        'Nouveau constat',
+        `Un constat "${title}" a été créé dans la mission "${mission.title}".`,
+        authorId,
+      );
+    } catch (notifErr) {
+      console.error('Erreur notification constat:', notifErr);
+    }
 
     res.status(201).json(finding);
   } catch (error) {

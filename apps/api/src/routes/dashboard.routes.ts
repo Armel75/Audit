@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { DashboardService } from '../services/dashboard.service';
 import { requireAnyPermission, requireAuth } from '../middleware/auth.middleware';
+import { getMissionAccessFilter } from '../controllers/mission.controller';
 
 const prisma = require('@audit/database').default;
 
@@ -140,8 +141,13 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
     }
 
     // ── Top missions ─────────────────────────────────
+    const missionAccessFilter = getMissionAccessFilter((req as any).user);
+    const topMissionsWhere: any = { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW', 'PLANNED'] }, ...createdAtFilter };
+    if (missionAccessFilter) {
+      topMissionsWhere.AND = [missionAccessFilter];
+    }
     const topMissions = await prisma.auditMission.findMany({
-      where: { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW', 'PLANNED'] }, ...createdAtFilter },
+      where: topMissionsWhere,
       orderBy: { endDate: 'asc' },
       take: 5,
       select: {
@@ -152,7 +158,7 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
         endDate: true,
         leader: { select: { firstName: true, lastName: true } },
         plan: { select: { title: true } },
-        programs: { select: { status: true }, take: 1 },
+        programs: { select: { status: true } },
       },
     });
 

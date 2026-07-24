@@ -7,15 +7,72 @@ export const getNotifications = async (req: Request, res: Response) => {
     const userId = req.user?.id;
     if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
 
-    const notifications = await prisma.notification.findMany({
-      where: { tenantId, recipientUserId: userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50
-    });
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const skip = (page - 1) * limit;
 
-    res.json(notifications);
+    const where = { tenantId, recipientUserId: userId };
+
+    const [notifications, total] = await Promise.all([
+      prisma.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.notification.count({ where }),
+    ]);
+
+    res.json({
+      data: notifications,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error: any) {
     console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des notifications' });
+  }
+};
+
+export const getUnreadCount = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const userId = req.user?.id;
+    if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
+
+    const count = await prisma.notification.count({
+      where: { tenantId, recipientUserId: userId, readAt: null },
+    });
+
+    res.json({ count });
+  } catch (error: any) {
+    console.error('Error fetching unread count:', error);
+    res.status(500).json({ error: 'Erreur lors du comptage des notifications' });
+  }
+};
+
+export const getRecentNotifications = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const userId = req.user?.id;
+    if (!tenantId || !userId) return res.status(401).json({ error: 'Non autorisé' });
+
+    const [notifications, unreadCount] = await Promise.all([
+      prisma.notification.findMany({
+        where: { tenantId, recipientUserId: userId },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      }),
+      prisma.notification.count({
+        where: { tenantId, recipientUserId: userId, readAt: null },
+      }),
+    ]);
+
+    res.json({ notifications, unreadCount });
+  } catch (error: any) {
+    console.error('Error fetching recent notifications:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des notifications' });
   }
 };

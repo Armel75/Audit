@@ -56,7 +56,7 @@ export function MissionCard({ mission, now }: { mission: any; now: Date }) {
         <div className="flex flex-wrap items-center gap-2">
           {!mission.programValidated && (
             <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-400">
-              Prog. non validé
+              Programme non validé
             </span>
           )}
           {isOverdue && (

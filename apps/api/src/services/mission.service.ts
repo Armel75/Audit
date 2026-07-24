@@ -3,15 +3,16 @@ import { canTransition } from './workflow/workflow.engine';
 import { missionWorkflow } from './workflow/mission.workflow';
 import { MISSION_STATUS, MissionStatus } from '../constants/missionStatus';
 import { MISSION_ACTION_TYPE } from '../constants/missionActionType';
+import { NotificationService, NOTIFICATION_TYPES } from './notification.service';
 
-// 🔵 NOUVEAU — Vérifie si mission prête (cadrage OK)
+// 🔵 Vérifie si le cadrage est complet pour publication (enrichissement terminé)
 export function isMissionReady(mission: any) {
   return (
     !!mission?.planId &&
     !!mission?.leaderId &&
-    mission?.scopes?.length > 0 &&
-    mission?.members?.length > 0 &&
-    mission?.programs?.some((p: any) => p.status === 'APPROVED')
+    !!mission?.auditTypeId &&
+    !!mission?.scopeDescription?.trim() &&
+    !!mission?.methodology?.trim()
   );
 }
 
@@ -181,6 +182,44 @@ export async function updateMissionStatus(
       reason: reason || null
     }
   });
+
+  // 🔔 Notifications pour les transitions importantes
+  try {
+    if (newStatus === MISSION_STATUS.IN_PROGRESS) {
+      await NotificationService.notifyMissionMembers(
+        mission.tenantId,
+        { id: mission.id, leaderId: mission.leaderId, members: mission.members },
+        NOTIFICATION_TYPES.MISSION_STARTED,
+        'Mission lancée',
+        `La mission "${mission.title}" est en cours d'exécution.`,
+        user?.id,
+      );
+    }
+
+    if (newStatus === MISSION_STATUS.CLOSED) {
+      await NotificationService.notifyMissionMembers(
+        mission.tenantId,
+        { id: mission.id, leaderId: mission.leaderId, members: mission.members },
+        NOTIFICATION_TYPES.MISSION_CLOSED,
+        'Mission clôturée',
+        `La mission "${mission.title}" a été clôturée.`,
+        user?.id,
+      );
+    }
+
+    if (newStatus === MISSION_STATUS.CANCELLED) {
+      await NotificationService.notifyMissionMembers(
+        mission.tenantId,
+        { id: mission.id, leaderId: mission.leaderId, members: mission.members },
+        NOTIFICATION_TYPES.MISSION_CANCELLED,
+        'Mission annulée',
+        `La mission "${mission.title}" a été annulée.`,
+        user?.id,
+      );
+    }
+  } catch (notifErr) {
+    console.error('Erreur lors de l\'envoi des notifications:', notifErr);
+  }
 
   return updated;
 }

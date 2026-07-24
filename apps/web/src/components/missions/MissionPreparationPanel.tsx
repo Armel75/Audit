@@ -54,12 +54,12 @@ const phaseMeta: Record<string, { label: string; color: string; accent: string }
     accent: 'bg-slate-900',
   },
   ENRICHMENT: {
-    label: 'Enrichissement',
+    label: 'Enrichissement information',
     color: 'bg-blue-50 text-blue-700 border-blue-200',
     accent: 'bg-blue-600',
   },
   REVIEW: {
-    label: 'Revue',
+    label: 'Revue information',
     color: 'bg-violet-50 text-violet-700 border-violet-200',
     accent: 'bg-violet-600',
   },
@@ -93,14 +93,14 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
   const enrichmentOk = !!mission.scopeDescription?.trim() && !!mission.methodology?.trim() && !!mission.plan?.id && !!mission.auditType && !!mission.leader?.id;
   const readyGateOk = !!mission.plan?.id
     && !!mission.leader?.id
-    && (mission.members?.length ?? 0) > 0
-    && (mission.scopes ?? []).some((scope) => scope.status === 'IN_SCOPE')
-    && (mission.programs ?? []).some((program) => program.status === 'APPROVED');
+    && !!mission.auditType
+    && !!mission.scopeDescription?.trim()
+    && !!mission.methodology?.trim();
 
   const phaseCards = [
     { key: 'INTAKE', title: '1. Saisie', done: intakeOk, detail: 'Titre, description, objectif, dates' },
-    { key: 'ENRICHMENT', title: '2. Enrichissement', done: enrichmentOk, detail: 'Périmètre, plan, type, méthodologie, chef de mission' },
-    { key: 'REVIEW', title: '3. Revue', done: readyGateOk, detail: 'Membres, scopes et programme approuvé' },
+    { key: 'ENRICHMENT', title: '2. Enrichissement information', done: enrichmentOk, detail: 'Périmètre, plan, type, méthodologie, chef de mission' },
+    { key: 'REVIEW', title: '3. Revue information', done: readyGateOk, detail: 'Validation finale avant publication' },
   ];
 
   const patchPhase = async (nextPhase: 'INTAKE' | 'ENRICHMENT' | 'REVIEW') => {
@@ -132,6 +132,7 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
 
   const finalize = async () => {
     if (loadingAction) return;
+    if (!confirm('Publier cette mission ? Le Chef de mission pourra alors démarrer l\'exécution.')) return;
     setLoadingAction('finalize');
     try {
       const res = await apiFetch(`${import.meta.env.VITE_API_URL}/missions/${mission.id}/preparation/finalize`, {
@@ -147,8 +148,9 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
 
       setReason('');
       onUpdated();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      alert(error?.message || 'Erreur lors de la publication de la mission');
     } finally {
       setLoadingAction(null);
     }
@@ -224,7 +226,7 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
               {intakeOk ? 'Oui' : 'À compléter'}
             </span>
             <span className={`inline-flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs font-medium ${fieldTone(enrichmentOk)}`}>
-              <span>Enrichissement complet</span>
+              <span>Enrichissement information complet</span>
               {enrichmentOk ? 'Oui' : 'À compléter'}
             </span>
             <span className={`inline-flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs font-medium ${fieldTone(readyGateOk)}`}>
@@ -267,10 +269,11 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
                 type="button"
                 onClick={() => patchPhase('ENRICHMENT')}
                 disabled={!intakeOk || loadingAction !== null}
+                title="Valider la saisie et envoyer la mission au service audit pour enrichissement"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950"
               >
                 {loadingAction === 'phase' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
-                Transmettre au chef
+                Transmettre au service audit
               </button>
             )}
 
@@ -279,7 +282,11 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
                 {canEnrich && (
                   <button
                     type="button"
-                    onClick={() => patchPhase('REVIEW')}
+                    onClick={() => {
+                      if (confirm('Soumettre cette mission en phase de revue ? Les membres, le périmètre et les programmes pourront alors être définis.')) {
+                        patchPhase('REVIEW');
+                      }
+                    }}
                     disabled={!enrichmentOk || loadingAction !== null}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-700 transition hover:border-violet-300 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-950"
                   >
@@ -290,12 +297,16 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
                 {canEnrich && (
                   <button
                     type="button"
-                    onClick={() => patchPhase('INTAKE')}
+                    onClick={() => {
+                      if (confirm('Réouvrir la saisie de base pour permettre à la secrétaire de modifier les informations initiales ?')) {
+                        patchPhase('INTAKE');
+                      }
+                    }}
                     disabled={loadingAction !== null}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    Revenir à l’intake
+                    Revenir à la saisie de base
                   </button>
                 )}
               </>
@@ -308,6 +319,7 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
                     type="button"
                     onClick={finalize}
                     disabled={!readyGateOk || loadingAction !== null}
+                    title={!readyGateOk ? 'Complétez le cadrage (scope, méthodologie, plan, type, chef) avant de publier' : ''}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:from-emerald-600 hover:to-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {loadingAction === 'finalize' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -322,7 +334,7 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    Revenir à l’enrichissement
+                    Revenir à l’enrichissement information
                   </button>
                 )}
               </>
@@ -345,7 +357,7 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
                 <div key={entry.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-slate-800 dark:text-slate-100">
-                      {(entry.fromPhase === 'INTAKE' ? 'Saisie' : entry.fromPhase === 'ENRICHMENT' ? 'Enrichissement' : entry.fromPhase === 'REVIEW' ? 'Revue' : entry.fromPhase || '—')} → {(entry.toPhase === 'INTAKE' ? 'Saisie' : entry.toPhase === 'ENRICHMENT' ? 'Enrichissement' : entry.toPhase === 'REVIEW' ? 'Revue' : entry.toPhase)}
+                      {(entry.fromPhase === 'INTAKE' ? 'Saisie' : entry.fromPhase === 'ENRICHMENT' ? 'Enrichissement information' : entry.fromPhase === 'REVIEW' ? 'Revue information' : entry.fromPhase || '—')} → {(entry.toPhase === 'INTAKE' ? 'Saisie' : entry.toPhase === 'ENRICHMENT' ? 'Enrichissement information' : entry.toPhase === 'REVIEW' ? 'Revue information' : entry.toPhase)}
                     </span>
                     <span>{new Date(entry.changedAt).toLocaleDateString('fr-FR')}</span>
                   </div>

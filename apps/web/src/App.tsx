@@ -32,6 +32,7 @@ import EvidenceEdit from './pages/EvidenceEdit';
 import FindingEdit from './pages/FindingEdit';
 import DashboardDG from './pages/DashboardDG';
 import ApprovalCenter from './pages/ApprovalCenter';
+import NotificationsPage from './pages/NotificationsPage';
 
 const hasAnyPermission = (userPermissions: string[] | undefined, requiredPermissions?: string[]) => {
   if (!requiredPermissions?.length) {
@@ -87,6 +88,7 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="notifications" element={<NotificationsPage />} />
             <Route path="hierarchy-comments" element={<PermissionRoute requiredPermissions={['comment:read']}><HierarchyCommentsOverview /></PermissionRoute>} />
             <Route path="dashboard-dg" element={<PermissionRoute requiredPermissions={['dashboard_dg:read']}><DashboardDG /></PermissionRoute>} />
             <Route path="plans" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlans /></PermissionRoute>} />

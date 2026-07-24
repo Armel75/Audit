@@ -3,6 +3,7 @@ import puppeteer from 'puppeteer';
 import { Buffer } from 'buffer';
 import path from 'path';
 import fs from 'fs';
+import { ROOT_PATH } from '../config/storage';
 import { Prisma } from '@prisma/client';
 
 type MissionReport = Prisma.AuditMissionGetPayload<{
@@ -114,7 +115,7 @@ export const buildReportHTML = (mission: MissionReport) => {
   //   // pas de logo → on continue sans
   // }
 
-  const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
+  const logoFullPath = path.join(ROOT_PATH, 'template/logo.png');
 
   if (!fs.existsSync(logoFullPath)) {
     console.warn('Logo not found:', logoFullPath);
@@ -480,7 +481,7 @@ export const getMissionOrderData = async (missionId: number, tenantId: number) =
 export const buildMissionOrderHTML = (mission: any): string => {
   let logoSrc = '';
 
-  const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
+  const logoFullPath = path.join(ROOT_PATH, 'template/logo.png');
 
   if (!fs.existsSync(logoFullPath)) {
     console.warn('Logo not found:', logoFullPath);
@@ -809,7 +810,7 @@ export const getMissionInfoData = async (missionId: number, tenantId: number) =>
 
 export const buildMissionInfoHTML = (mission: any): string => {
   let logoSrc = '';
-  const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
+  const logoFullPath = path.join(ROOT_PATH, 'template/logo.png');
   if (!fs.existsSync(logoFullPath)) {
     console.warn('Logo not found:', logoFullPath);
   } else {

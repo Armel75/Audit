@@ -197,7 +197,7 @@ export default function MissionReport() {
             <h3 className="text-sm font-medium text-red-800">{error || 'Rapport introuvable'}</h3>
           </div>
         </div>
-        <Link to={`/missions/${id}`} className="mt-4 inline-flex items-center text-sm text-indigo-600 hover:text-indigo-900">
+        <Link to={`/missions/${id}`} className="mt-4 inline-flex items-center text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
           <ArrowLeft className="w-4 h-4 mr-1" /> Retour à la mission
         </Link>
       </div>
@@ -208,7 +208,7 @@ export default function MissionReport() {
     <div className="space-y-8 max-w-5xl mx-auto pb-12 px-6 lg:px-0">
       {/* Print / Navigation Header (Hidden when printing) */}
       <div className="print:hidden flex items-center justify-between">
-        <Link to={`/missions/${id}`} className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700">
+        <Link to={`/missions/${id}`} className="inline-flex items-center text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
           <ArrowLeft className="w-4 h-4 mr-1" /> Retour à la mission
         </Link>
         <div className="flex space-x-3">

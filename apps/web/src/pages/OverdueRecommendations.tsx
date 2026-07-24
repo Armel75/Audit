@@ -14,9 +14,21 @@ interface Recommendation {
   department?: { name: string };
   assigneeUser?: { firstName: string; lastName: string };
   assigneeName?: string;
+  finding?: {
+    title: string;
+    mission?: {
+      id: number;
+      title: string;
+      members?: Array<{
+        user?: { firstName: string; lastName: string };
+        roleInMission: string;
+      }>;
+    };
+  };
 }
 
 const statusLabels: Record<string, string> = {
+  DRAFT: 'Brouillon',
   OPEN: 'Ouverte',
   IN_PROGRESS: 'En cours',
   RESOLVED: 'Résolue',
@@ -46,7 +58,7 @@ export default function OverdueRecommendations() {
   }, []);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 px-6 lg:px-0 py-8">
+    <div className="max-w-7xl mx-auto space-y-6 px-6 lg:px-0 py-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
@@ -77,7 +89,9 @@ export default function OverdueRecommendations() {
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-slate-600">
               <tr>
-                <th className="px-6 py-4">Titre</th>
+                <th className="px-6 py-4">Mission</th>
+                <th className="px-6 py-4">Recommandation</th>
+                <th className="px-6 py-4">Membres</th>
                 <th className="px-6 py-4">Date cible</th>
                 <th className="px-6 py-4">Priorité</th>
                 <th className="px-6 py-4">Département</th>
@@ -89,7 +103,24 @@ export default function OverdueRecommendations() {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {recos.map(r => (
                 <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300 whitespace-normal break-words min-w-[160px]">
+                    {r.finding?.mission?.title || '-'}
+                  </td>
                   <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{r.title}</td>
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
+                    {r.finding?.mission?.members?.length ? (
+                      <div className="flex flex-col gap-0.5">
+                        {r.finding.mission.members.map((m, i) => (
+                          <span key={i} className="text-xs">
+                            {m.user ? `${m.user.firstName} ${m.user.lastName}` : '—'}
+                            {m.roleInMission ? ` (${m.roleInMission})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-red-600 font-medium">
                     {r.targetDate ? new Date(r.targetDate).toLocaleDateString('fr-FR') : '-'}
                   </td>

@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import type { Prisma } from '@prisma/client';
 const prisma = require('@audit/database').default;
 import { getRecommendationsByMission } from '../services/recommendation.service';
-import { recommendationWorkflow } from '../services/workflow/recommendation.workflow'; // ✅ AJOUT
+import { recommendationWorkflow } from '../services/workflow/recommendation.workflow';
+import { NotificationService, NOTIFICATION_TYPES } from '../services/notification.service';
 
 // ✅ AJOUT helper local
 const canTransition = (current: string, next: string) => {
@@ -17,7 +18,23 @@ export const getRecommendations = async (req: Request, res: Response) => {
     const recommendations = await prisma.recommendation.findMany({
       where: { tenantId },
       include: {
-        finding: { select: { title: true, mission: { select: { title: true } } } },
+        finding: {
+          select: {
+            title: true,
+            mission: {
+              select: {
+                id: true,
+                title: true,
+                members: {
+                  select: {
+                    user: { select: { firstName: true, lastName: true } },
+                    roleInMission: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         priority: true,
         department: true,
         assigneeUser: { select: { firstName: true, lastName: true } },
@@ -117,6 +134,16 @@ export const createRecommendation = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Titre et constat sont requis' });
     }
 
+    // Récupérer le constat et sa mission pour la notification
+    const finding = await prisma.finding.findUnique({
+      where: { id: Number(findingId) },
+      include: {
+        mission: {
+          include: { members: true }
+        }
+      }
+    });
+
     const recommendation = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newReco = await tx.recommendation.create({
         data: {
@@ -146,6 +173,22 @@ export const createRecommendation = async (req: Request, res: Response) => {
 
       return newReco;
     });
+
+    // 🔔 Notification aux membres + leader de la mission
+    if (finding?.mission) {
+      try {
+        await NotificationService.notifyMissionMembers(
+          tenantId,
+          { id: finding.mission.id, leaderId: finding.mission.leaderId, members: finding.mission.members },
+          NOTIFICATION_TYPES.RECOMMENDATION_CREATED,
+          'Nouvelle recommandation',
+          `Une recommandation "${title}" a été créée dans la mission "${finding.mission.title}".`,
+          authorId,
+        );
+      } catch (notifErr) {
+        console.error('Erreur notification recommandation:', notifErr);
+      }
+    }
 
     res.status(201).json(recommendation);
   } catch (error) {

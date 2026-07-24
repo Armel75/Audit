@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 const prisma = require('@audit/database').default;
 import { getMissionAccessFilter } from './mission.controller';
+import { NotificationService, NOTIFICATION_TYPES } from '../services/notification.service';
 
 export const getHierarchyCommentsOverview = async (req: Request, res: Response) => {
   try {
@@ -197,6 +198,30 @@ export const createHierarchyComment = async (req: Request, res: Response) => {
         childComments: { select: { id: true, title: true } }
       }
     });
+
+    // 🔔 Notification aux membres de la mission concernée
+    if (contextType === 'MISSION' && contextId) {
+      try {
+        const mission = await prisma.auditMission.findFirst({
+          where: { id: Number(contextId), tenantId },
+          include: { members: true }
+        });
+
+        if (mission) {
+          await NotificationService.notifyMissionMembers(
+            tenantId,
+            { id: mission.id, leaderId: mission.leaderId, members: mission.members },
+            NOTIFICATION_TYPES.HIERARCHY_COMMENT_ADDED,
+            'Nouveau commentaire hiérarchique',
+            `Un commentaire "${title}" a été ajouté à la mission "${mission.title}".`,
+            createdById,
+          );
+        }
+      } catch (notifErr) {
+        console.error('Erreur notification commentaire hiérarchique:', notifErr);
+      }
+    }
+
     res.status(201).json({
       ...commentWithDocs,
       author: commentWithDocs?.createdBy,

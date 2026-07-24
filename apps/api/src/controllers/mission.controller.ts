@@ -15,6 +15,7 @@ import {
 } from '../services/report.service';
 
 import { DocumentService } from '../services/document.service';
+import { NotificationService, NOTIFICATION_TYPES } from '../services/notification.service';
 // ==========================================
 // AUDIT MISSION
 // ==========================================
@@ -98,16 +99,16 @@ export const getMissions = async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;    
     const skip = (page - 1) * limit;
 
-    const type = req.query.type as string; // 'active' | 'archive'
+    const type = req.query.type as string; // 'preparation' | 'active' | 'archive'
     const leaderId = req.query.leaderId as string;
 
     const where: any = { tenantId };
 
-    if (type === 'active') {
-      where.status = { not: 'CLOSED' };
-    }
-
-    if (type === 'archive') {
+    if (type === 'preparation') {
+      where.status = 'PLANNED';
+    } else if (type === 'active') {
+      where.status = { notIn: ['PLANNED', 'CLOSED'] };
+    } else if (type === 'archive') {
       where.status = 'CLOSED';
     }
 
@@ -299,15 +300,21 @@ export const evaluateMissionReadiness = async (tx: any, missionId: number) => {
     include: {
       members: true,
       scopes: true,
-      programs: true
+      programs: true,
+      preparation: {
+        select: { phase: true }
+      }
     }
   });
 
   if (!mission) return;
 
+  // 🔒 Si la mission a un workflow de préparation, ne passer en READY
+  // que si la préparation est terminée (readyAt renseigné)
+  if (mission.preparation && !mission.preparation.readyAt) return;
+
   const hasMembers = mission.members.length > 0;
   const hasScopes = mission.scopes.filter((s: { status: string }) => s.status === 'IN_SCOPE').length > 0;
-  //const hasApprovedProgram = mission.programs.some(p => p.status === 'APPROVED');
   const hasApprovedProgram = mission.programs.some(
     (p: { status: string }) => p.status === 'APPROVED'
   );
@@ -529,6 +536,17 @@ export const updateMission = async (req: Request, res: Response) => {
     // 🔒 Vérifier les champs autorisés selon la phase de préparation
     const prepPhase = (existing as any).preparation?.phase;
     const bodyFields = Object.keys(req.body);
+    const userPerms = (req.user?.permissions ?? []).map((p: string) => p.toLowerCase());
+
+    // Vérifier que l'utilisateur a la permission d'enrichir si la phase est ENRICHMENT ou REVIEW
+    if (prepPhase === 'ENRICHMENT' || prepPhase === 'REVIEW') {
+      const hasEnrichField = bodyFields.some((f) => PREPARATION_ENRICHMENT_FIELDS.includes(f));
+      if (hasEnrichField && !userPerms.includes('audit_mission:enrich')) {
+        return res.status(403).json({
+          error: 'Permission requise : audit_mission:enrich pour modifier les champs d\'enrichissement'
+        });
+      }
+    }
 
     if (prepPhase === 'INTAKE') {
       // Phase INTAKE : seuls les champs intake sont modifiables
@@ -549,9 +567,13 @@ export const updateMission = async (req: Request, res: Response) => {
         });
       }
     } else if (prepPhase === 'REVIEW') {
-      return res.status(403).json({
-        error: 'Phase REVUE : aucune modification autorisée, la mission est en attente de publication'
-      });
+      // Phase REVUE : seuls les champs d'enrichissement sont modifiables
+      const hasIntakeField = bodyFields.some((f) => PREPARATION_INTAKE_FIELDS.includes(f));
+      if (hasIntakeField) {
+        return res.status(403).json({
+          error: 'Phase REVUE : les champs de base (titre, description, objectif, dates) sont verrouillés'
+        });
+      }
     }
     // Pas de phase de préparation = comportement existant (tous les champs autorisés)
 
@@ -820,6 +842,23 @@ export const addMissionMember = async (req: Request, res: Response) => {
     });
 
     await evaluateMissionReadiness(prisma, parseInt(id));
+
+    // 🔔 Notification au membre assigné
+    if (normalizedUserId) {
+      try {
+        const missionTitle = mission?.title || `Mission #${id}`;
+        await NotificationService.notify({
+          tenantId,
+          type: NOTIFICATION_TYPES.MEMBER_ASSIGNED,
+          title: 'Affectation à une mission',
+          message: `Vous avez été affecté à la mission "${missionTitle}" en tant que ${roleInMission || 'membre'}.`,
+          missionId: parseInt(id),
+          recipientIds: [normalizedUserId],
+        });
+      } catch (notifErr) {
+        console.error('Erreur notification affectation:', notifErr);
+      }
+    }
 
     res.status(201).json(member);
   } catch (error: any) {

@@ -7,6 +7,7 @@ import {
 } from './workflow/missionPreparation.workflow';
 import { MISSION_STATUS } from '../constants/missionStatus';
 import { isMissionReady } from './mission.service';
+import { NotificationService, NOTIFICATION_TYPES } from './notification.service';
 
 const preparationPhaseOrder: MissionPreparationPhase[] = [
   MISSION_PREPARATION_PHASE.INTAKE,
@@ -73,11 +74,11 @@ export function getPreparationChecklist(mission: any) {
     ready: {
       complete: isMissionReady(mission),
       fields: {
-        members: (mission?.members?.length ?? 0) > 0,
-        scopes: (mission?.scopes ?? []).some((s: any) => s.status === 'IN_SCOPE'),
-        approvedProgram: (mission?.programs ?? []).some((p: any) => p.status === 'APPROVED'),
         plan: hasPlan,
         leader: hasLeader,
+        auditType: hasAuditType,
+        scopeDescription: hasScope,
+        methodology: hasMethodology,
       },
     },
   };
@@ -244,6 +245,31 @@ export async function transitionMissionPreparation(
     },
   });
 
+  // 🔔 Notifications
+  if (currentPhase === MISSION_PREPARATION_PHASE.INTAKE && nextPhase === MISSION_PREPARATION_PHASE.ENRICHMENT) {
+    await NotificationService.notifyPermissionHolders(
+      tenantId,
+      'audit_mission:enrich',
+      NOTIFICATION_TYPES.MISSION_AWAITING_ENRICHMENT,
+      'Mission en attente d\'enrichissement',
+      `La mission "${mission.title}" vous a été transmise pour enrichissement.`,
+      missionId,
+      user?.id,
+    );
+  }
+
+  if (currentPhase === MISSION_PREPARATION_PHASE.ENRICHMENT && nextPhase === MISSION_PREPARATION_PHASE.REVIEW) {
+    await NotificationService.notifyPermissionHolders(
+      tenantId,
+      'audit_mission:review_preparation',
+      NOTIFICATION_TYPES.MISSION_AWAITING_REVIEW,
+      'Mission en attente de revue',
+      `La mission "${mission.title}" est prête pour la revue.`,
+      missionId,
+      user?.id,
+    );
+  }
+
   return getMissionPreparationByMission(tenantId, missionId);
 }
 
@@ -276,26 +302,7 @@ export async function finalizeMissionPreparation(
     throw new Error('Mission non prête : cadrage incomplet');
   }
 
-  // ⚡ 2. Mise à jour du statut de la mission
-  const updatedMission = await prisma.auditMission.update({
-    where: { id: missionId },
-    data: { status: MISSION_STATUS.READY },
-  });
-
-  // 📝 3. Historique du statut
-  await prisma.missionStatusHistory.create({
-    data: {
-      tenantId,
-      missionId,
-      previousStatus: MISSION_STATUS.PLANNED,
-      newStatus: MISSION_STATUS.READY,
-      reason: reason || 'Publication après préparation',
-      actionType: 'READY_FROM_PREPARATION',
-      changedById: user?.id ?? null,
-    },
-  });
-
-  // 🔒 4. Optimistic locking sur la préparation
+  // ⚡ 2. Optimistic locking sur la préparation
   const prepUpdated = await prisma.auditMissionPreparation.updateMany({
     where: { missionId, version: currentVersion },
     data: {
@@ -310,7 +317,13 @@ export async function finalizeMissionPreparation(
     throw new Error('Conflit : la préparation a été modifiée par un autre utilisateur. Veuillez recharger la page.');
   }
 
-  // 📝 5. Historique de la préparation
+  // � 3. Passage du statut de la mission de PLANNED → READY
+  await prisma.auditMission.update({
+    where: { id: missionId },
+    data: { status: MISSION_STATUS.READY },
+  });
+
+  // �📝 5. Historique de la préparation
   await prisma.auditMissionPreparationHistory.create({
     data: {
       tenantId,
@@ -324,7 +337,19 @@ export async function finalizeMissionPreparation(
     },
   });
 
-  return updatedMission;
+  // 🔔 Notifier tous les membres + le leader
+  await NotificationService.notifyMissionMembers(
+    tenantId,
+    { id: mission.id, leaderId: mission.leaderId, members: mission.members },
+    NOTIFICATION_TYPES.MISSION_READY,
+    'Mission prête',
+    `La mission "${mission.title}" est maintenant prête à être lancée.`,
+    user?.id,
+  );
+
+  return prisma.auditMission.findUnique({
+    where: { id: missionId },
+  });
 }
 
 export function getPreparationPhaseIndex(phase?: string | null) {

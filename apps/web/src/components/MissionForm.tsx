@@ -13,7 +13,8 @@ import {
   ChevronRight,
   X,
   Shield,
-  Lock
+  Lock,
+  Clock3
 } from 'lucide-react';
 
 interface MissionFormProps {
@@ -29,14 +30,14 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
   // 🔒 Permissions RBAC
   const userPermissions = (user?.permissions ?? []).map((p: string) => p.toLowerCase());
   const canIntake = userPermissions.includes('audit_mission:intake');
-  const canEnrich = userPermissions.includes('audit_mission:enrich') || userPermissions.includes('audit_mission:update');
+  const canEnrich = userPermissions.includes('audit_mission:enrich');
 
   // 🔒 Verrouillage des champs selon la phase : la secrétaire doit passer en
   // ENRICHMENT pour que le chef puisse modifier les champs d'enrichissement
   const prepPhase = mission?.preparation?.phase;
   const intakeLocked = isEditMode && (prepPhase === 'ENRICHMENT' || prepPhase === 'REVIEW');
-  const enrichmentLocked = isEditMode && (prepPhase === 'INTAKE' || prepPhase === 'REVIEW');
-  const allLocked = isEditMode && prepPhase === 'REVIEW';
+  const enrichmentLocked = isEditMode && prepPhase === 'INTAKE';
+  const allLocked = isEditMode && !['PLANNED'].includes(mission?.status ?? '');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -165,12 +166,12 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
     validateField('title', title);
     validateField('description', description);
     validateField('objective', objective);
-    if (isEditMode) {
+    if (isEditMode && canEnrich) {
       validateField('planId', planId);
       validateField('leaderId', leaderId);
     }
 
-    if (!title || !description || !objective || (isEditMode && (!planId || !leaderId))) {
+    if (!title || !description || !objective || (isEditMode && canEnrich && (!planId || !leaderId))) {
       setSubmitting(false);
       return;
     }
@@ -249,15 +250,15 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
             </div>
             <div className="flex gap-2">
               {canIntake && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-300 bg-indigo-100 px-3 py-1.5 text-xs font-semibold text-indigo-800 dark:border-indigo-700 dark:bg-indigo-900/80 dark:text-indigo-200">
                   <Shield className="h-3.5 w-3.5" />
                   Saisie de base
                 </span>
               )}
               {canEnrich && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/80 dark:text-emerald-200">
                   <Shield className="h-3.5 w-3.5" />
-                  Enrichissement
+                  Enrichissement information
                 </span>
               )}
             </div>
@@ -272,6 +273,86 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
               <div>
                 <h3 className="font-medium text-red-800 dark:text-red-200">Erreur</h3>
                 <p className="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {/* 🔒 Carte récapitulative : saisie initiale de la secrétaire (visible uniquement pour le chef) */}
+          {isEditMode && !canIntake && mission && (
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-indigo-200 dark:border-indigo-800 overflow-hidden">
+              <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 px-6 py-4 border-b border-indigo-200 dark:border-indigo-900">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Saisie initiale
+                  </h2>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/40 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 ml-2">
+                    <Lock className="w-3 h-3" />
+                    Verrouillé
+                  </span>
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                  Informations saisies par la secrétaire — lecture seule.
+                </p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Titre</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">{mission.title}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Dates</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      {mission.startDate ? new Date(mission.startDate).toLocaleDateString('fr-FR') : '—'} → {mission.endDate ? new Date(mission.endDate).toLocaleDateString('fr-FR') : '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Description</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{mission.description || '—'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Objectif</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{mission.objective || '—'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ⏳ Bannière : mission déjà transmise pour la secrétaire */}
+          {isEditMode && prepPhase !== 'INTAKE' && canIntake && !canEnrich && (
+            <div className="rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-5 py-4 flex items-start gap-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 shrink-0">
+                <Lock className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  Mission déjà transmise
+                </p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                  Cette mission a été transmise au service audit. Vous ne pouvez plus modifier les informations en attendant son retour.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ⏳ Bannière d'attente : la secrétaire doit transmettre */}
+          {isEditMode && prepPhase === 'INTAKE' && !canIntake && (
+            <div className="rounded-xl border-2 border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 px-5 py-4 flex items-start gap-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-200 dark:bg-amber-800 shrink-0">
+                <Clock3 className="h-5 w-5 text-amber-700 dark:text-amber-200" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  En attente de transmission
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1 leading-relaxed">
+                  La secrétaire n&apos;a pas encore transmis cette mission. Les champs d&apos;enrichissement ci-dessous sont verrouillés en attendant sa validation.
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  Une fois la mission transmise, vous recevrez une notification et pourrez compléter les informations.
+                </p>
               </div>
             </div>
           )}
@@ -397,10 +478,12 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
                   <div>
                     <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                       Périmètre
+                      {enrichmentLocked && <Lock className="w-3.5 h-3.5 inline ml-1.5 text-slate-400" />}
                     </label>
                     <textarea
                       value={scopeDescription}
                       onChange={(e) => setScopeDescription(e.target.value)}
+                      disabled={enrichmentLocked}
                       placeholder="Décrire le périmètre et les limites..."
                       rows={3}
                       className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200 resize-none"
@@ -616,13 +699,18 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
 
             <button
               type="submit"
-              disabled={submitting || allLocked}
+              disabled={submitting || allLocked || (isEditMode && !canEnrich && intakeLocked)}
               className="px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
             >
               {allLocked ? (
                 <>
                   <Lock className="w-4 h-4" />
                   Mission en phase REVUE
+                </>
+              ) : isEditMode && !canEnrich && intakeLocked ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  Mission déjà transmise
                 </>
               ) : submitting ? (
                 <>
@@ -632,7 +720,7 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4" />
-                  Enregistrer la mission
+                  {isEditMode ? 'Modifier les informations' : 'Enregistrer la mission'}
                 </>
               )}
             </button>

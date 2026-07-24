@@ -220,8 +220,9 @@ export default function AuditPlanDetails() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/plans" className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
-            <ArrowLeft className="w-5 h-5" />
+          <Link to="/plans" className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md active:scale-[0.97] transition-all duration-150">
+            <ArrowLeft className="w-4 h-4" />
+            Retour aux plans
           </Link>
           <div>
             <div className="flex items-center gap-3">
@@ -598,16 +599,16 @@ export default function AuditPlanDetails() {
         <div className="fixed inset-0 z-10 overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div className="fixed inset-0 bg-slate-500 bg-opacity-75 transition-opacity" onClick={() => setIsHistoryModalOpen(false)} />
-            <div className="relative transform overflow-hidden rounded-xl bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-              <h3 className="text-lg font-medium leading-6 text-slate-900 mb-4">Modifier l'historique</h3>
+            <div className="relative transform overflow-hidden rounded-xl bg-white dark:bg-slate-800 px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+              <h3 className="text-lg font-medium leading-6 text-slate-900 dark:text-white mb-4">Modifier l'historique</h3>
               <form onSubmit={handleCreateOrUpdateHistory} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Raison / Commentaire</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Raison / Commentaire</label>
                   <textarea
                     rows={3}
                     value={historyForm.reason}
                     onChange={(e) => setHistoryForm({...historyForm, reason: e.target.value})}
-                    className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm p-2"
+                    className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm p-2"
                     placeholder="Ex: Validé suite au comité de direction..."
                     required
                   />
@@ -622,7 +623,7 @@ export default function AuditPlanDetails() {
                   <button
                     type="button"
                     onClick={() => setIsHistoryModalOpen(false)}
-                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-base font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:col-start-1 sm:mt-0 sm:text-sm"
+                    className="mt-3 inline-flex w-full justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-base font-medium text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 sm:col-start-1 sm:mt-0 sm:text-sm"
                   >
                     Annuler
                   </button>

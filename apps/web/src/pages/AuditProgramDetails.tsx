@@ -767,8 +767,13 @@ export default function AuditProgramDetails() {
                       <option value="">Sélectionner un type</option>
                       <option value="COMPLIANCE">✅ Conformité</option>
                       <option value="ITGC">🖥️ Contrôles IT généraux (ITGC)</option>
+                      <option value="IT_SECURITY">🛡️ IT & Sécurité</option>
                       <option value="FINANCIAL">💰 Financier</option>
                       <option value="OPERATIONAL">⚙️ Opérationnel</option>
+                      <option value="LOGISTICS">🚚 Logistique & Terrain</option>
+                      <option value="REPUTATION">📰 Réputation</option>
+                      <option value="HR">👥 Ressources Humaines</option>
+                      <option value="SUPPLY_CHAIN">📦 Stock & Supply Chain</option>
                     </select>
                     <p className="text-xs text-slate-500 mt-2">Détermine la nature des procédures d'audit</p>
                   </div>

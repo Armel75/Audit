@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, SlidersHorizontal } from 'lucide-react';
 import { apiFetch } from '../lib/api';
@@ -17,7 +17,8 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
   const canDelete = userPermissions.includes('audit_mission:delete');
   const canFilter = userPermissions.includes('audit_mission:filter');
   const canIntake = userPermissions.includes('audit_mission:intake');
-  const canEnrich = userPermissions.includes('audit_mission:enrich') || userPermissions.includes('audit_mission:update');
+  const canEnrich = userPermissions.includes('audit_mission:enrich');
+  const canFinalize = userPermissions.includes('audit_mission:finalize_preparation');
 
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,9 +26,18 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
   const [error, setError] = useState<string | null>(null);
   const [leaders, setLeaders] = useState<{ id: number; firstName: string; lastName: string }[]>([]);
   const [selectedLeaderId, setSelectedLeaderId] = useState('');
-  // Par défaut : onglet Préparation pour ceux qui créent des missions, Actives pour les autres
-  const defaultTab = mode === 'archive' ? 'archive' : canIntake ? 'preparation' : 'active';
-  const [tabMode, setTabMode] = useState<'preparation' | 'active' | 'archive'>(defaultTab);
+  const [tabMode, setTabMode] = useState<'preparation' | 'active' | 'archive'>('active');
+
+  // 🔄 Synchroniser l'onglet avec la prop mode (sidebar)
+  useEffect(() => {
+    if (mode === 'archive') {
+      setTabMode('archive');
+    } else if (canIntake) {
+      setTabMode('preparation');
+    } else {
+      setTabMode('active');
+    }
+  }, [mode]);
 
   // FILTER PANEL
   const [filterOpen, setFilterOpen] = useState(false);
@@ -37,12 +47,18 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
   // PAGINATION
   const [page, setPage] = useState(1);
   const [transmittingId, setTransmittingId] = useState<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const limit = 10;
   const [totalPages, setTotalPages] = useState(1);
   const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     fetchMissions();
+    return () => {
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+    };
   }, [page, tabMode, selectedLeaderId]);
 
   useEffect(() => {
@@ -57,18 +73,29 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
       .catch(console.error);
   }, [canFilter]);
 
+  const enrichmentComplete = (m: Mission) => {
+    return !!m.scopeDescription?.trim() && !!m.methodology?.trim() && !!m.plan?.id && !!m.auditType && !!m.leader?.id;
+  };
+
   const fetchMissions = async () => {
+    // Annuler toute requête précédente encore en vol
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       setLoading(true);
 
-      const typeQuery = tabMode === 'archive' ? 'archive' : tabMode === 'preparation' ? 'active' : 'active';
+      const typeQuery = tabMode === 'archive' ? 'archive' : tabMode === 'preparation' ? 'preparation' : 'active';
 
       let url = `${API_BASE}/missions?type=${typeQuery}&page=${page}&limit=${limit}`;
       if (selectedLeaderId) {
         url += `&leaderId=${selectedLeaderId}`;
       }
 
-      const res = await apiFetch(url);
+      const res = await apiFetch(url, { signal: controller.signal });
 
       const data = await res.json();
 
@@ -82,7 +109,8 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
         setMissions([]);
       }
 
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return; // Requête annulée, ne rien faire
       setError('Erreur lors du chargement des missions');
     } finally {
       setLoading(false);
@@ -115,14 +143,19 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
 
   const displayMissions = filteredMissionsData ?? missions;
 
+  // Compter les missions en préparation (toutes, pas uniquement celles filtrées)
+  const preparationCount = missions.filter(m =>
+    m.status === 'PLANNED' && (!m.preparation || ['INTAKE', 'ENRICHMENT', 'REVIEW'].includes(m.preparation?.phase))
+  ).length;
+
   // Filtrer par phase de préparation
   const tabFilteredMissions = displayMissions.filter(m => {
     if (tabMode === 'preparation') {
-      return m.status === 'PLANNED' && (m.preparation?.phase === 'INTAKE' || m.preparation?.phase === 'ENRICHMENT' || !m.preparation);
+      return m.status === 'PLANNED' && (m.preparation?.phase === 'INTAKE' || m.preparation?.phase === 'ENRICHMENT' || m.preparation?.phase === 'REVIEW' || !m.preparation);
     }
     if (tabMode === 'active') {
-      // Exclure les missions en préparation (PLANNED avec preparation phase)
-      if (m.status === 'PLANNED' && (m.preparation?.phase === 'INTAKE' || m.preparation?.phase === 'ENRICHMENT')) {
+      // Exclure les missions en préparation (PLANNED)
+      if (m.status === 'PLANNED') {
         return false;
       }
       return m.status !== 'CLOSED';
@@ -157,10 +190,18 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
+              title="Missions en cours de saisie ou d'enrichissement"
             >
               <span className="flex flex-col items-center leading-tight">
-                <span>Préparation</span>
-                <span className="text-[10px] font-normal opacity-70">Saisie en cours</span>
+                <span className="flex items-center gap-1.5">
+                  📝 <span>En préparation</span>
+                  {preparationCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-bold leading-none text-white bg-emerald-500 rounded-full">
+                      {preparationCount}
+                    </span>
+                  )}
+                </span>
+                <span className="text-[10px] font-normal opacity-70">Saisie ou enrichissement en attente</span>
               </span>
             </button>
             <button
@@ -170,10 +211,11 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
+              title="Missions lancées et en cours d'exécution"
             >
               <span className="flex flex-col items-center leading-tight">
-                <span>Actives</span>
-                <span className="text-[10px] font-normal opacity-70">En exécution</span>
+                <span className="flex items-center gap-1.5">🚀 <span>En cours</span></span>
+                <span className="text-[10px] font-normal opacity-70">Missions actuellement en exécution</span>
               </span>
             </button>
             <button
@@ -183,10 +225,11 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
+              title="Missions clôturées et archivées"
             >
               <span className="flex flex-col items-center leading-tight">
-                <span>Archives</span>
-                <span className="text-[10px] font-normal opacity-70">Terminées</span>
+                <span className="flex items-center gap-1.5">📦 <span>Clôturées</span></span>
+                <span className="text-[10px] font-normal opacity-70">Missions terminées et archivées</span>
               </span>
             </button>
           </div>
@@ -364,7 +407,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                           Voir détails mission
                         </button>
 
-                        {(canUpdate || (canIntake && m.status === 'PLANNED')) && (
+                        {((canUpdate || canEnrich) || (canIntake && m.status === 'PLANNED')) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -372,8 +415,12 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                               navigate(`/missions/${m.id}/edit`);
                             }
                           }}
-                          disabled={m.status !== 'PLANNED'}
-                          title={m.status !== 'PLANNED' ? 'Seules les missions "Planifiées" peuvent être modifiées' : 'Modifier cette mission'}
+                          disabled={m.status !== 'PLANNED' || (canIntake && !canEnrich && m.preparation?.phase !== 'INTAKE')}
+                          title={
+                            m.status !== 'PLANNED' ? 'Seules les missions planifiées sont modifiables' :
+                            canIntake && !canEnrich && m.preparation?.phase !== 'INTAKE' ? 'Mission déjà transmise' :
+                            'Compléter les informations'
+                          }
                           className={`px-3 py-1.5 rounded-lg border transition text-slate-700 dark:text-slate-200 ${
                             m.status === 'PLANNED'
                               ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer'
@@ -388,7 +435,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                         <button
                           onClick={async (e) => {
                             e.stopPropagation();
-                            if (!confirm('Transmettre cette mission au chef du service audit ?')) return;
+                            if (!confirm('Transmettre cette mission au service audit ?')) return;
                             setTransmittingId(m.id);
                             try {
                               const res = await apiFetch(`${API_BASE}/missions/${m.id}/preparation`, {
@@ -415,7 +462,78 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                             : 'border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
                           }`}
                         >
-                          {transmittingId === m.id ? 'Transmission...' : 'Transmettre'}
+                          {transmittingId === m.id ? 'Transmission...' : 'Transmettre au service audit'}
+                        </button>
+                        )}
+
+                        {tabMode === 'preparation' && m.preparation?.phase === 'ENRICHMENT' && canEnrich && (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!confirm('Soumettre cette mission en phase de revue pour finaliser le cadrage ?')) return;
+                            setTransmittingId(m.id);
+                            try {
+                              const res = await apiFetch(`${API_BASE}/missions/${m.id}/preparation`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ phase: 'REVIEW', reason: 'Enrichissement terminé' }),
+                              });
+                              const data = res.ok ? null : await res.json().catch(() => null);
+                              if (res.ok) {
+                                fetchMissions();
+                              } else {
+                                alert(data?.error || 'Erreur');
+                              }
+                            } catch (err) {
+                              alert('Erreur réseau');
+                              console.error(err);
+                            } finally {
+                              setTransmittingId(null);
+                            }
+                          }}
+                          disabled={transmittingId === m.id || !enrichmentComplete(m)}
+                          title={!enrichmentComplete(m) ? 'Complétez d\'abord le cadrage (scope, méthodologie, plan, type, chef de mission)' : ''}
+                          className={`px-3 py-1.5 rounded-lg border transition text-sm font-semibold ${transmittingId === m.id || !enrichmentComplete(m)
+                            ? 'border-violet-100 dark:border-violet-900 bg-violet-100 dark:bg-violet-900/20 text-violet-400 dark:text-violet-500 cursor-not-allowed'
+                            : 'border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-950 text-violet-700 dark:text-violet-300'
+                          }`}
+                        >
+                          {transmittingId === m.id ? 'Envoi...' : 'Passer à la revue'}
+                        </button>
+                        )}
+
+                        {tabMode === 'preparation' && m.status === 'PLANNED' && m.preparation?.phase === 'REVIEW' && canFinalize && (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!confirm('Publier cette mission ? Le Chef de mission pourra alors démarrer l\'exécution.')) return;
+                            setTransmittingId(m.id);
+                            try {
+                              const res = await apiFetch(`${API_BASE}/missions/${m.id}/preparation/finalize`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ reason: '' }),
+                              });
+                              const data = res.ok ? null : await res.json().catch(() => null);
+                              if (res.ok) {
+                                fetchMissions();
+                              } else {
+                                alert(data?.error || 'Erreur');
+                              }
+                            } catch (err) {
+                              alert('Erreur réseau');
+                              console.error(err);
+                            } finally {
+                              setTransmittingId(null);
+                            }
+                          }}
+                          disabled={transmittingId === m.id}
+                          className={`px-3 py-1.5 rounded-lg border transition text-sm font-semibold ${transmittingId === m.id
+                            ? 'border-emerald-100 dark:border-emerald-900 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-400 dark:text-emerald-500 cursor-wait'
+                            : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                          }`}
+                        >
+                          {transmittingId === m.id ? 'Publication...' : 'Publier la mission'}
                         </button>
                         )}
 

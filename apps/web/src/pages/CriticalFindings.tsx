@@ -11,7 +11,14 @@ interface Finding {
   description: string;
   status: string;
   riskLevel?: { name: string; level?: number };
-  mission?: { id: number; title: string };
+  mission?: {
+    id: number;
+    title: string;
+    members?: Array<{
+      user?: { firstName: string; lastName: string };
+      roleInMission: string;
+    }>;
+  };
   severityScore?: number;
 }
 
@@ -43,7 +50,7 @@ export default function CriticalFindings() {
   }, []);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 px-6 lg:px-0 py-8">
+    <div className="max-w-7xl mx-auto space-y-6 px-6 lg:px-0 py-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
@@ -74,8 +81,9 @@ export default function CriticalFindings() {
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-slate-600">
               <tr>
-                <th className="px-6 py-4">Titre</th>
+                <th className="px-6 py-4">Constat</th>
                 <th className="px-6 py-4">Mission</th>
+                <th className="px-6 py-4">Membres</th>
                 <th className="px-6 py-4">Risque</th>
                 <th className="px-6 py-4">Statut</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -85,7 +93,21 @@ export default function CriticalFindings() {
               {findings.map(f => (
                 <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                   <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{f.title}</td>
-                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{f.mission?.title || '-'}</td>
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300 whitespace-normal break-words min-w-[160px]">{f.mission?.title || '-'}</td>
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
+                    {f.mission?.members?.length ? (
+                      <div className="flex flex-col gap-0.5">
+                        {f.mission.members.map((m, i) => (
+                          <span key={i} className="text-xs">
+                            {m.user ? `${m.user.firstName} ${m.user.lastName}` : '—'}
+                            {m.roleInMission ? ` (${m.roleInMission})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300">
                       Critique

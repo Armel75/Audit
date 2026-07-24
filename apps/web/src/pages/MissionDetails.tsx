@@ -62,7 +62,7 @@ interface Mission {
   status: string;
   startDate: string | null;
   endDate: string | null;
-  leader?: { firstName: string; lastName: string } | null;
+  leader?: { id: number; firstName: string; lastName: string } | null;
   plan?: { year: number; title: string | null } | null;
   auditType: { name: string } | null;
   findings: Finding[];
@@ -738,7 +738,12 @@ export default function MissionDetails() {
   //const currentAction = missionTransitions[mission.status];
   const currentActions = missionTransitions[mission.status] || [];
   // Permissions granulaires par action/étape
-  const canLaunchMission = user?.permissions?.includes('audit_mission:launch') ?? false;
+  const isSecretary = userPerms.includes('audit_mission:intake') && !userPerms.includes('audit_mission:enrich');
+  const canLaunchMission = !isSecretary && (user?.permissions?.includes('audit_mission:launch') ?? false) && (
+    userPerms.includes('audit_mission:enrich') ||
+    mission.leader?.id === user?.id ||
+    mission.members.some(m => m.user?.id === user?.id)
+  );
   const canApproveMission = user?.permissions?.includes('audit_mission:approve') ?? false;
   const canSubmitReview = user?.permissions?.includes('audit_mission:submit_review') ?? false;
   const canRollbackMission = user?.permissions?.includes('audit_mission:rollback') ?? false;
@@ -761,11 +766,20 @@ export default function MissionDetails() {
     const perm = actionPermissionMap[action.next];
     return perm === undefined ? false : perm;
   });
-  const canCreateFinding = mission.status === 'IN_PROGRESS';
-  const canViewReport = ['UNDER_REVIEW', 'APPROVED', 'CLOSED'].includes(mission.status);
+  const canCreateFinding = mission.status === 'IN_PROGRESS' && userPerms.includes('finding:create');
+  const canViewReport = !isSecretary && ['UNDER_REVIEW', 'APPROVED', 'CLOSED'].includes(mission.status) && (
+    userPerms.includes('audit_mission:enrich') ||
+    mission.leader?.id === user?.id ||
+    mission.members.some(m => m.user?.id === user?.id)
+  );
   const prepPhase = mission.preparation?.phase;
-  const canEditCadrage = ['PLANNED', 'READY'].includes(mission.status) && prepPhase && prepPhase !== 'INTAKE';
-  const canCreateRecommendation = mission.status === 'IN_PROGRESS';
+  const canAssign = userPerms.includes('audit_mission:assign');
+  const canEditCadrage = ['PLANNED', 'READY'].includes(mission.status) && canAssign;
+  const canCreateRecommendation = mission.status === 'IN_PROGRESS' && userPerms.includes('recommendation:create');
+  const canSeeOrderMission =
+    userPerms.includes('audit_mission:enrich') ||
+    mission.leader?.id === user?.id ||
+    mission.members.some(m => m.user?.id === user?.id);
   const handleQuickStatusChange = async (nextStatus: string) => {
     try {
       const response = await apiFetch(`${API_BASE}/missions/${id}/status`, {
@@ -974,6 +988,29 @@ export default function MissionDetails() {
                 <span className="text-slate-400 italic">Pas de dates définies</span>
               )}
             </div>
+            {/* Infos complémentaires */}
+            <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300 max-w-2xl">
+              {mission.description && (
+                <p className="line-clamp-2">
+                  <span className="font-medium text-slate-700 dark:text-slate-200">Description :</span> {mission.description}
+                </p>
+              )}
+              {mission.objective && (
+                <p className="line-clamp-2">
+                  <span className="font-medium text-slate-700 dark:text-slate-200">Objectif :</span> {mission.objective}
+                </p>
+              )}
+              {mission.scopeDescription && (
+                <p className="line-clamp-2">
+                  <span className="font-medium text-slate-700 dark:text-slate-200">Périmètre :</span> {mission.scopeDescription}
+                </p>
+              )}
+              {mission.methodology && (
+                <p className="line-clamp-2">
+                  <span className="font-medium text-slate-700 dark:text-slate-200">Méthodologie :</span> {mission.methodology}
+                </p>
+              )}
+            </div>
           </div>
           <div className="mt-6 sm:mt-0 flex items-center gap-x-3">
             {/* Badge statut (lecture seule) */}
@@ -1018,23 +1055,16 @@ export default function MissionDetails() {
               </button>
             ))}
             {/* Rapport */}
-            {canViewReport ? (
+            {canViewReport && (
               <Link
                 to={`/missions/${id}/report`}
                 className="inline-flex items-center px-6 py-3 border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 rounded-3xl text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:shadow transition-all duration-200 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500"
               >
                 Voir le rapport
               </Link>
-            ) : (
-              <button
-                disabled
-                title="Disponible après lancement et revue"
-                className="inline-flex items-center px-6 py-3 border border-slate-200 text-slate-400 rounded-3xl cursor-not-allowed shadow-sm"
-              >
-                Voir le rapport
-              </button>
             )}
             {/* Ordre de Mission */}
+            {canSeeOrderMission && (
             <button
               onClick={handleDownloadMissionOrder}
               disabled={generatingOrder}
@@ -1044,6 +1074,7 @@ export default function MissionDetails() {
               <ScrollText className="h-4 w-4" />
               {generatingOrder ? 'Génération…' : 'Ordre de mission'}
             </button>
+            )}
           </div>
         </div>
       </div>
@@ -1764,6 +1795,7 @@ export default function MissionDetails() {
           />
           
           {/* Bloc Conclusion */}
+          {userPerms.includes('audit_mission:update') && (
           <div className="mt-8 p-6 bg-gradient-to-r from-slate-50 to-indigo-50 dark:from-slate-800 dark:to-indigo-950/40 rounded-3xl border border-indigo-100 dark:border-indigo-900">
             <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <ScrollText className="w-5 h-5 text-indigo-500" />
@@ -1819,6 +1851,8 @@ export default function MissionDetails() {
               </button>
             </div>
           </div>
+          )}
+
         </div>
       )}
 
@@ -2419,8 +2453,13 @@ export default function MissionDetails() {
                         <option value="">Sélectionner un type</option>
                         <option value="COMPLIANCE">✅ Conformité</option>
                         <option value="ITGC">🖥️ Contrôles IT généraux (ITGC)</option>
+                        <option value="IT_SECURITY">🛡️ IT & Sécurité</option>
                         <option value="FINANCIAL">💰 Financier</option>
                         <option value="OPERATIONAL">⚙️ Opérationnel</option>
+                        <option value="LOGISTICS">🚚 Logistique & Terrain</option>
+                        <option value="REPUTATION">📰 Réputation</option>
+                        <option value="HR">👥 Ressources Humaines</option>
+                        <option value="SUPPLY_CHAIN">📦 Stock & Supply Chain</option>
                       </select>
                       <p className="text-xs text-slate-500 mt-2">Détermine la nature des procédures d'audit</p>
                     </div>
@@ -2589,8 +2628,13 @@ export default function MissionDetails() {
                       <option value="">Sélectionner un type</option>
                       <option value="COMPLIANCE">✅ Conformité</option>
                       <option value="ITGC">🖥️ Contrôles IT généraux (ITGC)</option>
+                      <option value="IT_SECURITY">🛡️ IT & Sécurité</option>
                       <option value="FINANCIAL">💰 Financier</option>
                       <option value="OPERATIONAL">⚙️ Opérationnel</option>
+                      <option value="LOGISTICS">🚚 Logistique & Terrain</option>
+                      <option value="REPUTATION">📰 Réputation</option>
+                      <option value="HR">👥 Ressources Humaines</option>
+                      <option value="SUPPLY_CHAIN">📦 Stock & Supply Chain</option>
                     </select>
                     <p className="text-xs text-slate-500 mt-2">Détermine la nature des procédures d'audit</p>
                   </div>

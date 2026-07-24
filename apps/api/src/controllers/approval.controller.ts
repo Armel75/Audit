@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 const prisma = require('@audit/database').default;
 import { ApprovalType } from '../types/approval';
 import { evaluateMissionReadiness } from './mission.controller';
+import { NotificationService, NOTIFICATION_TYPES } from '../services/notification.service';
 
 export const getApprovals = async (req: Request, res: Response) => {
   try {
@@ -158,6 +159,33 @@ export const createApproval = async (req: Request, res: Response) => {
       data: approvalData as any
     });
 
+    // 🔔 Notifier les approbateurs (permission approval:decide)
+    try {
+      const entityLabel = missionId
+        ? `la mission #${missionId}`
+        : findingId
+          ? `le constat #${findingId}`
+          : recommendationId
+            ? `la recommandation #${recommendationId}`
+            : auditProgramId
+              ? `le programme #${auditProgramId}`
+              : planId
+                ? `le plan #${planId}`
+                : 'une entité';
+
+      await NotificationService.notifyPermissionHolders(
+        tenantId,
+        'approval:decide',
+        NOTIFICATION_TYPES.APPROVAL_REQUESTED,
+        'Approbation requise',
+        `Une demande d'approbation vous attend concernant ${entityLabel}.`,
+        missionId ?? undefined,
+        userId,
+      );
+    } catch (notifErr) {
+      console.error('Erreur notification approbation:', notifErr);
+    }
+
     res.status(201).json(approval);
   } catch (error: any) {
     console.error('Error creating approval:', error);
@@ -294,6 +322,31 @@ export const decideApproval = async (req: Request, res: Response) => {
 
       return updatedApproval;
     });
+
+    // 🔔 Notifier le demandeur de la décision
+    if (approval.requestedById) {
+      try {
+        const decisionLabel = decision === 'APPROVED' ? 'approuvée' : 'rejetée';
+        const entityLabel = approval.missionId
+          ? `la mission #${approval.missionId}`
+          : approval.findingId
+            ? `le constat #${approval.findingId}`
+            : approval.recommendationId
+              ? `la recommandation #${approval.recommendationId}`
+              : 'une entité';
+
+        await NotificationService.notify({
+          tenantId,
+          type: decision === 'APPROVED' ? NOTIFICATION_TYPES.APPROVAL_DECISION : NOTIFICATION_TYPES.APPROVAL_DECISION,
+          title: `Approbation ${decisionLabel}`,
+          message: `Votre demande d'approbation pour ${entityLabel} a été ${decisionLabel}.`,
+          missionId: approval.missionId ?? undefined,
+          recipientIds: [approval.requestedById],
+        });
+      } catch (notifErr) {
+        console.error('Erreur notification décision approbation:', notifErr);
+      }
+    }
 
     res.json(result);
 

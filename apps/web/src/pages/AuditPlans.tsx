@@ -119,7 +119,7 @@ export default function AuditPlans() {
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Plans d'Audit Annuels</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
             Gérez la planification stratégique des audits par année.
           </p>
         </div>
