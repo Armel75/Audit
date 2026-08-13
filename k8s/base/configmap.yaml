@@ -1,0 +1,42 @@
+# =============================================================================
+# Variables d'environnement NON sensibles de l'API (ConfigMap)
+# À adapter selon votre environnement (valeurs issues du .env).
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: audit-config
+  namespace: audit
+data:
+  # ── API ──────────────────────────────────────────────────────────────────
+  NODE_ENV: "production"
+  API_PORT: "3007"
+  JWT_EXPIRES_IN: "2h"
+  JWT_REFRESH_EXPIRES_IN: "30d"
+  WEB_ORIGIN: "http://localhost:80"
+
+  # ── Stockage des fichiers uploadés / PDF ─────────────────────────────────
+  STORAGE_PATH: "/app/.storage"
+
+  # ── Bootstrap (admin de secours au 1er démarrage) ────────────────────────
+  BOOTSTRAP_ENABLED: "false"
+  BOOTSTRAP_ADMIN_ROLE: "SUPER_ADMIN"
+  BOOTSTRAP_ADMIN_EMAIL: "admin@audit.local"
+  BOOTSTRAP_ADMIN_MATRICULE: "ADMIN001"
+  BOOTSTRAP_TENANT_ID: "1"
+  BOOTSTRAP_ADMIN_FIRST_NAME: "Admin"
+  BOOTSTRAP_ADMIN_LAST_NAME: "System"
+  BOOTSTRAP_ADMIN_STATUS: "ACTIVE"
+
+  # ── Synchronisation GLPI (optionnelle) ───────────────────────────────────
+  GLPI_DB_HOST: "192.168.0.105"
+  GLPI_DB_PORT: "3306"
+  GLPI_DB_USER: "root"
+  GLPI_DB_NAME: "glpi"
+
+  # ── Email (optionnel) ────────────────────────────────────────────────────
+  SMTP_HOST: "192.168.0.247"
+  SMTP_PORT: "587"
+  SMTP_USER: "support@groupesorepco.com"
+  EMAIL_FROM: "SISAR Audit <support@groupesorepco.com>"
+  WEB_APP_URL: "http://localhost:5173/audit"

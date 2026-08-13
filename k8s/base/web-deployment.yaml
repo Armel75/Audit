@@ -1,0 +1,46 @@
+# =============================================================================
+# Frontend web (Nginx)
+# L'image audit-web (Nginx) sert le build sous /audit/ ET proxifie /api/audit
+# et /storage vers le Service "api:3007" — comportement identique à
+# docker-compose. Le pod web est donc la SEULE entrée du trafic utilisateur.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: audit
+  labels:
+    app: audit
+    tier: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit
+      tier: web
+  template:
+    metadata:
+      labels:
+        app: audit
+        tier: web
+    spec:
+      containers:
+        - name: web
+          image: audit-web:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /audit/
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

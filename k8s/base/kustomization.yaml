@@ -1,0 +1,18 @@
+# =============================================================================
+# Base — SISAR Audit (manifests communs à tous les environnements)
+# Utilisée par les overlays staging/production et par `kubectl apply -k k8s`
+# (le kustomization racine délègue vers ./base).
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - storage.yaml
+  - api-deployment.yaml
+  - api-service.yaml
+  - web-deployment.yaml
+  - web-service.yaml
+  - ingress.yaml

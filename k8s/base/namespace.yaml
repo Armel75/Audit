@@ -1,0 +1,10 @@
+# =============================================================================
+# Namespace dédié à l'application Audit
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: audit
+  labels:
+    app.kubernetes.io/name: audit
+    app.kubernetes.io/part-of: sisar

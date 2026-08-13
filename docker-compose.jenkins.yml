@@ -1,0 +1,65 @@
+# =============================================================================
+# docker-compose.jenkins.yml — Jenkins pour SISAR Audit
+# -----------------------------------------------------------------------------
+#   - jenkins : contrôleur Jenkins LTS (Node 20 + CLI Docker inclus)
+#   - dind    : daemon Docker-in-Docker (permet au pipeline de lancer des
+#               conteneurs : base de test éphémère, builds d'images, etc.)
+#
+# Usage :
+#   make jenkins:up    → docker compose -f docker-compose.jenkins.yml up -d --build
+#   make jenkins:down  → docker compose -f docker-compose.jenkins.yml down
+#   UI Jenkins : http://localhost:8080
+#
+# NB : le mode Docker-in-Docker exige le mode privilégié (OK sous Docker Desktop
+# et sous Docker Linux). Sur Windows, veillez à utiliser le moteur Linux.
+# =============================================================================
+services:
+  # ── Contrôleur Jenkins ────────────────────────────────────────────────────
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    container_name: audit-jenkins
+    ports:
+      - "8080:8080"   # Interface web
+      - "50000:50000" # Connexion des agents
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    environment:
+      # Premier démarrage : désactive l'assistant, admin/mot de passe fournis
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+      JENKINS_ADMIN_ID: ${JENKINS_ADMIN_ID:-admin}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-admin123}
+      # Daemon Docker utilisé par la CLI (service dind ci-dessous)
+      DOCKER_HOST: tcp://dind:2375
+      # Réseau d'entreprise (proxy) : passer ces variables si besoin
+      # HTTP_PROXY: http://proxy:port
+      # HTTPS_PROXY: http://proxy:port
+      # NO_PROXY: localhost,127.0.0.1,dind
+    depends_on:
+      - dind
+    restart: unless-stopped
+    networks:
+      - audit-jenkins-network
+
+  # ── Daemon Docker-in-Docker ───────────────────────────────────────────────
+  dind:
+    image: docker:dind
+    container_name: audit-jenkins-dind
+    privileged: true
+    environment:
+      # TLS désactivé pour un accès simple depuis le contrôleur (réseau privé)
+      DOCKER_TLS_CERTDIR: ""
+    volumes:
+      - dind_data:/var/lib/docker
+    restart: unless-stopped
+    networks:
+      - audit-jenkins-network
+
+volumes:
+  jenkins_home:
+  dind_data:
+
+networks:
+  audit-jenkins-network:
+    driver: bridge

@@ -1,0 +1,17 @@
+# =============================================================================
+# Volume persistant — stockage des uploads et PDF (/app/.storage)
+# StorageClass "local-path" = provisionneur par défaut de k3s (mono-nœud).
+# Pour un cluster multi-nœuds, remplacer par un stockage partagé (NFS…).
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: audit-storage-pvc
+  namespace: audit
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi

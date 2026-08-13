@@ -1,0 +1,16 @@
+# =============================================================================
+# Prometheus — configuration SISAR Audit
+# Scrape l'API sur /metrics (réseau audit-network, service "api:3007").
+# =============================================================================
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'sisar-api'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['api:3007']
+        labels:
+          app: audit
+          service: sisar-api

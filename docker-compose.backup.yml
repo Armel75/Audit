@@ -1,0 +1,31 @@
+# =============================================================================
+# docker-compose.backup.yml — Sauvegarde / DR de la base SQL Server
+# -----------------------------------------------------------------------------
+#   - db-backup : backup natif planifié (BACKUP + RESTORE VERIFYONLY + rétention)
+#     vers ./backups sur l'hôte. Identifiants dérivés de DATABASE_URL (aucun
+#     secret dupliqué).
+#
+# Usage :
+#   make backup:up            → service planifié (backup immédiat puis /24h)
+#   make backup:now           → backup manuel immédiat
+#   make backup:test-restore  → drill DR (restauration sur instance de TEST)
+# =============================================================================
+services:
+  db-backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    container_name: audit-db-backup
+    environment:
+      # Base à sauvegarder (les identifiants sont extraits de cette URL)
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL requise (voir .env)}
+      BACKUP_DIR: /backups
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      RETENTION_DAYS: ${RETENTION_DAYS:-14}
+      DB_NAME: ${DB_NAME:-AuditDB}
+    volumes:
+      - ./backups:/backups
+    extra_hosts:
+      # Permet au drill DR d'atteindre une instance de test sur l'hôte
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

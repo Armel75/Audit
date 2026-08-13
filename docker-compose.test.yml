@@ -1,0 +1,77 @@
+# =============================================================================
+# docker-compose.test.yml — exécution des tests en conteneurs
+#   - sqlserver-test : SQL Server ISOLÉ pour les tests (port hôte 14333)
+#   - test           : tests unitaires + intégration (base dédiée AuditDB_Test)
+#   - test-e2e       : Playwright (profil "e2e" — optionnel, app déjà démarrée)
+#
+# Usage :
+#   make test:docker
+#   docker compose -f docker-compose.test.yml --profile e2e run --rm test-e2e
+# =============================================================================
+services:
+  # ── SQL Server de test (isolé de la base de production) ──────────────────
+  sqlserver-test:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: audit-test-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD:-DevPassword123!}
+      MSSQL_PID: Developer
+      MSSQL_TCP_PORT: 1433
+    ports:
+      - "14333:1433"
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${SA_PASSWORD:-DevPassword123!}" -C -Q "SELECT 1"
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - audit-test-network
+
+  # ── Tests (unitaires + intégration) ─────────────────────────────────────
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: audit-tests
+    environment:
+      # Base de test dédiée, créée/migrée/seedée par npm run test:setup
+      DATABASE_URL: "sqlserver://sa:${SA_PASSWORD:-DevPassword123!}@sqlserver-test:1433;database=AuditDB_Test;encrypt=true;trustServerCertificate=true"
+      JWT_SECRET: test-jwt-secret
+      JWT_EXPIRES_IN: 2h
+      JWT_REFRESH_EXPIRES_IN: 30d
+      BOOTSTRAP_ADMIN_EMAIL: admin@audit.local
+      BOOTSTRAP_ADMIN_PASSWORD: admin123
+      BOOTSTRAP_ADMIN_ROLE: SUPER_ADMIN
+      BOOTSTRAP_ADMIN_MATRICULE: ADMIN001
+      BOOTSTRAP_TENANT_ID: "1"
+      BOOTSTRAP_ADMIN_FIRST_NAME: Admin
+      BOOTSTRAP_ADMIN_LAST_NAME: System
+      BOOTSTRAP_ADMIN_STATUS: ACTIVE
+      STORAGE_PATH: .storage
+    depends_on:
+      sqlserver-test:
+        condition: service_healthy
+    command: ["sh", "-c", "npm run test:setup && npm run test"]
+    networks:
+      - audit-test-network
+
+  # ── Tests e2e (Playwright) — optionnels, app déjà démarrée sur l'hôte ───
+  test-e2e:
+    image: mcr.microsoft.com/playwright:v1.62.1-jammy
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      # Cible : l'app servie par l'hôte (make up:ext) sur le port 80
+      E2E_BASE_URL: http://host.docker.internal/audit
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["npx", "playwright", "test"]
+    profiles: ["e2e"]
+
+networks:
+  audit-test-network:
+    driver: bridge

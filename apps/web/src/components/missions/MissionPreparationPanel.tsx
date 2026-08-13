@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CheckCircle2, ChevronRight, Clock3, Loader2, RotateCcw, Sparkles } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { getMissionStatusMeta } from '../../utils/status';
+import { getMissionStatusMeta, type MissionStatus } from '../../utils/status';
 
 type MissionPreparationHistory = {
   id: number;
@@ -178,7 +178,7 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
             Phase {phaseIndex + 1}/3
           </span>
           <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-300">
-            Mission {getMissionStatusMeta(mission.status).label}
+            Mission {getMissionStatusMeta(mission.status as MissionStatus).label}
           </span>
         </div>
       </div>

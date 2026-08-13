@@ -31,10 +31,72 @@ jobs:
       - name: TypeScript Check — Web
         run: cd apps/web && npx tsc --noEmit
 
-  # ── Job 2 : Build complet ───────────────────────────────────────────
+  # ── Job 2 : Tests unitaires + couverture ──────────────────────────
+  test:
+    name: 🧪 Tests unitaires + couverture
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run prisma:generate
+
+      - name: Tests unitaires (Vitest)
+        run: npm run test:unit
+
+      - name: Gate de couverture (API unitaire)
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+  # ── Job 2 bis : Sécurité (dépendances + scan fichiers) ──────────────────
+  security:
+    name: 🔒 Sécurité (npm audit + Trivy)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Audit des dépendances — NON BLOQUANT au départ (baseline à assainir).
+      # NB : registre officiel requis (le miroir npmmirror n'implémente pas
+      # l'audit ; npmjs est bloqué par le pare-feu local mais accessible ici).
+      - name: npm audit (dépendances)
+        run: |
+          npm audit --audit-level=high --registry=https://registry.npmjs.org \
+            || echo "⚠️ Vulnérabilités HIGH/CRITICAL détectées — voir le log ci-dessus"
+
+      # Scan Trivy du dépôt (package-lock.json, Dockerfiles, manifests k8s)
+      - name: Trivy — scan fichiers
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: 0
+          ignore-unfixed: true
+
+  # ── Job 3 : Build complet ─────────────────────────────────────────
   build:
     name: 🏗️ Build
-    needs: lint
+    needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +124,7 @@ jobs:
           name: web-dist
           path: apps/web/dist/
 
-  # ── Job 3 : Build Docker & Scan ────────────────────────────────────
+  # ── Job 4 : Build Docker & Scan ──────────────────────────────────
   docker:
     name: 🐳 Docker Build
     needs: build
@@ -79,6 +141,7 @@ jobs:
           context: .
           file: Dockerfile.api
           push: false
+          load: true
           tags: audit-api:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -89,9 +152,29 @@ jobs:
           context: .
           file: Dockerfile.web
           push: false
+          load: true
           tags: audit-web:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Scans Trivy des images construites (non bloquant au départ)
+      - name: Trivy — scan image API
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: audit-api:ci
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: 0
+          ignore-unfixed: true
+
+      - name: Trivy — scan image Web
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: audit-web:ci
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: 0
+          ignore-unfixed: true
 
       - name: ✅ Docker images built successfully
         run: |

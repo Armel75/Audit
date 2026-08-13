@@ -1,0 +1,38 @@
+# =============================================================================
+# Dockerfile.jenkins — Contrôleur Jenkins pour SISAR Audit
+# -----------------------------------------------------------------------------
+# Contient : Jenkins LTS (JDK 17) + Node.js 20 + CLI Docker
+# (le daemon Docker est fourni par le service Docker-in-Docker "dind").
+# =============================================================================
+
+# ── Image source : Node 20 (binaires copiés, pas de téléchargement réseau) ─
+FROM node:20-bookworm-slim AS node-base
+
+# ── Image finale : Jenkins LTS ───────────────────────────────────────────────
+FROM jenkins/jenkins:lts-jdk17
+
+USER root
+
+# Correction réseau d'entreprise (proxy MITM) : désactiver la vérification
+# HTTPS d'apt (les certificats du proxy interne ne sont pas dans l'image)
+RUN echo 'Acquire::https::Verify-Peer "false";' > /etc/apt/apt.conf.d/99no-verify \
+    && echo 'Acquire::https::Verify-Host "false";' >> /etc/apt/apt.conf.d/99no-verify \
+    && echo 'Acquire::http::Verify-Peer "false";' >> /etc/apt/apt.conf.d/99no-verify
+
+# CLI Docker (pour orchestrer les conteneurs via le daemon dind)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    docker.io \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js 20 (binaires depuis l'image officielle node:20)
+COPY --from=node-base /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-base /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -sf /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
+# Vérification
+RUN node --version && npm --version && docker --version
+
+USER jenkins

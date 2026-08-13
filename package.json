@@ -15,19 +15,32 @@
     "start": "npm run start --workspace=@audit/api",
     "prisma:generate": "npm run generate --workspace=@audit/database",
     "prisma:migrate": "npm run migrate --workspace=@audit/database",
-    "clean": "rm -rf apps/*/dist"
+    "clean": "rm -rf apps/*/dist",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "vitest run --project api:unit --project web",
+    "test:coverage": "vitest run --project api:unit --coverage",
+    "test:integration": "vitest run --project api:integration",
+    "test:setup": "tsx scripts/setup-test-db.ts",
+    "test:e2e": "playwright test",
+    "test:docker": "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
     "exceljs": "^4.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^4.1.10",
     "concurrently": "^8.2.2",
+    "mssql": "^12.7.0",
+    "supertest": "^7.2.2",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "~5.8.2"
+    "typescript": "~5.8.2",
+    "vitest": "^4.1.10"
   }
 }

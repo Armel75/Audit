@@ -1,0 +1,71 @@
+# =============================================================================
+# API (Express + Prisma + Puppeteer)
+# - Environnement : ConfigMap audit-config + Secret audit-secrets
+# - /app/.storage : PVC (uploads + PDF)
+# - /dev/shm      : emptyDir Memory (remplace shm_size=1gb de docker-compose,
+#                   nécessaire à Chromium/Puppeteer)
+# - L'entrypoint de l'image applique `prisma migrate deploy` puis démarre.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: audit
+  labels:
+    app: audit
+    tier: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit
+      tier: api
+  template:
+    metadata:
+      labels:
+        app: audit
+        tier: api
+    spec:
+      containers:
+        - name: api
+          image: audit-api:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3007
+              name: http
+          envFrom:
+            - configMapRef:
+                name: audit-config
+            - secretRef:
+                name: audit-secrets
+          volumeMounts:
+            - name: audit-storage
+              mountPath: /app/.storage
+            - name: dshm
+              mountPath: /dev/shm
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3007
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3007
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: audit-storage
+          persistentVolumeClaim:
+            claimName: audit-storage-pvc
+        - name: dshm
+          emptyDir:
+            medium: Memory

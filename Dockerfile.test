@@ -1,0 +1,44 @@
+# =============================================================================
+# Dockerfile TEST — exécute les tests du monorepo Audit (unitaires + intégration)
+# Utilisé par docker-compose.test.yml
+# =============================================================================
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+# Correction réseau d'entreprise : désactiver la vérification HTTPS d'apt
+# (les certificats du proxy interne ne sont pas présents dans l'image Docker)
+RUN echo 'Acquire::https::Verify-Peer "false";' > /etc/apt/apt.conf.d/99no-verify \
+    && echo 'Acquire::https::Verify-Host "false";' >> /etc/apt/apt.conf.d/99no-verify \
+    && echo 'Acquire::http::Verify-Peer "false";' >> /etc/apt/apt.conf.d/99no-verify
+
+# OpenSSL requis par Prisma
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Config npm (proxy / miroir d'entreprise)
+COPY .npmrc ./
+COPY package.json package-lock.json tsconfig.base.json tsconfig.json vitest.config.ts playwright.config.ts ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/database/package.json packages/database/
+COPY packages/shared/package.json packages/shared/
+
+# Installation complète (développement : inclut les dépendances de test)
+RUN npm install
+
+# Sources complètes (node_modules, .env et .git sont exclus via .dockerignore)
+COPY . .
+
+# Générer le client Prisma
+RUN npm run prisma:generate
+
+# Build des packages workspace requis par les tests
+# (dist/@audit/database, dist/@audit/shared, dist/@audit/api)
+RUN npm run build --workspace=@audit/shared \
+    && npm run build --workspace=@audit/database \
+    && npm run build --workspace=@audit/api
+
+# Par défaut : tests unitaires + intégration
+# (surcouche par docker-compose.test.yml : test:setup && test)
+CMD ["npm", "test"]

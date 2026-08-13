@@ -7,7 +7,12 @@ import dotenv from 'dotenv';
 // importer ce fichier avant tout autre garantit que dotenv.config() tourne
 // avant que storage.ts (ou tout module lisant process.env) ne soit évalué.
 
-const envPath = path.resolve(__dirname, '../../../../.env');
+// __dirname est défini en CJS (tsx/tsc) mais absent en ESM (Vitest) :
+// fallback vers le répertoire de travail (racine du repo) dans ce cas.
+const envPath =
+  typeof __dirname !== 'undefined'
+    ? path.resolve(__dirname, '../../../../.env')
+    : path.resolve(process.cwd(), '.env');
 
 if (fs.existsSync(envPath)) {
   dotenv.config({ path: envPath });

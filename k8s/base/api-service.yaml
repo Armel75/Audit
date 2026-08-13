@@ -1,0 +1,22 @@
+# =============================================================================
+# Service de l'API
+# ⚠️  Le NOM "api" est OBLIGATOIRE : le Nginx du pod web (image audit-web)
+# proxifie /api/audit et /storage vers http://api:3007 via ce nom de Service
+# (DNS interne du cluster).
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: audit
+  labels:
+    app: audit
+    tier: api
+spec:
+  selector:
+    app: audit
+    tier: api
+  ports:
+    - name: http
+      port: 3007
+      targetPort: 3007

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { logger } from '../config/logger';
 
 declare global {
   namespace Express {
@@ -51,17 +52,15 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   }
 
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    console.log("AUTH HEADER:", req.headers.authorization);
-    console.log("TOKEN:", token);
-    console.log("DECODED:", decoded);
-    console.log("ERROR:", err);
-
+    // 🔒 Ne JAMAIS logger le token / l'en-tête Authorization / le payload :
+    // fuite de secrets en logs. Seul le motif d'échec est loggé (debug).
     if (err) {
+      logger.debug({ reason: err.name }, 'Authentification rejetée : token invalide ou expiré');
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
     if (!isAuthUser(decoded)) {
-      console.log("INVALID PAYLOAD");
+      logger.debug('Authentification rejetée : payload invalide');
       return res.status(401).json({ error: 'Invalid token payload' });
     }
 

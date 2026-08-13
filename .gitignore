@@ -6,3 +6,11 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Playwright (tests e2e)
+test-results/
+playwright-report/
+blob-report/
+
+# Backups SQL Server (ne jamais versionner)
+backups/

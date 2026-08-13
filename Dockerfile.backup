@@ -1,0 +1,13 @@
+# =============================================================================
+# Dockerfile.backup — sauvegarde / restauration SQL Server
+# Utilise l'image officielle mssql-tools (sqlcmd). Boucle : backup immédiat au
+# démarrage puis toutes les BACKUP_INTERVAL_HOURS heures.
+# =============================================================================
+FROM mcr.microsoft.com/mssql-tools:latest
+
+COPY backup/backup.sh /usr/local/bin/backup.sh
+COPY backup/restore-test.sh /usr/local/bin/restore-test.sh
+RUN chmod +x /usr/local/bin/backup.sh /usr/local/bin/restore-test.sh
+
+# Backup immédiat puis planifié ; un échec ne tue pas la boucle
+CMD ["/bin/sh", "-c", "while true; do /usr/local/bin/backup.sh || echo '[BACKUP] échec — nouvel essai au prochain cycle'; sleep $((BACKUP_INTERVAL_HOURS * 3600)); done"]

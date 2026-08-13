@@ -1,0 +1,143 @@
+# =============================================================================
+# CD — Déploiement continu SISAR Audit
+# -----------------------------------------------------------------------------
+#  - push sur main            → déploie STAGING
+#  - tag v* (ex: v1.2.0)      → déploie PRODUCTION
+#  - workflow_dispatch        → choix manuel de l'environnement
+#
+# Images IMMUABLES taguées par le SHA du commit (rollback possible à tout
+# instant : l'ancien tag SHA reste disponible dans le registre).
+#
+# Prérequis (secrets du repo) :
+#   - KUBECONFIG   : kubeconfig du cluster k3s (base64)
+#   - ghcr-pull    : secret docker-registry dans le cluster (kubectl create
+#                    secret docker-registry ghcr-pull ...)
+#   - Protection  : ajouter des required reviewers sur l'environnement
+#                   "production" dans GitHub Settings → Environments.
+# =============================================================================
+name: CD — Déploiement
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environnement cible
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  # ── 1. Build & push des images (immuables, taguées SHA) ─────────────────
+  build-and-push:
+    name: 🐳 Build & push images (${{ github.sha }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.api
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/audit-api:${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}/audit-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push Web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.web
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/audit-web:${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}/audit-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── 2. Déploiement par environnement (overlays kustomize) ───────────────
+  deploy:
+    name: 🚀 Déployer → ${{ matrix.env }}
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.env }}
+    strategy:
+      matrix:
+        include:
+          - env: staging
+            namespace: audit-staging
+          - env: production
+            namespace: audit
+    # staging : push main ou dispatch staging — production : tag v* ou dispatch production
+    if: >-
+      (matrix.env == 'staging' &&
+        (github.event_name == 'push' ||
+         (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')))
+      ||
+      (matrix.env == 'production' &&
+        (startsWith(github.ref, 'refs/tags/v') ||
+         (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')))
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Installer kustomize
+        run: |
+          curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+          kustomize version
+
+      - name: Configurer kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+          kubectl version --client
+
+      # Fixe les images au SHA du commit (overlays : ghcr.io/OWNER/audit-*)
+      - name: Fixer les tags d'images (SHA)
+        run: |
+          cd k8s/overlays/${{ matrix.env }}
+          kustomize edit set image audit-api=${{ env.IMAGE_PREFIX }}/audit-api:${{ github.sha }}
+          kustomize edit set image audit-web=${{ env.IMAGE_PREFIX }}/audit-web:${{ github.sha }}
+          kubectl kustomize . > /tmp/manifest.yaml
+
+      - name: Appliquer les manifests
+        run: kubectl apply -f /tmp/manifest.yaml
+
+      - name: Attendre le rollout
+        run: |
+          kubectl rollout status deployment/api deployment/web \
+            -n ${{ matrix.namespace }} --timeout=300s
+
+      - name: Vérifier la santé
+        run: |
+          kubectl get pods -n ${{ matrix.namespace }}
+          kubectl get svc,ingress -n ${{ matrix.namespace }}

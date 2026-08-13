@@ -1,0 +1,55 @@
+# =============================================================================
+# docker-compose.monitoring.yml — Observabilité SISAR Audit
+# -----------------------------------------------------------------------------
+#   - prometheus : scrape l'API sur /metrics (même réseau que l'app)
+#   - grafana    : dashboards provisionnés (UI sur http://localhost:3001)
+#
+# Prérequis : l'application doit tourner (make up:ext) pour que le service
+# "api" soit présent sur le réseau audit-network.
+#
+# Usage :
+#   make observability:up    → docker compose -f docker-compose.monitoring.yml up -d
+#   Grafana : http://localhost:3001  (admin / admin)
+# =============================================================================
+services:
+  # ── Prometheus ────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: audit-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+    networks:
+      - audit-network
+
+  # ── Grafana ───────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: audit-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    restart: unless-stopped
+    networks:
+      - audit-network
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  # Même réseau que docker-compose.yml (réutilisé s'il existe déjà)
+  audit-network:
+    driver: bridge
