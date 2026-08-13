@@ -265,7 +265,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex flex-col gap-3 w-full lg:w-auto">
-                {user?.permissions?.includes('audit_mission:create') && (
+                {user?.permissions?.includes('audit_mission:create') && user?.permissions?.includes('audit_mission:intake') && (
                   <Link
                     to="/missions/new"
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:from-emerald-600 hover:to-emerald-700 hover:shadow-md active:scale-[0.97]"
@@ -382,7 +382,7 @@ export default function Dashboard() {
                     <span className="text-xs text-slate-500 dark:text-slate-400">{kpis.missionsTotal} missions</span>
                   </div>
                   <div className="h-[240px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 240 }}>
                       <PieChart>
                         <Pie data={missionPieData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3}>
                           {missionPieData.map((entry: any) => (<Cell key={entry.name} fill={entry.color} />))}
@@ -485,7 +485,7 @@ export default function Dashboard() {
                       <TrendingUp className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
                     <div className="h-[240px]">
-                      <ResponsiveContainer width="100%" height="100%">
+                      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 240 }}>
                         <LineChart data={performance.findingsTrend}>
                           <CartesianGrid vertical={false} stroke="#e2e8f0" />
                           <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
@@ -507,7 +507,7 @@ export default function Dashboard() {
                       <Users className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
                     <div className="h-[200px]">
-                      <ResponsiveContainer width="100%" height="100%">
+                      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 200 }}>
                         <BarChart data={performance.auditorWorkload} layout="vertical" margin={{ left: 10, right: 10 }}>
                           <CartesianGrid horizontal={false} stroke="#e2e8f0" />
                           <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
@@ -541,7 +541,7 @@ export default function Dashboard() {
                   <span className="text-xs text-slate-500 dark:text-slate-400">{findingsSummary?.open ?? 0} constats</span>
                 </div>
                 <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 240 }}>
                     <BarChart data={findingsByRisk}>
                       <CartesianGrid vertical={false} stroke="#e2e8f0" />
                       <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={12} />
@@ -650,7 +650,7 @@ export default function Dashboard() {
                     <span className="text-xs text-slate-500 dark:text-slate-400">charges de remédiation</span>
                   </div>
                   <div className="h-[320px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 320 }}>
                       <BarChart data={recommendationsByDepartment} layout="vertical" margin={{ left: 10, right: 10 }}>
                         <CartesianGrid horizontal={false} stroke="#e2e8f0" />
                         <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />

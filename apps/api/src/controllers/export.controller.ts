@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { getFindingsRecommendationsExportData } from '../services/export.service';
-import { generatePDF } from '../services/report.service';
+import { generatePDF, escapeHtml } from '../services/report.service';
 
 // GET /export/findings-recommendations/pdf
 export async function exportFindingsRecommendationsPDF(req: Request, res: Response) {
@@ -44,9 +44,9 @@ export async function exportFindingsRecommendationsPDF(req: Request, res: Respon
     ${(data && data.length > 0)
       ? data.map((item: any) => `
         <div class="mission-block">
-          <div class="mission-title">Mission #${item.mission.id} — ${item.mission.title || ''}</div>
+          <div class="mission-title">Mission #${item.mission.id} — ${escapeHtml(item.mission.title) || ''}</div>
           <div class="mission-meta">
-            Statut : <b>${item.mission.status || '-'}</b> | Chef de mission : <b>${item.mission.leader ? `${item.mission.leader.firstName} ${item.mission.leader.lastName}` : '-'}</b>
+            Statut : <b>${escapeHtml(item.mission.status) || '-'}</b> | Chef de mission : <b>${item.mission.leader ? escapeHtml(`${item.mission.leader.firstName} ${item.mission.leader.lastName}`) : '-'}</b>
           </div>
           <div class="section-title">Constats</div>
           <table>
@@ -55,7 +55,7 @@ export async function exportFindingsRecommendationsPDF(req: Request, res: Respon
             </thead>
             <tbody>
               ${(item.findings && item.findings.length > 0)
-                ? item.findings.map((f: any) => `<tr><td>${f.description || ''}</td><td>${f.impact || ''}</td><td>${f.riskLevel?.name || ''}</td></tr>`).join('')
+                ? item.findings.map((f: any) => `<tr><td>${escapeHtml(f.description) || ''}</td><td>${escapeHtml(f.impact) || ''}</td><td>${escapeHtml(f.riskLevel?.name) || ''}</td></tr>`).join('')
                 : '<tr><td colspan="3" style="text-align:center;color:#94a3b8;">Aucun constat</td></tr>'}
             </tbody>
           </table>
@@ -66,7 +66,7 @@ export async function exportFindingsRecommendationsPDF(req: Request, res: Respon
             </thead>
             <tbody>
               ${(item.recommendations && item.recommendations.length > 0)
-                ? item.recommendations.map((r: any) => `<tr><td>${r.title || ''}</td><td>${r.assigneeName || ''}</td><td>${r.targetDate ? new Date(r.targetDate).toLocaleDateString('fr-FR') : ''}</td><td>${r.status || ''}</td></tr>`).join('')
+                ? item.recommendations.map((r: any) => `<tr><td>${escapeHtml(r.title) || ''}</td><td>${escapeHtml(r.assigneeName) || ''}</td><td>${r.targetDate ? new Date(r.targetDate).toLocaleDateString('fr-FR') : ''}</td><td>${escapeHtml(r.status) || ''}</td></tr>`).join('')
                 : '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">Aucune recommandation</td></tr>'}
             </tbody>
           </table>

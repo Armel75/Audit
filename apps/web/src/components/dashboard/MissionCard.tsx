@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CalendarRange, User2, AlertTriangle, Eye, FileDown, Loader2, MessageCircle } from 'lucide-react';
+import { CalendarRange, User2, AlertTriangle, Eye, FileDown, Loader2, MessageCircle, FileText } from 'lucide-react';
 import { cn, formatDate } from './tokens';
 import { StatusBadge } from './StatusBadge';
 import { apiFetch } from '../../lib/api';
@@ -41,6 +41,13 @@ export function MissionCard({ mission, now }: { mission: any; now: Date }) {
       setIsExporting(false);
     }
   };
+
+  const handleOpenProtocol = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/missions/${mission.id}/protocol`);
+  };
+
   const isOverdue = mission.endDate && new Date(mission.endDate) < now;
   const daysLeft = mission.endDate
     ? Math.ceil((new Date(mission.endDate).getTime() - now.getTime()) / 86400000)
@@ -156,6 +163,15 @@ export function MissionCard({ mission, now }: { mission: any; now: Date }) {
           )}
           {isExporting ? 'Téléchargement...' : 'Exporter informations mission'}
         </button>
+        {mission.status !== 'CANCELLED' && (
+          <button
+            onClick={handleOpenProtocol}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition-colors hover:border-amber-300 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:border-amber-700 dark:hover:bg-amber-900/50 cursor-pointer"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Protocole de mission d'audit
+          </button>
+        )}
       </div>
     </Link>
   );

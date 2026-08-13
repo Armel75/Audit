@@ -52,11 +52,13 @@ router.patch('/:id/preparation', requireAnyPermission([
   'audit_mission:intake',
   'audit_mission:enrich',
   'audit_mission:review_preparation',
+  'audit_mission:transmit_preparation',
 ]), missionPreparationController.updatePreparationPhase);
 router.post('/:id/preparation/finalize', requirePermission('audit_mission:finalize_preparation'), missionPreparationController.finalizePreparation);
 
 // Export infos mission (PDF)
 router.get('/:id/export-info', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.exportMissionInfo);
+router.get('/:id/protocol', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.generateMissionProtocol);
 
 // Aggregated Tickets
 router.get('/:id/tickets', requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), missionController.getMissionTickets);

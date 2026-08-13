@@ -1,0 +1,40 @@
+# Git
+.git/
+.gitignore
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temp
+.tmp/
+coverage/
+
+# Storage (mounted as volume in production)
+.storage/
+
+# SQL dumps (too large for build context)
+*.sql
+*.bak
+*.bacpac

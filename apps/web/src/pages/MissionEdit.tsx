@@ -2,15 +2,20 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import MissionForm from '../components/MissionForm';
 import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 
 export default function MissionEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const userPermissions = (user?.permissions ?? []).map((p: string) => p.toLowerCase());
+  const canEnrich = userPermissions.includes('audit_mission:enrich');
 
   const [mission, setMission] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [emergencyEnrich, setEmergencyEnrich] = useState(false);
   const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -21,8 +26,16 @@ export default function MissionEdit() {
 
         const data = await res.json();
         
-        // Vérifier que le statut est PLANNED pour permettre l'édition
+        // 🔒 Vérifier que le statut est PLANNED pour permettre l'édition complète
         if (data.status !== 'PLANNED') {
+          // 🩹 Porte de secours : un utilisateur avec permission enrich peut
+          // corriger uniquement les champs d'enrichissement (méthodologie, périmètre, etc.)
+          if (canEnrich) {
+            setEmergencyEnrich(true);
+            setMission(data);
+            setLoading(false);
+            return;
+          }
           setError('Seules les missions "Planifiées" peuvent être modifiées');
           setMission(null);
           setLoading(false);
@@ -68,6 +81,7 @@ export default function MissionEdit() {
   return (
     <MissionForm
       mission={mission}
+      emergencyEnrich={emergencyEnrich}
       onSuccess={() => navigate('/missions')}
       onCancel={() => navigate('/missions')}
     />

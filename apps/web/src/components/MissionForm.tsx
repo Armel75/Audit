@@ -21,9 +21,10 @@ interface MissionFormProps {
   onSuccess: () => void;
   onCancel: () => void;
   mission?: any;
+  emergencyEnrich?: boolean;
 }
 
-export default function MissionForm({ onSuccess, onCancel, mission }: MissionFormProps) {
+export default function MissionForm({ onSuccess, onCancel, mission, emergencyEnrich = false }: MissionFormProps) {
   const { user } = useAuth();
   const isEditMode = !!mission;
 
@@ -32,12 +33,24 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
   const canIntake = userPermissions.includes('audit_mission:intake');
   const canEnrich = userPermissions.includes('audit_mission:enrich');
 
-  // 🔒 Verrouillage des champs selon la phase : la secrétaire doit passer en
-  // ENRICHMENT pour que le chef puisse modifier les champs d'enrichissement
+  // 🔒 Verrouillage des champs selon la phase
   const prepPhase = mission?.preparation?.phase;
-  const intakeLocked = isEditMode && (prepPhase === 'ENRICHMENT' || prepPhase === 'REVIEW');
-  const enrichmentLocked = isEditMode && prepPhase === 'INTAKE';
-  const allLocked = isEditMode && !['PLANNED'].includes(mission?.status ?? '');
+  const missionStatus = mission?.status ?? '';
+
+  // 🩹 Mode correction d'urgence : mission post-PLANNED, seul l'enrichissement est éditable
+  // ⚠️ emergencyEnrich ne peut être true que si canEnrich est true (vérifié dans MissionEdit)
+  const isEmergencyEnrich = emergencyEnrich && canEnrich;
+
+  // En mode emergencyEnrich : intake toujours verrouillé, enrichissement toujours déverrouillé
+  const intakeLocked = isEmergencyEnrich
+    ? true
+    : isEditMode && (prepPhase === 'ENRICHMENT' || prepPhase === 'REVIEW');
+  const enrichmentLocked = isEmergencyEnrich
+    ? false
+    : isEditMode && prepPhase === 'INTAKE' && !canEnrich;
+  const allLocked = isEmergencyEnrich
+    ? false
+    : isEditMode && !['PLANNED'].includes(missionStatus);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -155,6 +168,45 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+
+    // 🩹 Mode correction d'urgence : seul l'enrichissement est modifiable
+    if (isEmergencyEnrich) {
+      // En mode urgence, on ne valide que les champs d'enrichissement
+      if (!planId || !leaderId) {
+        setError('Le plan d\'audit et le chef de mission sont obligatoires pour finaliser le cadrage');
+        setSubmitting(false);
+        return;
+      }
+
+      try {
+        const url = `${API_BASE}/missions/${mission.id}`;
+        const payload: any = {
+          scopeDescription,
+          methodology,
+          planId: planId ? Number(planId) : null,
+          auditTypeId: auditTypeId ? Number(auditTypeId) : null,
+          leaderId: leaderId ? Number(leaderId) : null,
+        };
+
+        const res = await apiFetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Erreur lors de la sauvegarde');
+        }
+
+        onSuccess();
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     // Vérifier que seules les missions "PLANNED" peuvent être modifiées
     if (mission && mission.status !== 'PLANNED') {
@@ -277,6 +329,26 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
             </div>
           )}
 
+          {/* 🩹 Bannière correction d'urgence */}
+          {isEmergencyEnrich && (
+            <div className="rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-5 py-4 flex items-start gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-200 dark:bg-amber-800 shrink-0">
+                <AlertCircle className="h-5 w-5 text-amber-700 dark:text-amber-200" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                  Correction du cadrage — Mission déjà en cours
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1 leading-relaxed">
+                  Cette mission a déjà dépassé la phase de préparation. Vous pouvez uniquement modifier les champs de <strong>cadrage</strong> (plan, chef de mission, type d'audit, méthodologie, périmètre). Les informations de base (titre, description, objectif, dates) sont verrouillées.
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
+                  ⚠️ Cette action est tracée. Assurez-vous que les modifications sont justifiées.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* 🔒 Carte récapitulative : saisie initiale de la secrétaire (visible uniquement pour le chef) */}
           {isEditMode && !canIntake && mission && (
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-indigo-200 dark:border-indigo-800 overflow-hidden">
@@ -362,22 +434,26 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
             <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 px-6 py-4 border-b border-indigo-200 dark:border-indigo-900">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                {canIntake && canEnrich
-                  ? 'Informations générales'
-                  : canIntake
-                    ? 'Saisie de base'
-                    : 'Cadrage de la mission'
+                {isEmergencyEnrich
+                  ? 'Correction du cadrage'
+                  : canIntake && canEnrich
+                    ? 'Informations générales'
+                    : canIntake
+                      ? 'Saisie de base'
+                      : 'Cadrage de la mission'
                 }
                 {(intakeLocked || enrichmentLocked) && <Lock className="w-4 h-4 text-slate-400 ml-1" />}
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                {allLocked
-                  ? 'Mission verrouillée (phase REVUE).'
-                  : canIntake && canEnrich
-                    ? 'Remplissez les informations de la mission.'
-                    : canIntake
-                      ? 'Renseignez le socle de départ pour créer le dossier.'
-                      : 'Complétez le cadrage et le périmètre d\'audit.'
+                {isEmergencyEnrich
+                  ? 'Complétez les informations de cadrage manquantes pour débloquer la création de constats.'
+                  : allLocked
+                    ? 'Mission verrouillée (phase REVUE).'
+                    : canIntake && canEnrich
+                      ? 'Remplissez les informations de la mission.'
+                      : canIntake
+                        ? 'Renseignez le socle de départ pour créer le dossier.'
+                        : 'Complétez le cadrage et le périmètre d\'audit.'
                 }
               </p>
             </div>
@@ -504,7 +580,7 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
                 {(intakeLocked && canIntake) && <Lock className="w-4 h-4 text-slate-400 ml-1" />}
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                {allLocked ? 'Mission verrouillée.' : canEnrich ? 'Plan, responsable et calendrier' : 'Calendrier de la mission'}
+                {isEmergencyEnrich ? 'Plan, responsable et calendrier.' : allLocked ? 'Mission verrouillée.' : canEnrich ? 'Plan, responsable et calendrier' : 'Calendrier de la mission'}
               </p>
             </div>
 
@@ -699,10 +775,22 @@ export default function MissionForm({ onSuccess, onCancel, mission }: MissionFor
 
             <button
               type="submit"
-              disabled={submitting || allLocked || (isEditMode && !canEnrich && intakeLocked)}
+              disabled={submitting || allLocked || (isEditMode && !canEnrich && intakeLocked && !isEmergencyEnrich)}
               className="px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
             >
-              {allLocked ? (
+              {isEmergencyEnrich ? (
+                submitting ? (
+                  <>
+                    <span className="inline-block animate-spin">⏳</span>
+                    Correction en cours...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Corriger le cadrage
+                  </>
+                )
+              ) : allLocked ? (
                 <>
                   <Lock className="w-4 h-4" />
                   Mission en phase REVUE

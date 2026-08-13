@@ -3,6 +3,49 @@ export type DashboardPeriod = {
   month?: number;
 };
 
+// ═══ TABLEAU DE BORD MISSIONS ═══
+export type MissionsDashboardSummary = {
+  totalMissions: number;
+  planned: number;
+  inProgress: number;
+  completed: number;
+  cancelled: number;
+  late: number;
+  completionRate: number;
+  findingsCount: number;
+  findingsResolved: number;
+  findingsResolvedRate: number;
+  recosCount: number;
+  recosClosed: number;
+  recoClosureRate: number;
+};
+
+export type MissionsDashboardData = {
+  summary: MissionsDashboardSummary;
+  previousSummary: MissionsDashboardSummary | null;
+  healthScore: number;
+  view: 'all' | 'mine';
+  byStatus: Array<{ status: string; label: string; count: number }>;
+  byAuditType: Array<{ name: string; count: number }>;
+  byLeader: Array<{ leader: string; count: number }>;
+  trend: Array<{ month: string; created: number; closed: number }>;
+  ranking: Array<{
+    id: number;
+    title: string;
+    status: string;
+    startDate: string | null;
+    endDate: string | null;
+    leader: string | null;
+    auditType: string | null;
+    findingsCount: number;
+    findingsResolved: number;
+    recosCount: number;
+    recosClosed: number;
+    recoClosureRate: number;
+    score: number;
+  }>;
+};
+
 export type DGDashboardData = {
   criticalFindingsCount: number;
   criticalRecommendationsOpen: number;

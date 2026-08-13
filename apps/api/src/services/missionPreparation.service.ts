@@ -19,7 +19,7 @@ const preparationPhaseOrder: MissionPreparationPhase[] = [
 
 const TRANSITION_PERMISSIONS: Record<string, Record<string, string>> = {
   [MISSION_PREPARATION_PHASE.INTAKE]: {
-    [MISSION_PREPARATION_PHASE.ENRICHMENT]: 'audit_mission:intake',
+    [MISSION_PREPARATION_PHASE.ENRICHMENT]: 'audit_mission:transmit_preparation',
   },
   [MISSION_PREPARATION_PHASE.ENRICHMENT]: {
     [MISSION_PREPARATION_PHASE.REVIEW]: 'audit_mission:enrich',

@@ -1,3 +1,5 @@
+import { sendNotificationEmail } from './mail.service';
+
 const prisma = require('@audit/database').default;
 
 // ================= TYPES DE NOTIFICATIONS =================
@@ -21,6 +23,43 @@ export const NOTIFICATION_TYPES = {
 } as const;
 
 export type NotificationType = typeof NOTIFICATION_TYPES[keyof typeof NOTIFICATION_TYPES];
+
+// ================= EMAIL (actions majeures) =================
+
+const EMAIL_NOTIFICATIONS_ENABLED =
+  process.env.EMAIL_NOTIFICATIONS_ENABLED !== 'false';
+const WEB_APP_URL = process.env.WEB_APP_URL?.replace(/\/$/, '');
+
+// Types d'actions majeures qui déclenchent aussi un email (anti-bruit).
+const EMAIL_ENABLED_TYPES: ReadonlySet<string> = new Set([
+  NOTIFICATION_TYPES.MISSION_STARTED,
+  NOTIFICATION_TYPES.MISSION_CLOSED,
+  NOTIFICATION_TYPES.MISSION_CANCELLED,
+  NOTIFICATION_TYPES.MISSION_READY,
+  NOTIFICATION_TYPES.MISSION_AWAITING_ENRICHMENT,
+  NOTIFICATION_TYPES.MISSION_AWAITING_REVIEW,
+  NOTIFICATION_TYPES.MEMBER_ASSIGNED,
+  NOTIFICATION_TYPES.MEMBER_REMOVED,
+  NOTIFICATION_TYPES.FINDING_CREATED,
+  NOTIFICATION_TYPES.FINDING_STATUS_CHANGED,
+  NOTIFICATION_TYPES.RECOMMENDATION_CREATED,
+  NOTIFICATION_TYPES.RECOMMENDATION_STATUS_CHANGED,
+  NOTIFICATION_TYPES.APPROVAL_REQUESTED,
+  NOTIFICATION_TYPES.APPROVAL_DECISION,
+]);
+
+// 🏢 Copie DG (Directeur Général) : 1 seul email par événement stratégique.
+const DG_CC_EMAIL = process.env.NOTIFICATION_CC_EMAIL?.trim();
+
+const DG_CC_TYPES: ReadonlySet<string> = new Set([
+  NOTIFICATION_TYPES.MISSION_CLOSED,
+  NOTIFICATION_TYPES.MISSION_CANCELLED,
+  NOTIFICATION_TYPES.MISSION_READY,
+  NOTIFICATION_TYPES.FINDING_CREATED,
+  NOTIFICATION_TYPES.FINDING_STATUS_CHANGED,
+  NOTIFICATION_TYPES.APPROVAL_REQUESTED,
+  NOTIFICATION_TYPES.APPROVAL_DECISION,
+]);
 
 interface NotificationPayload {
   tenantId: number;
@@ -46,6 +85,8 @@ export class NotificationService {
     if (!recipientIds.length) return;
 
     const now = new Date();
+    const emailEnabled =
+      EMAIL_NOTIFICATIONS_ENABLED && EMAIL_ENABLED_TYPES.has(type);
 
     await prisma.notification.createMany({
       data: recipientIds.map(recipientUserId => ({
@@ -54,7 +95,7 @@ export class NotificationService {
         title,
         message,
         notificationType: type,
-        channel: 'IN_APP',
+        channel: emailEnabled ? 'BOTH' : 'IN_APP',
         status: 'PENDING',
         sentAt: now,
         missionId: missionId ?? null,
@@ -64,6 +105,13 @@ export class NotificationService {
         auditProgramId: auditProgramId ?? null,
       })),
     });
+
+    // 📧 Email (fire-and-forget) : ne doit JAMAIS bloquer l'action principale.
+    if (emailEnabled) {
+      this.dispatchEmails(payload).catch((err) => {
+        console.error('[NOTIF][EMAIL] Erreur lors de l\'envoi des emails:', err);
+      });
+    }
   }
 
   // ================= RÉSOLUTION DE DESTINATAIRES =================
@@ -147,5 +195,107 @@ export class NotificationService {
       missionId,
       recipientIds: filtered,
     });
+  }
+
+  // ================= ENVOI EMAIL (fire-and-forget) =================
+
+  /**
+   * Envoie un email à chaque destinataire (asynchrone, non bloquant).
+   * Un échec SMTP n'empêche jamais l'action principale.
+   */
+  private static async dispatchEmails(payload: NotificationPayload): Promise<void> {
+    const {
+      tenantId,
+      recipientIds,
+      title,
+      message,
+      type,
+      missionId,
+      findingId,
+      recommendationId,
+      planId,
+      auditProgramId,
+    } = payload;
+
+    const users: Array<{ id: number; email: string | null }> = await prisma.user.findMany({
+      where: { tenantId, id: { in: recipientIds } },
+      select: { id: true, email: true },
+    });
+
+    const ctaUrl = this.buildCtaUrl({
+      missionId,
+      findingId,
+      recommendationId,
+      planId,
+      auditProgramId,
+    });
+    const ctaLabel = this.buildCtaLabel({
+      missionId,
+      findingId,
+      recommendationId,
+      planId,
+      auditProgramId,
+    });
+
+    const realRecipients = users.filter(u => u.email).map(u => u.email!);
+    const dgCopy = DG_CC_EMAIL && DG_CC_TYPES.has(type) ? DG_CC_EMAIL : null;
+
+    await Promise.allSettled([
+      ...realRecipients.map(to =>
+        sendNotificationEmail({
+          to,
+          title,
+          message,
+          ctaLabel,
+          ctaUrl,
+        })
+      ),
+      // 🏢 Copie DG : 1 seul email par événement stratégique (anti-bruit).
+      ...(dgCopy
+        ? [
+            sendNotificationEmail({
+              to: dgCopy,
+              title,
+              message,
+              ctaLabel,
+              ctaUrl,
+            }),
+          ]
+        : []),
+    ]);
+  }
+
+  /** Construit l'URL de redirection vers l'entité concernée. */
+  private static buildCtaUrl(p: {
+    missionId?: number;
+    findingId?: number;
+    recommendationId?: number;
+    planId?: number;
+    auditProgramId?: number;
+  }): string | undefined {
+    // Garde : pas de lien CTA si WEB_APP_URL absent (aucun défaut en dur).
+    if (!WEB_APP_URL) return undefined;
+    if (p.missionId) return `${WEB_APP_URL}/missions/${p.missionId}`;
+    if (p.findingId) return `${WEB_APP_URL}/findings/${p.findingId}`;
+    if (p.recommendationId) return `${WEB_APP_URL}/recommendations/${p.recommendationId}`;
+    if (p.planId) return `${WEB_APP_URL}/plans/${p.planId}`;
+    if (p.auditProgramId) return `${WEB_APP_URL}/programs/${p.auditProgramId}`;
+    return undefined;
+  }
+
+  /** Libellé du bouton CTA de l'email. */
+  private static buildCtaLabel(p: {
+    missionId?: number;
+    findingId?: number;
+    recommendationId?: number;
+    planId?: number;
+    auditProgramId?: number;
+  }): string | undefined {
+    if (p.missionId) return 'Voir la mission';
+    if (p.findingId) return 'Voir le constat';
+    if (p.recommendationId) return 'Voir la recommandation';
+    if (p.planId) return 'Voir le plan';
+    if (p.auditProgramId) return 'Voir le programme';
+    return undefined;
   }
 }

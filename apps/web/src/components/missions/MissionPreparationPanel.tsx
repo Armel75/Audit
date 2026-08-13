@@ -79,6 +79,7 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
   // 🔒 Permissions RBAC
   const userPermissions = (user?.permissions ?? []).map((p: string) => p.toLowerCase());
   const canIntake = userPermissions.includes('audit_mission:intake');
+  const canTransmit = userPermissions.includes('audit_mission:transmit_preparation');
   const canEnrich = userPermissions.includes('audit_mission:enrich');
   const canReview = userPermissions.includes('audit_mission:review_preparation');
   const canFinalize = userPermissions.includes('audit_mission:finalize_preparation');
@@ -264,7 +265,7 @@ export default function MissionPreparationPanel({ mission, onUpdated }: MissionP
           </div>
 
           <div className="mt-4 space-y-2">
-            {!locked && currentPhase === 'INTAKE' && canIntake && (
+            {!locked && currentPhase === 'INTAKE' && canTransmit && (
               <button
                 type="button"
                 onClick={() => patchPhase('ENRICHMENT')}

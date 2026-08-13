@@ -83,6 +83,7 @@ export default function BusinessProcesses() {
 
       {/* TABLE */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+        <div className="overflow-auto">
         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
           <thead className="bg-slate-50 dark:bg-slate-700">
             <tr>
@@ -132,6 +133,7 @@ export default function BusinessProcesses() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
     </div>

@@ -1,0 +1,22 @@
+# =============================================================================
+# docker-compose.external-db.yml — Utilise une base SQL Server EXISTANTE
+# -----------------------------------------------------------------------------
+# À utiliser quand vous avez DÉJÀ une base SQL Server avec des données :
+#   docker compose -f docker-compose.yml -f docker-compose.external-db.yml up -d --build api web
+#
+# Aucun conteneur SQL Server n'est démarré : l'API se connecte à votre instance
+# existante via DATABASE_URL (définie dans le fichier .env).
+# =============================================================================
+
+services:
+  api:
+    environment:
+      # Se connecte à la base existante (définie dans .env) au lieu du conteneur Docker
+      DATABASE_URL: ${DATABASE_URL}
+      # Le bootstrap admin n'est utile que sur une base vide
+      BOOTSTRAP_ENABLED: ${BOOTSTRAP_ENABLED:-false}
+    # Neutralise la dépendance au conteneur SQL Server (il ne sera pas démarré)
+    depends_on: !reset []
+    # Résout le nom d'hôte du SQL Server existant (DNS Docker ne connaît pas les noms AD/NetBIOS)
+    extra_hosts:
+      - "DLADIR2017:192.168.2.17"

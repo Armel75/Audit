@@ -86,6 +86,7 @@ export default function OverdueRecommendations() {
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
+          <div className="overflow-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-slate-600">
               <tr>
@@ -141,6 +142,7 @@ export default function OverdueRecommendations() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

@@ -1,0 +1,149 @@
+# =============================================================================
+# Dockerfile API — SISAR Audit Backend (Express + Prisma + Puppeteer)
+# Multi-stage build: deps → shared → database → build → production
+# =============================================================================
+
+# ── Stage 1: Install dependencies ──────────────────────────────────────────
+FROM node:20-alpine AS deps
+
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Copy root monorepo config
+COPY package.json package-lock.json tsconfig.base.json tsconfig.json ./
+COPY .npmrc ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/database/package.json packages/database/
+COPY packages/shared/package.json packages/shared/
+
+# Install all workspace dependencies
+# NB : on régénère sans le lockfile (bug npm #4828 : lockfile généré sur Windows
+# sans les dépendances optionnelles Linux/glibc → @rollup/rollup-linux-x64-musl manquant)
+RUN rm -rf node_modules package-lock.json && npm install --ignore-scripts
+
+# ── Stage 2: Build shared package ──────────────────────────────────────────
+FROM node:20-alpine AS build-shared
+
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json tsconfig.base.json ./
+COPY packages/shared ./packages/shared
+
+RUN cd packages/shared && npx tsup src/index.ts --format esm --dts --clean
+
+# ── Stage 3: Build database package (Prisma generate) ──────────────────────
+FROM node:20-alpine AS build-database
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json tsconfig.base.json ./
+COPY packages/database ./packages/database
+
+# Generate Prisma client (needs the schema)
+RUN cd packages/database && npx prisma generate
+
+# ── Stage 4: Build API ─────────────────────────────────────────────────────
+FROM node:20-alpine AS build-api
+
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build-shared /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build-shared /app/packages/shared/package.json ./packages/shared/
+# Client Prisma généré (dans le node_modules racine : workspace npm hoisté)
+COPY --from=build-database /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build-database /app/packages/database/schema.prisma ./packages/database/
+COPY --from=build-database /app/packages/database/package.json ./packages/database/
+
+COPY package.json tsconfig.base.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/api/tsconfig.json ./apps/api/
+COPY apps/api/src ./apps/api/src
+
+# Build TypeScript → JavaScript
+RUN cd apps/api && npx tsc
+
+# ── Stage 5: Production image ──────────────────────────────────────────────
+FROM node:20-bookworm-slim AS production
+RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources; \
+    fi
+
+# Correction réseau d'entreprise : désactiver la vérification HTTPS d'apt
+# (les certificats du proxy interne ne sont pas présents dans l'image Docker)
+RUN echo 'Acquire::https::Verify-Peer "false";' > /etc/apt/apt.conf.d/99no-verify \
+    && echo 'Acquire::https::Verify-Host "false";' >> /etc/apt/apt.conf.d/99no-verify \
+    && echo 'Acquire::http::Verify-Peer "false";' >> /etc/apt/apt.conf.d/99no-verify
+
+# Install Chrome for Puppeteer + sqlcmd for healthchecks
+RUN apt-get update && apt-get install -y \
+    chromium \
+    chromium-sandbox \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libu2f-udev \
+    libvulkan1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    xdg-utils \
+    curl \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Puppeteer environment
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+WORKDIR /app
+
+# Copy production dependencies
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy built packages
+COPY --from=build-shared /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build-shared /app/packages/shared/package.json ./packages/shared/
+# Client Prisma généré (node_modules racine)
+COPY --from=build-database /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build-database /app/packages/database/schema.prisma ./packages/database/
+COPY --from=build-database /app/packages/database/package.json ./packages/database/
+COPY --from=build-database /app/packages/database/dist ./packages/database/dist
+
+# Copy compiled API
+COPY --from=build-api /app/apps/api/dist ./apps/api/dist
+COPY --from=build-api /app/apps/api/package.json ./apps/api/
+
+# Copy Prisma migrations
+COPY packages/database/migrations ./packages/database/migrations
+
+# Copy templates / logo (utilisés dans les rapports PDF)
+COPY template ./template
+
+# Copy entrypoint script
+COPY docker/entrypoint-api.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Create storage directory
+RUN mkdir -p /app/.storage
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:3007/api/v1/health || exit 1
+
+EXPOSE 3007
+
+ENTRYPOINT ["/entrypoint.sh"]

@@ -7,12 +7,16 @@ const router = Router();
 router.use(requireAuth);
 
 // AuditableEntity
+// Consultation en lecture seule : authentification suffisante (tous les utilisateurs connectés)
+router.get('/auditable-entities/consult', referentialController.getAuditableEntities);
 router.get('/auditable-entities', requirePermission('auditable_entity:read'), referentialController.getAuditableEntities);
 router.post('/auditable-entities', requirePermission('auditable_entity:create'), referentialController.createAuditableEntity);
 router.put('/auditable-entities/:id', requirePermission('auditable_entity:update'), referentialController.updateAuditableEntity);
 router.delete('/auditable-entities/:id', requireAnyPermission(['auditable_entity:delete', 'auditable_entity:update']), referentialController.deleteAuditableEntity);
 
 // BusinessProcess
+// Consultation en lecture seule : authentification suffisante (tous les utilisateurs connectés)
+router.get('/business-processes/consult', referentialController.getBusinessProcesses);
 router.get('/business-processes', requirePermission('business_process:read'), referentialController.getBusinessProcesses);
 router.post('/business-processes', requirePermission('business_process:create'), referentialController.createBusinessProcess);
 router.put('/business-processes/:id', requirePermission('business_process:update'), referentialController.updateBusinessProcess);

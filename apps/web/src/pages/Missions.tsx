@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, SlidersHorizontal } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Search, Filter, SlidersHorizontal, FileText, MessageCircle } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { getMissionStatusMeta } from '../utils/status';
 import { Mission } from '@/types/mission';
@@ -17,6 +17,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
   const canDelete = userPermissions.includes('audit_mission:delete');
   const canFilter = userPermissions.includes('audit_mission:filter');
   const canIntake = userPermissions.includes('audit_mission:intake');
+  const canTransmit = userPermissions.includes('audit_mission:transmit_preparation');
   const canEnrich = userPermissions.includes('audit_mission:enrich');
   const canFinalize = userPermissions.includes('audit_mission:finalize_preparation');
 
@@ -27,17 +28,21 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
   const [leaders, setLeaders] = useState<{ id: number; firstName: string; lastName: string }[]>([]);
   const [selectedLeaderId, setSelectedLeaderId] = useState('');
   const [tabMode, setTabMode] = useState<'preparation' | 'active' | 'archive'>('active');
+  const [searchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
 
-  // 🔄 Synchroniser l'onglet avec la prop mode (sidebar)
+  // 🔄 Synchroniser l'onglet : ?tab= (liens du dashboard) > prop mode (sidebar) > défaut
   useEffect(() => {
-    if (mode === 'archive') {
+    if (urlTab === 'preparation' || urlTab === 'active' || urlTab === 'archive') {
+      setTabMode(urlTab);
+    } else if (mode === 'archive') {
       setTabMode('archive');
     } else if (canIntake) {
       setTabMode('preparation');
     } else {
       setTabMode('active');
     }
-  }, [mode]);
+  }, [mode, urlTab, canIntake]);
 
   // FILTER PANEL
   const [filterOpen, setFilterOpen] = useState(false);
@@ -329,6 +334,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden">
 
+          <div className="overflow-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wide">
               <tr>
@@ -337,7 +343,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                 <th className="p-4">Chef</th>
                 <th className="p-4">Dates</th>
                 <th className="p-4">Statut</th>
-                <th className="p-4 text-right">Actions</th>
+                <th className="p-4 text-right min-w-[280px]">Actions</th>
               </tr>
             </thead>
 
@@ -382,20 +388,11 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                         <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusMeta.class}`}>
                           {statusMeta.label}
                         </span>
-                        {m.preparation?.phase && m.preparation.phase !== 'REVIEW' && (
-                          <span className={`px-2.5 py-0.5 text-[10px] font-semibold rounded-full uppercase tracking-wider ${
-                            m.preparation.phase === 'INTAKE'
-                              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300'
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-                          }`}>
-                            {m.preparation.phase === 'INTAKE' ? 'Brouillon' : 'En cours'}
-                          </span>
-                        )}
                       </div>
                     </td>
 
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition">
+                    <td className="p-4 text-right min-w-[280px]">
+                      <div className="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition flex-wrap">
 
                         <button
                           onClick={(e) => {
@@ -407,31 +404,67 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
                           Voir détails mission
                         </button>
 
+                        {m.status !== 'CANCELLED' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/missions/${m.id}/protocol`);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition text-emerald-700 dark:text-emerald-300"
+                          title="Consulter le protocole de mission"
+                        >
+                          <FileText className="w-3.5 h-3.5 inline-block align-middle" />
+                          <span className="ml-1">Protocole</span>
+                        </button>
+                        )}
+
+                        {m.status !== 'CLOSED' && m.status !== 'CANCELLED' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/missions/${m.id}?tab=hierarchy-comments`);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition text-amber-700 dark:text-amber-300"
+                          title="Commenter la mission"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 inline-block align-middle" />
+                          <span className="ml-1">Commenter la mission</span>
+                        </button>
+                        )}
+
                         {((canUpdate || canEnrich) || (canIntake && m.status === 'PLANNED')) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             if (m.status === 'PLANNED') {
                               navigate(`/missions/${m.id}/edit`);
+                            } else if (canEnrich) {
+                              // 🩹 Correction d'urgence : enrichisseur peut éditer le cadrage même après PLANNED
+                              navigate(`/missions/${m.id}/edit`);
                             }
                           }}
-                          disabled={m.status !== 'PLANNED' || (canIntake && !canEnrich && m.preparation?.phase !== 'INTAKE')}
+                          disabled={
+                            m.status !== 'PLANNED' && !canEnrich
+                            || (canIntake && !canEnrich && m.preparation?.phase !== 'INTAKE' && m.status === 'PLANNED')
+                          }
                           title={
+                            m.status !== 'PLANNED' && canEnrich ? 'Corriger le cadrage (mission déjà lancée)' :
                             m.status !== 'PLANNED' ? 'Seules les missions planifiées sont modifiables' :
                             canIntake && !canEnrich && m.preparation?.phase !== 'INTAKE' ? 'Mission déjà transmise' :
                             'Compléter les informations'
                           }
                           className={`px-3 py-1.5 rounded-lg border transition text-slate-700 dark:text-slate-200 ${
-                            m.status === 'PLANNED'
+                            m.status === 'PLANNED' || canEnrich
                               ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer'
                               : 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed'
                           }`}
                         >
-                          {m.preparation?.phase && ['INTAKE', 'ENRICHMENT'].includes(m.preparation.phase) ? 'Compléter les informations' : 'Modifier mission'}
+                          {m.status !== 'PLANNED' && canEnrich ? '⚠️ Corriger le cadrage' :
+                           m.preparation?.phase && ['INTAKE', 'ENRICHMENT'].includes(m.preparation.phase) ? 'Compléter les informations' : 'Modifier mission'}
                         </button>
                         )}
 
-                        {tabMode === 'preparation' && m.preparation?.phase === 'INTAKE' && canIntake && (
+                        {tabMode === 'preparation' && m.preparation?.phase === 'INTAKE' && canTransmit && (
                         <button
                           onClick={async (e) => {
                             e.stopPropagation();
@@ -564,6 +597,7 @@ export default function Missions({ mode = 'active' }: { mode?: 'active' | 'archi
               })}
             </tbody>
           </table>
+          </div>
 
           {/* PAGINATION (masquée quand filtre actif) */}
           {!filteredMissionsData && (

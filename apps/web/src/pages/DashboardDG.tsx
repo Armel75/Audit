@@ -160,7 +160,7 @@ export default function DashboardDG() {
                 </div>
               </div>
               <div className="flex flex-col gap-3 w-full lg:w-auto">
-                {user?.permissions?.includes('audit_mission:create') && (
+                {user?.permissions?.includes('audit_mission:create') && user?.permissions?.includes('audit_mission:intake') && (
                   <Link
                     to="/missions/new"
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:from-emerald-600 hover:to-emerald-700 hover:shadow-md active:scale-[0.97]"

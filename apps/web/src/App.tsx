@@ -7,12 +7,15 @@ import Dashboard from './pages/Dashboard';
 import Missions from './pages/Missions';
 import MissionDetails from './pages/MissionDetails';
 import MissionReport from './pages/MissionReport';
+import MissionProtocol from './pages/MissionProtocol';
 import FindingDetails from './pages/FindingDetails';
 import RecommendationDetails from './pages/RecommendationDetails';
 import AuditProgramDetails from './pages/AuditProgramDetails';
 import Settings from './pages/Settings';
 import AdminSettings from './pages/AdminSettings';
 import Referential from './pages/Referential';
+import AuditableEntities from './pages/AuditableEntities';
+import ProcessusMetier from './pages/ProcessusMetier';
 import CriticalFindings from './pages/CriticalFindings';
 import OverdueRecommendations from './pages/OverdueRecommendations';
 import AuditPlans from './pages/AuditPlans';
@@ -31,6 +34,7 @@ import EvidenceCreate from './pages/EvidenceCreate';
 import EvidenceEdit from './pages/EvidenceEdit';
 import FindingEdit from './pages/FindingEdit';
 import DashboardDG from './pages/DashboardDG';
+import MissionsDashboard from './pages/MissionsDashboard';
 import ApprovalCenter from './pages/ApprovalCenter';
 import NotificationsPage from './pages/NotificationsPage';
 
@@ -94,9 +98,11 @@ export default function App() {
             <Route path="plans" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlans /></PermissionRoute>} />
             <Route path="plans/:id" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlanDetails /></PermissionRoute>} />
             <Route path="missions" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><Missions /></PermissionRoute>} />
+            <Route path="missions-dashboard" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><MissionsDashboard /></PermissionRoute>} />
             <Route path="missions/archive" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><Missions mode="archive" /></PermissionRoute>} />
             <Route path="missions/:id" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><MissionDetails /></PermissionRoute>} />
             <Route path="missions/:id/report" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><MissionReport /></PermissionRoute>} />
+            <Route path="missions/:id/protocol" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><MissionProtocol /></PermissionRoute>} />
             <Route path="programs/:id" element={<PermissionRoute requiredPermissions={['audit_program:read']}><AuditProgramDetails /></PermissionRoute>} />
             <Route path="programs/:programId/procedures/new" element={<PermissionRoute requiredPermissions={['audit_procedure:create']}><ProcedureFormPage /></PermissionRoute>} />
             <Route path="findings/critical" element={<PermissionRoute requiredPermissions={['finding:read']}><CriticalFindings /></PermissionRoute>} />
@@ -104,6 +110,8 @@ export default function App() {
             <Route path="recommendations/overdue" element={<PermissionRoute requiredPermissions={['recommendation:read']}><OverdueRecommendations /></PermissionRoute>} />
             <Route path="recommendations/:id" element={<PermissionRoute requiredPermissions={['recommendation:read']}><RecommendationDetails /></PermissionRoute>} />
             <Route path="referential" element={<PermissionRoute requiredPermissions={['referential:access']}><Referential /></PermissionRoute>} />
+            <Route path="auditable-entities" element={<AuditableEntities />} />
+            <Route path="processus-metier" element={<ProcessusMetier />} />
             <Route path="settings" element={<PermissionRoute requiredPermissions={['settings:read']}><Settings /></PermissionRoute>} />
             <Route path="admin" element={<PermissionRoute requiredPermissions={['admin:access']}><AdminSettings /></PermissionRoute>} />
             <Route path="users/:id" element={<PermissionRoute requiredPermissions={['user:read']}><UserDetail /></PermissionRoute>} />

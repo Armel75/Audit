@@ -24,6 +24,33 @@ router.get('/dg', requireAuth, requireAnyPermission(['dashboard_dg:read', 'admin
   }
 });
 
+// ================= MISSIONS DASHBOARD =================
+// Tous les profils qui voient les missions (read / read_all) y ont accès.
+// ?scope=all (défaut si read_all) | ?scope=mine (toujours pour les lecteurs simples)
+router.get('/missions', requireAuth, requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), async (req, res) => {
+  try {
+    const user = (req as any).user;
+    const tenantId = user.tenantId;
+    const perms = (user.permissions || []).map((p: string) => p.toLowerCase());
+    const hasReadAll = perms.includes('audit_mission:read_all');
+
+    // Vue : "all" par défaut si read_all, sinon toujours "mine".
+    const scope: 'all' | 'mine' = hasReadAll && req.query.scope !== 'mine' ? 'all' : 'mine';
+    const accessFilter = getMissionAccessFilter(user, scope === 'mine');
+
+    const yr = req.query.year ? Number(req.query.year) : undefined;
+    const mo = req.query.month ? Number(req.query.month) : undefined;
+    const period = yr ? { year: yr, month: mo } : undefined;
+
+    const data = await DashboardService.getMissionsDashboard(tenantId, period, accessFilter, scope);
+
+    res.json(data);
+  } catch (error) {
+    console.error('🔥 MISSIONS DASHBOARD ERROR:', error);
+    res.status(500).json({ message: 'Internal error' });
+  }
+});
+
 // ================= MAIN DASHBOARD =================
 router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:access']), async (req, res) => {
   try {

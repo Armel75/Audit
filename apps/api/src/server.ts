@@ -32,6 +32,7 @@ import dashboardRoutes from './routes/dashboard.routes';
 import { startGlpiUserSyncCron } from './cron/glpiUserSync.cron';
 import { startGlpiTicketSyncCron } from './cron/glpiTicketSync.cron';
 import hierarchyCommentRoutes from './routes/hierarchyComment.routes';
+import { closePDFBrowser } from './services/report.service';
 
 console.log('authRoutes:', authRoutes);
 console.log("ENV LOADED:", process.env.JWT_SECRET);
@@ -96,11 +97,26 @@ async function startServer() {
     // Optionally decide if server should crash or continue
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[SISAR] Server running on http://localhost:${PORT}`);
     startGlpiUserSyncCron();
     startGlpiTicketSyncCron();
   });
+
+  // Arrêt propre : ferme le navigateur Puppeteer partagé et le serveur HTTP
+  const shutdown = async (signal: string) => {
+    console.log(`[SISAR] Signal ${signal} reçu, arrêt propre en cours...`);
+    try {
+      await closePDFBrowser();
+    } catch (err) {
+      console.error('[SISAR] Erreur lors de la fermeture du navigateur PDF:', err);
+    }
+    server.close(() => process.exit(0));
+    // Filet de sécurité si la fermeture HTTP traîne
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 startServer();

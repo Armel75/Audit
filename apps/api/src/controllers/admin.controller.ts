@@ -438,6 +438,8 @@ export const updateUser = async (req: Request, res: Response) => {
     // ✅ Password
     if (password) {
       data.passwordHash = await bcrypt.hash(password, 10);
+      data.failedLogins = 0;
+      data.lockedUntil = null;
     }
 
     // ✅ Relations (IMPORTANT)

@@ -11,7 +11,9 @@ import {
   getMissionOrderData,
   buildMissionOrderHTML,
   getMissionInfoData,
-  buildMissionInfoHTML
+  buildMissionInfoHTML,
+  getMissionProtocolData,
+  buildMissionProtocolHTML
 } from '../services/report.service';
 
 import { DocumentService } from '../services/document.service';
@@ -25,12 +27,13 @@ import { NotificationService, NOTIFICATION_TYPES } from '../services/notificatio
  * where the user is leader or an active member.
  * Returns null if the user has read_all (no restriction needed).
  */
-export function getMissionAccessFilter(user: Express.Request['user']): any | null {
+export function getMissionAccessFilter(user: Express.Request['user'], forceMine = false): any | null {
   if (!user) return null;
   const perms = user.permissions.map((p: string) => p.toLowerCase());
   console.log('[MISSION ACCESS] userId:', user.id, 'permissions:', perms);
   console.log('[MISSION ACCESS] has read_all:', perms.includes('audit_mission:read_all'));
-  if (perms.includes('audit_mission:read_all')) return null;
+  // read_all voit tout, sauf si on force explicitement la vue "mes missions".
+  if (!forceMine && perms.includes('audit_mission:read_all')) return null;
   return {
     OR: [
       { leaderId: user.id },
@@ -261,7 +264,11 @@ export const getMission = async (req: Request, res: Response) => {
             },
             _count: {
               select: { procedures: true }
-            }
+            },
+            procedures: {
+              select: { id: true, code: true, title: true, sequenceNo: true },
+              orderBy: { sequenceNo: 'asc' },
+            },
           }
         },
         documents: true,
@@ -538,6 +545,32 @@ export const updateMission = async (req: Request, res: Response) => {
     const bodyFields = Object.keys(req.body);
     const userPerms = (req.user?.permissions ?? []).map((p: string) => p.toLowerCase());
 
+    // 🩹 Correction d'urgence : mission post-PLANNED, seul l'enrichissement est autorisé
+    const isPostPlanned = existing.status !== 'PLANNED';
+    if (isPostPlanned) {
+      const hasEnrichPerm = userPerms.includes('audit_mission:enrich');
+      if (!hasEnrichPerm) {
+        return res.status(403).json({
+          error: 'Permission requise : seuls les utilisateurs avec audit_mission:enrich peuvent modifier une mission déjà lancée'
+        });
+      }
+      // Bloquer les champs intake
+      const hasIntakeField = bodyFields.some((f) => PREPARATION_INTAKE_FIELDS.includes(f));
+      if (hasIntakeField) {
+        return res.status(403).json({
+          error: 'Mission déjà lancée : les champs de base (titre, description, objectif, dates) sont verrouillés. Seuls les champs de cadrage sont modifiables.'
+        });
+      }
+      // Vérifier qu'au moins un champ d'enrichissement est présent
+      const hasEnrichField = bodyFields.some((f) => PREPARATION_ENRICHMENT_FIELDS.includes(f));
+      if (!hasEnrichField) {
+        return res.status(400).json({
+          error: 'Aucun champ de cadrage à modifier'
+        });
+      }
+      // ✅ Autoriser uniquement les champs d'enrichissement — on passe au update
+    }
+
     // Vérifier que l'utilisateur a la permission d'enrichir si la phase est ENRICHMENT ou REVIEW
     if (prepPhase === 'ENRICHMENT' || prepPhase === 'REVIEW') {
       const hasEnrichField = bodyFields.some((f) => PREPARATION_ENRICHMENT_FIELDS.includes(f));
@@ -548,10 +581,14 @@ export const updateMission = async (req: Request, res: Response) => {
       }
     }
 
+    if (!isPostPlanned) {
     if (prepPhase === 'INTAKE') {
-      // Phase INTAKE : seuls les champs intake sont modifiables
+      // Phase INTAKE : seuls les champs intake sont modifiables...
+      // sauf pour les utilisateurs avec audit_mission:enrich qui peuvent déjà renseigner le cadrage
+      const hasEnrichPerm = userPerms.includes('audit_mission:enrich');
       const forbidden = bodyFields.filter(
         (f) => !PREPARATION_INTAKE_FIELDS.includes(f) && f !== 'conclusion'
+          && !(hasEnrichPerm && PREPARATION_ENRICHMENT_FIELDS.includes(f))
       );
       if (forbidden.some((f) => req.body[f] !== undefined && (existing as any)[f] !== req.body[f])) {
         return res.status(403).json({
@@ -575,6 +612,7 @@ export const updateMission = async (req: Request, res: Response) => {
         });
       }
     }
+    } // fin du bloc !isPostPlanned
     // Pas de phase de préparation = comportement existant (tous les champs autorisés)
 
     const updated = await prisma.auditMission.update({
@@ -1400,6 +1438,62 @@ export const exportMissionInfo = async (req: Request, res: Response) => {
 
     res.status(500).json({
       error: "Erreur lors de l'export des informations mission",
+      debug: process.env.NODE_ENV !== 'production'
+        ? { message: error?.message, type: error?.name }
+        : undefined
+    });
+  }
+};
+
+// ==========================================
+// PROTOCOL PDF
+// ==========================================
+export const generateMissionProtocol = async (req: Request, res: Response) => {
+  try {
+    const missionId = Number(req.params.id);
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Non autorisé' });
+    }
+
+    // Permission-based access check
+    const accessFilter = getMissionAccessFilter(req.user);
+    if (accessFilter) {
+      const allowed = await prisma.auditMission.findFirst({
+        where: { id: missionId, tenantId, AND: [accessFilter] },
+        select: { id: true }
+      });
+      if (!allowed) return res.status(403).json({ error: 'Accès non autorisé à cette mission' });
+    }
+
+    const mission = await getMissionProtocolData(missionId, tenantId);
+
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission introuvable' });
+    }
+
+    const html = buildMissionProtocolHTML(mission);
+    const pdfBuffer = await generatePDF(html);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=protocole-mission-${missionId}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('❌ Error generating mission protocol PDF');
+    console.error('➡️ Message:', error?.message);
+    console.error('➡️ Stack:', error?.stack);
+
+    if (error?.message?.includes('Browser')) {
+      console.error('🚨 Puppeteer issue detected');
+    }
+
+    if (error?.code) {
+      console.error('🗄️ Prisma error code:', error.code);
+    }
+
+    res.status(500).json({
+      error: "Erreur lors de la génération du protocole de mission",
       debug: process.env.NODE_ENV !== 'production'
         ? { message: error?.message, type: error?.name }
         : undefined

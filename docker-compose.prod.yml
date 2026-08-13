@@ -1,0 +1,58 @@
+# =============================================================================
+# docker-compose.prod.yml — SISAR Audit (Production Override)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# =============================================================================
+
+x-prod-env: &prod-env
+  NODE_ENV: production
+
+services:
+  sqlserver:
+    environment:
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+    restart: always
+    # Production: utilisez un volume nommé persistant ou un FS externe
+    volumes:
+      - sqlserver_data_prod:/var/opt/mssql
+    # Backup suggestion: décommenter pour monter les backups
+    # - ./db/backups:/backups
+
+  api:
+    # Mémoire partagée agrandie pour Chromium/Puppeteer (sinon crash au rendu PDF)
+    shm_size: "1gb"
+    environment:
+      <<: *prod-env
+      API_PORT: 3007
+      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+      WEB_ORIGIN: ${WEB_ORIGIN}
+    restart: always
+    # Scaling: décommenter pour dupliquer l'API
+    # deploy:
+    #   replicas: 2
+    ports:
+      - "3007:3007"
+    volumes:
+      - api_storage_prod:/app/.storage
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    restart: always
+    # Scaling
+    # deploy:
+    #   replicas: 2
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  sqlserver_data_prod:
+    driver: local
+  api_storage_prod:
+    driver: local

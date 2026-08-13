@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import ComboBox from '../components/ComboBox';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, Paperclip, Upload, Users, Target, Clock, Edit2, Trash2, CheckCircle, XCircle, Ticket, ScrollText, MessageCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Plus, FileText, ChevronRight, ChevronDown, Paperclip, Upload, Users, Target, Clock, Edit2, Trash2, CheckCircle, XCircle, Ticket, ScrollText, MessageCircle } from 'lucide-react';
 import HierarchyCommentTabs from '../components/hierarchy-comments/HierarchyCommentTabs';
 import { apiFetch } from '../lib/api';
 import RecommendationList from '../components/RecommendationList';
@@ -218,6 +218,20 @@ export default function MissionDetails() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
   const [generatingOrder, setGeneratingOrder] = useState(false);
+  const [actionsDropdownOpen, setActionsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fermer le dropdown au clic en dehors
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setActionsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Forms state
   const [statusForm, setStatusForm] = useState({ status: '', reason: '' });
   const [memberForm, setMemberForm] = useState({
@@ -959,8 +973,8 @@ export default function MissionDetails() {
           <span>Retour aux missions</span>
         </Link>
         <div className="sm:flex sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tighter text-slate-900 dark:text-white">{mission.title}</h1>
+          <div className="min-w-0">
+            <h1 className="text-3xl font-semibold tracking-tighter break-words text-slate-900 dark:text-white">{mission.title}</h1>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-x-3">
               <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl">
                 Plan {mission.plan?.year ?? '—'}
@@ -1054,26 +1068,55 @@ export default function MissionDetails() {
                 {action.label}
               </button>
             ))}
-            {/* Rapport */}
-            {canViewReport && (
-              <Link
-                to={`/missions/${id}/report`}
-                className="inline-flex items-center px-6 py-3 border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 rounded-3xl text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:shadow transition-all duration-200 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500"
-              >
-                Voir le rapport
-              </Link>
-            )}
-            {/* Ordre de Mission */}
-            {canSeeOrderMission && (
-            <button
-              onClick={handleDownloadMissionOrder}
-              disabled={generatingOrder}
-              className="inline-flex items-center gap-2 px-6 py-3 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-300 dark:hover:border-emerald-600 rounded-3xl text-sm font-semibold text-emerald-700 dark:text-emerald-300 shadow-sm hover:shadow transition-all duration-200 active:scale-[0.97] bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-60 disabled:cursor-wait"
-              title="Télécharger l'ordre de mission en PDF"
-            >
-              <ScrollText className="h-4 w-4" />
-              {generatingOrder ? 'Génération…' : 'Ordre de mission'}
-            </button>
+            {/* Plus d'actions (dropdown) */}
+            {(canSeeOrderMission || canViewReport) && (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setActionsDropdownOpen(!actionsDropdownOpen)}
+                  className="inline-flex items-center gap-1.5 px-4 py-3 border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 rounded-3xl text-sm font-semibold text-slate-600 dark:text-slate-300 shadow-sm hover:shadow transition-all duration-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+                >
+                  Plus d'actions
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${actionsDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {actionsDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-2xl shadow-xl z-50 py-2 overflow-hidden">
+                    {canSeeOrderMission && (
+                      <Link
+                        to={`/missions/${id}/protocol`}
+                        onClick={() => setActionsDropdownOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                      >
+                        <FileText className="h-4 w-4 text-emerald-600" />
+                        Protocole
+                      </Link>
+                    )}
+                    {canViewReport && (
+                      <Link
+                        to={`/missions/${id}/report`}
+                        onClick={() => setActionsDropdownOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                      >
+                        <FileText className="h-4 w-4 text-indigo-600" />
+                        Voir le rapport
+                      </Link>
+                    )}
+                    {canSeeOrderMission && (
+                      <button
+                        onClick={() => {
+                          setActionsDropdownOpen(false);
+                          handleDownloadMissionOrder();
+                        }}
+                        disabled={generatingOrder}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-wait"
+                      >
+                        <ScrollText className="h-4 w-4 text-emerald-600" />
+                        {generatingOrder ? 'Génération…' : 'Ordre de mission'}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -1158,10 +1201,10 @@ export default function MissionDetails() {
             className={`${activeTab === 'hierarchy-comments'
               ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
               : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
-              } whitespace-nowrap py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
+              } whitespace-normal py-5 px-1 border-b-2 font-semibold text-sm flex items-center transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
           >
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Commentaires hiérarchiques
+            <MessageCircle className="w-4 h-4 mr-2 shrink-0" />
+            <span>Commentaires<br />hiérarchiques</span>
           </button>
         </nav>
       </div>
