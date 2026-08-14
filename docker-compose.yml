@@ -45,7 +45,11 @@ services:
     environment:
       <<: *common-env
       API_PORT: 3007
-      DATABASE_URL: "sqlserver://sa:${SA_PASSWORD:-DevPassword123!}@sqlserver:1433;database=AuditDB;encrypt=true;trustServerCertificate=true"
+      # ── Connexion à la base de données ─────────────────────────────────
+      # ✅ BASE LOCALE (conteneur SQL Server Docker) — ACTIVE par défaut
+      DATABASE_URL: "sqlserver://sqlserver:1433;database=AuditDB;user=sa;password=${SA_PASSWORD:-DevPassword123!};encrypt=true;trustServerCertificate=true"
+      # 🔄 BASE EXTERNE (production, depuis le .env) — décommentez pour basculer :
+      # DATABASE_URL: "${DATABASE_URL}"
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}

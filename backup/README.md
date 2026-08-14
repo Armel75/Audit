@@ -17,19 +17,33 @@ make backup:down          # Arrête le service
 ## Ce que fait un backup
 
 1. `BACKUP DATABASE [AuditDB] TO DISK ... WITH COMPRESSION, CHECKSUM`
-   → `backups/AuditDB_<horodatage>.bak` (volume `./backups` sur l'hôte).
+   → écrit le fichier **sur le serveur SQL** (ou un partage réseau qu'il peut
+   écrire), pas dans le conteneur.
 2. `RESTORE VERIFYONLY` : vérifie l'intégrité du fichier.
-3. **Rétention** : suppression des backups de plus de `RETENTION_DAYS` jours
-   (défaut 14), configurable.
+
+> ⚠️ Règle SQL Server : un `.bak` est toujours écrit **sur la machine du serveur
+> SQL** (disque local ou partage UNC) — jamais chez le client. Le conteneur est
+> un client `sqlcmd`.
+
+## Récupérer le .bak
+
+Le fichier est du côté du serveur. Deux cas :
+- **Partage UNC** (`BACKUP_DEST=\\NAS\Backups`) : le `.bak` est déjà sur le
+  réseau → copie-le depuis ton PC, puis `scp` vers Ubuntu.
+- **Dossier local du serveur** (`BACKUP_DEST=D:\Backups`) : récupère-le sur le
+  serveur (partage/RDP), copie-le, puis `scp` vers Ubuntu.
 
 ## Configuration (variables)
 
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `DATABASE_URL` | (du `.env`) | Source de sauvegarde (identifiants dérivés) |
+| `BACKUP_DEST` | **requis** | Chemin côté SERVEUR SQL (UNC ou local) |
 | `DB_NAME` | `AuditDB` | Base à sauvegarder |
 | `BACKUP_INTERVAL_HOURS` | `24` | Fréquence du service planifié |
-| `RETENTION_DAYS` | `14` | Rétention des backups |
+
+> La **rétention** des anciens `.bak` se gère au niveau du partage/dossier
+> cible (politique du NAS/serveur de fichiers), ou manuellement.
 
 ## Drill de restauration (DR) — `make backup:test-restore`
 

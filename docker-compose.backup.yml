@@ -19,13 +19,19 @@ services:
     environment:
       # Base à sauvegarder (les identifiants sont extraits de cette URL)
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL requise (voir .env)}
-      BACKUP_DIR: /backups
+      # Où écrire le .bak : chemin SIDE SERVEUR SQL (partage UNC ou dossier
+      # local du serveur). Le compte du service SQL Server doit pouvoir y écrire.
+      BACKUP_DEST: '${BACKUP_DEST:?BACKUP_DEST requis : chemin côté SERVEUR SQL (ex: partage UNC ou D:\Backups)}'
       BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
-      RETENTION_DAYS: ${RETENTION_DAYS:-14}
       DB_NAME: ${DB_NAME:-AuditDB}
     volumes:
+      # Utilisé par le drill DR (restore-test.sh) : y déposer le .bak à tester
       - ./backups:/backups
     extra_hosts:
+      # Résout le nom AD/NetBIOS du serveur SQL (même correctif que
+      # docker-compose.external-db.yml : le DNS Docker ne résout pas ces noms)
+      # Surchargeable via SQL_HOST_EXTRA / SQL_HOST_EXTRA_IP
+      - "${SQL_HOST_EXTRA:-DLADIR2017}:${SQL_HOST_EXTRA_IP:-192.168.2.17}"
       # Permet au drill DR d'atteindre une instance de test sur l'hôte
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
