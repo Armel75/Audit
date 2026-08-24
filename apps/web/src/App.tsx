@@ -35,6 +35,7 @@ import EvidenceEdit from './pages/EvidenceEdit';
 import FindingEdit from './pages/FindingEdit';
 import DashboardDG from './pages/DashboardDG';
 import MissionsDashboard from './pages/MissionsDashboard';
+import PilotageAudit from './pages/PilotageAudit';
 import ApprovalCenter from './pages/ApprovalCenter';
 import NotificationsPage from './pages/NotificationsPage';
 
@@ -95,6 +96,7 @@ export default function App() {
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="hierarchy-comments" element={<PermissionRoute requiredPermissions={['comment:read']}><HierarchyCommentsOverview /></PermissionRoute>} />
             <Route path="dashboard-dg" element={<PermissionRoute requiredPermissions={['dashboard_dg:read']}><DashboardDG /></PermissionRoute>} />
+            <Route path="pilotage-audit" element={<PermissionRoute requiredPermissions={['audit_plan:read', 'referential:access', 'admin:access']}><PilotageAudit /></PermissionRoute>} />
             <Route path="plans" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlans /></PermissionRoute>} />
             <Route path="plans/:id" element={<PermissionRoute requiredPermissions={['audit_plan:read']}><AuditPlanDetails /></PermissionRoute>} />
             <Route path="missions" element={<PermissionRoute requiredPermissions={['audit_mission:read', 'audit_mission:read_all']}><Missions /></PermissionRoute>} />

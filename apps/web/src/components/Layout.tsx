@@ -62,6 +62,7 @@ export default function Layout() {
     { path: '/plans', icon: Calendar, label: "Plans d'audit annuels", requiredPermissions: ['audit_plan:read'] },
     { path: '/missions', icon: Briefcase, label: 'Missions', requiredPermissions: ['audit_mission:read', 'audit_mission:read_all'] },
     { path: '/missions-dashboard', icon: BarChart3, label: 'Tableau de bord missions', requiredPermissions: ['audit_mission:read', 'audit_mission:read_all'] },
+    { path: '/pilotage-audit', icon: BarChart3, label: 'Pilotage audit', requiredPermissions: ['audit_plan:read', 'referential:access', 'admin:access'] },
     { path: '/missions/archive', icon: Archive, label: 'Archives missions', requiredPermissions: ['audit_mission:read', 'audit_mission:read_all'] },
     { path: '/approvals', icon: CheckCircle, label: 'Approbations', requiredPermissions: ['approval:read'] },
     { path: '/hierarchy-comments', icon: CheckCircle, label: 'Commentaires hiérarchiques', requiredPermissions: ['comment:read'] },

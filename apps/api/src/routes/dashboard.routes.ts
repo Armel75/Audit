@@ -51,6 +51,26 @@ router.get('/missions', requireAuth, requireAnyPermission(['audit_mission:read',
   }
 });
 
+// ================= PILOTAGE RÉFÉRENTIEL & COUVERTURE =================
+// Lecture stratégique du référentiel d'audit (types, entités, processus,
+// contrôles, risques) + couverture par plan/scope + détection des trous.
+router.get('/pilotage', requireAuth, requireAnyPermission(['audit_plan:read', 'referential:access', 'admin:access']), async (req, res) => {
+  try {
+    const tenantId = (req as any).user.tenantId;
+
+    const yr = req.query.year ? Number(req.query.year) : undefined;
+    const mo = req.query.month ? Number(req.query.month) : undefined;
+    const period = yr ? { year: yr, month: mo } : undefined;
+
+    const data = await DashboardService.getPilotage(tenantId, period);
+
+    res.json(data);
+  } catch (error) {
+    console.error('🔥 PILOTAGE DASHBOARD ERROR:', error);
+    res.status(500).json({ message: 'Internal error' });
+  }
+});
+
 // ================= MAIN DASHBOARD =================
 router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:access']), async (req, res) => {
   try {

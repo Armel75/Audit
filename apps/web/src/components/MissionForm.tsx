@@ -246,8 +246,9 @@ export default function MissionForm({ onSuccess, onCancel, mission, emergencyEnr
 
       const payload: any = {};
 
-      // 🔒 Champs intake (secrétaire uniquement)
-      if (canIntake) {
+      // 🔒 Champs intake (secrétaire uniquement) — respecte le verrouillage de phase
+      // (sinon, en phase ENRICHMENT/REVIEW, les champs verrouillés sont renvoyés et le backend rejette la requête)
+      if (canIntake && !intakeLocked) {
         payload.title = title;
         payload.description = description;
         payload.objective = objective;

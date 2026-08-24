@@ -1,0 +1,56 @@
+{
+  "version": 2,
+  "sessionId": "session-36e1155e-4cfa-4e8d-b77b-0d3dc8744b05",
+  "cwd": "c:\\Users\\DEFFO_A\\Lovable_Project\\Audit",
+  "updatedAt": 1787596535391,
+  "checkpoints": [
+    {
+      "turn": 1,
+      "commit": "ab19441dd77fc3dd4d6e52ddaf24a84c7b2bb9ee",
+      "parent": "ab19441dd77fc3dd4d6e52ddaf24a84c7b2bb9ee",
+      "time": 1787593247419,
+      "untracked": [],
+      "truncated": false,
+      "after": {
+        "commit": "42541ef08df603b15bd041ad38f96612d8286d65",
+        "time": 1787593700378
+      }
+    },
+    {
+      "turn": 2,
+      "commit": "42541ef08df603b15bd041ad38f96612d8286d65",
+      "parent": "42541ef08df603b15bd041ad38f96612d8286d65",
+      "time": 1787594639095,
+      "untracked": [],
+      "truncated": false
+    },
+    {
+      "turn": 3,
+      "commit": "42541ef08df603b15bd041ad38f96612d8286d65",
+      "parent": "42541ef08df603b15bd041ad38f96612d8286d65",
+      "time": 1787595108360,
+      "untracked": [],
+      "truncated": false,
+      "after": {
+        "commit": "dd8b6ef4e5cc270c0520a8ddb559ccabbc24b2f8",
+        "time": 1787595655525
+      }
+    },
+    {
+      "turn": 4,
+      "commit": "dd8b6ef4e5cc270c0520a8ddb559ccabbc24b2f8",
+      "parent": "dd8b6ef4e5cc270c0520a8ddb559ccabbc24b2f8",
+      "time": 1787596055826,
+      "untracked": [
+        "apps/web/src/pages/PilotageAudit.tsx"
+      ],
+      "truncated": false,
+      "after": {
+        "commit": "9261c27f5fb81637ad6e008fecbec92a6d312ea6",
+        "time": 1787596532745
+      }
+    }
+  ],
+  "rolls": [],
+  "undos": []
+}

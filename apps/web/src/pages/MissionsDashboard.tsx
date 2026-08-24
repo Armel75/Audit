@@ -239,7 +239,7 @@ export default function MissionsDashboard() {
             ) : (
               <div className="flex flex-col items-center gap-4">
                 <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 400, height: 256 }}>
                     <PieChart>
                       <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={3}>
                         {pieData.map((entry: any) => (
@@ -271,7 +271,7 @@ export default function MissionsDashboard() {
               <EmptyState />
             ) : (
               <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 288 }}>
                   <BarChart data={typeData} layout="vertical" margin={{ left: 8, right: 16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" strokeOpacity={0.15} horizontal={false} />
                     <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
@@ -293,7 +293,7 @@ export default function MissionsDashboard() {
               <EmptyState />
             ) : (
               <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 288 }}>
                   <BarChart data={leaderData} layout="vertical" margin={{ left: 8, right: 16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" strokeOpacity={0.15} horizontal={false} />
                     <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
@@ -314,7 +314,7 @@ export default function MissionsDashboard() {
               <EmptyState />
             ) : (
               <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 288 }}>
                   <AreaChart data={trendData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="gCreated" x1="0" y1="0" x2="0" y2="1">

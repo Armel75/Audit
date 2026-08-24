@@ -114,3 +114,44 @@ export type DGDashboardData = {
     status: 'good' | 'warning' | 'critical';
   }>;
 };
+
+// ═══ PILOTAGE RÉFÉRENTIEL & COUVERTURE D'AUDIT ═══
+export type PilotageCoverageItem = {
+  total: number;
+  covered: number;
+  rate: number;
+};
+
+export type PilotageData = {
+  kpis: {
+    auditTypes: number;
+    auditedEntities: number;
+    businessProcesses: number;
+    controls: number;
+    risks: number;
+    risksWithoutControls: number;
+    activeMissions: number;
+    validatedPlanYear: number | null;
+  };
+  coverage: {
+    entities: PilotageCoverageItem;
+    processes: PilotageCoverageItem;
+    controls: PilotageCoverageItem;
+    risks: PilotageCoverageItem;
+  };
+  byAuditType: Array<{ name: string; findings: number; missions: number }>;
+  byProcess: Array<{ name: string; findings: number }>;
+  byEntity: Array<{ name: string; criticality: string | null; findings: number }>;
+  gaps: {
+    processesWithoutControls: number;
+    untestedControls: number;
+    highCriticalityUncoveredEntities: Array<{ name: string; criticality: string | null }>;
+    highRiskUncoveredRisks: Array<{ name: string }>;
+  };
+  statusBreakdown: {
+    findings: Array<{ status: string; count: number }>;
+    recommendations: Array<{ status: string; count: number }>;
+    controlsByType: Array<{ type: string; count: number }>;
+  };
+  period: { year?: number; month?: number };
+};

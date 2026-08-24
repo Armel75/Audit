@@ -1,5 +1,5 @@
 const prisma = require('@audit/database').default;
-import { DashboardPeriod, DGDashboardData, MissionsDashboardData, MissionsDashboardSummary } from '../types/dashboard.types';
+import { DashboardPeriod, DGDashboardData, MissionsDashboardData, MissionsDashboardSummary, PilotageData } from '../types/dashboard.types';
 import { SimpleCache } from '../shared/cache/simple.cache';
 import { DashboardSnapshotService } from './dashboard.snapshot.service';
 
@@ -686,6 +686,213 @@ export class DashboardService {
       byLeader,
       trend: trendData,
       ranking,
+    };
+
+    // ⚡ Cache
+    SimpleCache.set(cacheKey, result, 5 * 60 * 1000);
+
+    return result;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 🎯 PILOTAGE RÉFÉRENTIEL & COUVERTURE D'AUDIT
+  // Lecture du référentiel (types, entités, processus, contrôles,
+  // risques) + mesure de la couverture de l'univers d'audit par
+  // plan/scope, avec détection des trous. N'utilise PAS createdAt.
+  // ═══════════════════════════════════════════════════════════
+  static async getPilotage(
+    tenantId: number,
+    period?: DashboardPeriod
+  ): Promise<PilotageData> {
+    // 🔑 Cache
+    const cacheKey = `pilotage:${tenantId}:${period?.year || 'all'}:${period?.month || 'all'}`;
+    const cached = SimpleCache.get<PilotageData>(cacheKey);
+    if (cached) return cached;
+
+    const pct = (total: number, covered: number) =>
+      total > 0 ? Math.round((covered / total) * 100) : 0;
+
+    // ── 1. Plan d'audit validé (base de la couverture, filtre année optionnel) ──
+    const plan = await prisma.auditPlan.findFirst({
+      where: { tenantId, status: 'VALIDATED', ...(period?.year ? { year: period.year } : {}) },
+      orderBy: { year: 'desc' },
+      select: { id: true, year: true, title: true },
+    });
+    const planMissionWhere = plan ? { planId: plan.id } : {};
+
+    // ── 2. Référentiel (comptages globaux actifs) ──
+    const [totalEntities, totalProcesses, totalControls, totalRisks,
+      risksWithoutControls, auditTypes, activeMissions] = await Promise.all([
+      prisma.auditableEntity.count({ where: { tenantId, isActive: true } }),
+      prisma.businessProcess.count({ where: { tenantId, isActive: true } }),
+      prisma.control.count({ where: { tenantId, isActive: true } }),
+      prisma.risk.count({ where: { tenantId, isActive: true } }),
+      prisma.risk.count({ where: { tenantId, isActive: true, controlLinks: { none: {} } } }),
+      prisma.auditType.count({ where: { tenantId, isActive: true } }),
+      prisma.auditMission.count({ where: { tenantId, status: { in: ['IN_PROGRESS', 'REVIEW'] } } }),
+    ]);
+
+    // ── 3. Couverture par plan / scopes ──
+    // Utilisation de groupBy (pattern éprouvé dans le projet) plutôt que findMany+distinct,
+    // afin d'éviter toute incompatibilité Prisma/SQL Server sur les modèles liés.
+    const [coveredEntityGroups, coveredProcessGroups, testedControlGroups, coveredRiskGroups] = await Promise.all([
+      plan ? prisma.auditMissionScope.groupBy({
+        by: ['auditableEntityId'],
+        where: { tenantId, status: 'IN_SCOPE', mission: { planId: plan.id } },
+        _count: { id: true },
+      }) : Promise.resolve([]),
+      plan ? prisma.auditProgramScope.groupBy({
+        by: ['businessProcessId'],
+        where: { tenantId, businessProcessId: { not: null }, program: { mission: { planId: plan.id } } },
+        _count: { id: true },
+      }) : Promise.resolve([]),
+      plan ? prisma.auditProcedure.groupBy({
+        by: ['controlId'],
+        where: { tenantId, controlId: { not: null }, result: { not: null }, program: { mission: { planId: plan.id } } },
+        _count: { id: true },
+      }) : Promise.resolve([]),
+      plan ? prisma.auditProgramScope.groupBy({
+        by: ['riskId'],
+        where: { tenantId, riskId: { not: null }, program: { mission: { planId: plan.id } } },
+        _count: { id: true },
+      }) : Promise.resolve([]),
+    ]);
+
+    const coveredEntityIds = coveredEntityGroups.map((g: any) => g.auditableEntityId);
+    const coveredRiskIds = coveredRiskGroups.map((g: any) => g.riskId);
+
+    const coverage = {
+      entities: { total: totalEntities, covered: coveredEntityIds.length, rate: pct(totalEntities, coveredEntityIds.length) },
+      processes: { total: totalProcesses, covered: coveredProcessGroups.length, rate: pct(totalProcesses, coveredProcessGroups.length) },
+      controls: { total: totalControls, covered: testedControlGroups.length, rate: pct(totalControls, testedControlGroups.length) },
+      risks: { total: totalRisks, covered: coveredRiskIds.length, rate: pct(totalRisks, coveredRiskIds.length) },
+    };
+
+    // ── 4. Répartitions (groupBy) ──
+    const [missionsByType, findingsByProcessRaw, findingsByProcessForEntity, findingsByStatus, recosByStatusRaw, controlsByTypeRaw] = await Promise.all([
+      prisma.auditMission.findMany({
+        where: { tenantId, auditTypeId: { not: null }, ...planMissionWhere },
+        select: { auditType: { select: { name: true } }, _count: { select: { findings: true } } },
+      }),
+      prisma.finding.groupBy({
+        by: ['businessProcessId'],
+        where: { tenantId, businessProcessId: { not: null }, ...(plan ? { mission: { planId: plan.id } } : {}) },
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 10,
+      }),
+      prisma.finding.groupBy({
+        by: ['businessProcessId'],
+        where: { tenantId, businessProcessId: { not: null }, ...(plan ? { mission: { planId: plan.id } } : {}) },
+        _count: { id: true },
+        // `take` impose un `orderBy` explicite dans groupBy (sinon Prisma tente
+        // de trier par `id`, absent de `by` → erreur). L'ordre n'affecte pas le
+        // résultat final, re-trié et tronqué côté JS (byEntity).
+        orderBy: { businessProcessId: 'asc' },
+        take: 200,
+      }),
+      prisma.finding.groupBy({ by: ['status'], where: { tenantId }, _count: { id: true } }),
+      prisma.recommendation.groupBy({ by: ['status'], where: { tenantId }, _count: { id: true } }),
+      prisma.control.groupBy({ by: ['controlType'], where: { tenantId, controlType: { not: null } }, _count: { id: true } }),
+    ]);
+
+    // Noms des processus (pour les 2 agrégations)
+    const processIds = Array.from(new Set([
+      ...findingsByProcessRaw.map((f: any) => f.businessProcessId),
+      ...findingsByProcessForEntity.map((f: any) => f.businessProcessId),
+    ].filter((id: any) => id !== null))) as number[];
+
+    const processes = processIds.length > 0
+      ? await prisma.businessProcess.findMany({
+          where: { id: { in: processIds } },
+          select: {
+            id: true, name: true,
+            auditableEntity: { select: { name: true, criticality: true } },
+          },
+        })
+      : [];
+    const processMap = new Map<number, any>(processes.map((p: any) => [p.id, p]));
+
+    const byAuditTypeMap = new Map<string, { name: string; findings: number; missions: number }>();
+    for (const m of missionsByType) {
+      const name = m.auditType?.name || 'Sans type';
+      const entry = byAuditTypeMap.get(name) || { name, findings: 0, missions: 0 };
+      entry.missions += 1;
+      entry.findings += (m as any)._count.findings;
+      byAuditTypeMap.set(name, entry);
+    }
+    const byAuditType = Array.from(byAuditTypeMap.values()).sort((a, b) => b.findings - a.findings);
+
+    const byProcess = findingsByProcessRaw
+      .map((f: any) => ({ name: processMap.get(f.businessProcessId)?.name || 'Processus supprimé', findings: f._count.id }));
+
+    const entityMap = new Map<string, { name: string; criticality: string | null; findings: number }>();
+    for (const f of findingsByProcessForEntity) {
+      const bp = processMap.get(f.businessProcessId);
+      const entityName = bp?.auditableEntity?.name || 'Non rattaché';
+      const entry = entityMap.get(entityName) || { name: entityName, criticality: bp?.auditableEntity?.criticality || null, findings: 0 };
+      entry.findings += f._count.id;
+      entityMap.set(entityName, entry);
+    }
+    const byEntity = Array.from(entityMap.values()).sort((a, b) => b.findings - a.findings).slice(0, 10);
+
+    // ── 5. Détection des trous ──
+    const [processesWithoutControls, untestedControls, highCriticalityUncoveredEntities, highRiskUncoveredRisks] = await Promise.all([
+      plan ? prisma.businessProcess.count({ where: { tenantId, isActive: true, controls: { none: {} } } }) : Promise.resolve(0),
+      plan ? prisma.control.count({ where: { tenantId, isActive: true, procedures: { none: { result: { not: null } } } } }) : Promise.resolve(0),
+      plan ? prisma.auditableEntity.findMany({
+        where: {
+          tenantId, isActive: true,
+          criticality: { in: ['CRITICAL', 'HIGH'] },
+          id: { notIn: coveredEntityIds },
+        },
+        select: { name: true, criticality: true },
+        take: 10,
+      }) : Promise.resolve([]),
+      plan ? prisma.risk.findMany({
+        where: {
+          tenantId, isActive: true,
+          OR: [{ inherentImpact: { gte: 4 } }, { inherentLikelihood: { gte: 4 } }],
+          id: { notIn: coveredRiskIds },
+        },
+        select: { name: true },
+        take: 10,
+      }) : Promise.resolve([]),
+    ]);
+
+    // ── 6. Status breakdown ──
+    const statusBreakdown = {
+      findings: findingsByStatus.map((f: any) => ({ status: f.status, count: f._count.id }))
+        .sort((a: any, b: any) => b.count - a.count),
+      recommendations: recosByStatusRaw.map((r: any) => ({ status: r.status, count: r._count.id }))
+        .sort((a: any, b: any) => b.count - a.count),
+      controlsByType: controlsByTypeRaw.map((c: any) => ({ type: c.controlType || 'Autre', count: c._count.id }))
+        .sort((a: any, b: any) => b.count - a.count),
+    };
+
+    const result: PilotageData = {
+      kpis: {
+        auditTypes,
+        auditedEntities: totalEntities,
+        businessProcesses: totalProcesses,
+        controls: totalControls,
+        risks: totalRisks,
+        risksWithoutControls,
+        activeMissions,
+        validatedPlanYear: plan?.year ?? null,
+      },
+      coverage,
+      byAuditType,
+      byProcess,
+      byEntity,
+      gaps: {
+        processesWithoutControls,
+        untestedControls,
+        highCriticalityUncoveredEntities: highCriticalityUncoveredEntities.map((e: any) => ({ name: e.name, criticality: e.criticality })),
+        highRiskUncoveredRisks: highRiskUncoveredRisks.map((r: any) => ({ name: r.name })),
+      },
+      statusBreakdown,
+      period: { year: period?.year, month: period?.month },
     };
 
     // ⚡ Cache
