@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Plus, ChevronRight, FileText, CheckCircle, XCircle, Clock, Edit2, Trash2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { Link } from 'react-router-dom';
+import ListExportButtons from '../components/ListExportButtons';
 
 interface AuditPlan {
   id: number;
@@ -123,7 +124,8 @@ export default function AuditPlans() {
             Gérez la planification stratégique des audits par année.
           </p>
         </div>
-        <div className="mt-4 sm:mt-0">
+        <div className="mt-4 sm:mt-0 flex flex-wrap items-center gap-3">
+          <ListExportButtons path="/export/plans" fileName="plans_audit_annuels" />
           <button
             onClick={handleOpenCreate}
             className="inline-flex items-center justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
@@ -181,6 +183,10 @@ export default function AuditPlans() {
                       <Trash2 className="w-3.5 h-3.5" />
                       Supprimer
                     </button>
+                  </div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <ListExportButtons compact path={`/export/plans/${plan.id}`} fileName={`plan_audit_${plan.year}_v${plan.versionNumber}`} />
+                    <span className="text-xs text-slate-400 dark:text-slate-500">Exporter ce plan</span>
                   </div>
                   
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">

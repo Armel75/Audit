@@ -362,7 +362,7 @@ export default function AuditProgramDetails() {
   const canEdit = !['APPROVED'].includes(program.status) && ['PLANNED', 'READY'].includes(program.mission?.status ?? '');
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 px-6 lg:px-0">
+    <div className="w-full space-y-6 pb-12">
       <div>
         <Link
           to={`/missions/${program.mission.id}`}

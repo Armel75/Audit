@@ -158,7 +158,7 @@ export default function HierarchyCommentsOverview() {
   const canCreate = user?.permissions?.includes('comment:create');
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 w-full">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold dark:text-white">Commentaires hiérarchiques de mes missions</h1>
         {canCreate && (
@@ -186,7 +186,7 @@ export default function HierarchyCommentsOverview() {
                   <div className="text-lg font-semibold mb-4">Ajouter un commentaire hiérarchique</div>
                   <div className="mb-4">
                     <label className="block text-sm font-semibold text-slate-900 dark:text-slate-200 mb-2">
-                      Mission <span className="text-red-600">*</span>
+                      Mission (cliquer pour choisir une mission) <span className="text-red-600">*</span>
                     </label>
                     <SearchSelect
                       options={missions}

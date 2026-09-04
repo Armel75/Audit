@@ -17,6 +17,9 @@ router.delete('/auditable-entities/:id', requireAnyPermission(['auditable_entity
 // BusinessProcess
 // Consultation en lecture seule : authentification suffisante (tous les utilisateurs connectés)
 router.get('/business-processes/consult', referentialController.getBusinessProcesses);
+// Consultation en lecture seule des risques et contrôles (pages dédiées)
+router.get('/risks/consult', referentialController.getRisks);
+router.get('/controls/consult', referentialController.getControls);
 router.get('/business-processes', requirePermission('business_process:read'), referentialController.getBusinessProcesses);
 router.post('/business-processes', requirePermission('business_process:create'), referentialController.createBusinessProcess);
 router.put('/business-processes/:id', requirePermission('business_process:update'), referentialController.updateBusinessProcess);

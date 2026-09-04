@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import SearchSelect from './SearchSelect';
 import { 
   AlertCircle, 
   CheckCircle, 
@@ -538,7 +539,7 @@ export default function MissionForm({ onSuccess, onCancel, mission, emergencyEnr
                   <div>
                     <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                       <BookOpen className="w-4 h-4 inline mr-2 text-indigo-600" />
-                      Méthodologie
+                      Méthodologie <span className="text-red-500">*</span>
                       {enrichmentLocked && <Lock className="w-3.5 h-3.5 inline ml-1.5 text-slate-400" />}
                     </label>
                     <textarea
@@ -554,7 +555,7 @@ export default function MissionForm({ onSuccess, onCancel, mission, emergencyEnr
 
                   <div>
                     <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                      Périmètre
+                      Périmètre <span className="text-red-500">*</span>
                       {enrichmentLocked && <Lock className="w-3.5 h-3.5 inline ml-1.5 text-slate-400" />}
                     </label>
                     <textarea
@@ -573,8 +574,9 @@ export default function MissionForm({ onSuccess, onCancel, mission, emergencyEnr
           </div>
 
           {/* Section 2: Planification et Responsabilités */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 px-6 py-4 border-b border-emerald-200 dark:border-emerald-900">
+          {/* NB: pas de overflow-hidden ici pour laisser les menus déroulants (SearchSelect) s'afficher */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="rounded-t-xl bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 px-6 py-4 border-b border-emerald-200 dark:border-emerald-900">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 {canEnrich ? 'Planification et responsabilités' : 'Calendrier'}
@@ -595,28 +597,20 @@ export default function MissionForm({ onSuccess, onCancel, mission, emergencyEnr
                       Plan d'audit {isEditMode ? <span className="text-red-500">*</span> : null}
                       {enrichmentLocked && <Lock className="w-3.5 h-3.5 inline ml-1.5 text-slate-400" />}
                     </label>
-                    <select
+                    <SearchSelect
+                      options={plans.map((p: any) => ({
+                        label: `${p.year} - ${p.title}`,
+                        value: String(p.id),
+                      }))}
                       value={planId}
-                      onChange={(e) => {
-                        setPlanId(e.target.value);
-                        validateField('planId', e.target.value);
+                      onChange={(val) => {
+                        setPlanId(val);
+                        validateField('planId', val);
                       }}
                       disabled={enrichmentLocked}
-                      className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium appearance-none bg-no-repeat bg-right
-                        ${fieldErrors.planId 
-                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100' 
-                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
-                        }`}
-                      style={{
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E")`,
-                        paddingRight: '2.5rem'
-                      }}
-                    >
-                      <option value="">Sélectionner un plan...</option>
-                      {plans.map((p: any) => (
-                        <option key={p.id} value={p.id}>{p.year} - {p.title}</option>
-                      ))}
-                    </select>
+                      error={!!fieldErrors.planId}
+                      placeholder="Sélectionner un plan..."
+                    />
                     {fieldErrors.planId && (
                       <p className="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
                         <AlertCircle className="w-4 h-4" /> {fieldErrors.planId}
@@ -631,28 +625,22 @@ export default function MissionForm({ onSuccess, onCancel, mission, emergencyEnr
                       Chef de mission {isEditMode ? <span className="text-red-500">*</span> : null}
                       {enrichmentLocked && <Lock className="w-3.5 h-3.5 inline ml-1.5 text-slate-400" />}
                     </label>
-                    <select
+                    <SearchSelect
+                      options={users
+                        .filter((u: any) => u.role?.name !== 'SUPER_ADMIN')
+                        .map((u: any) => ({
+                          label: `${u.firstName} ${u.lastName}`,
+                          value: String(u.id),
+                        }))}
                       value={leaderId}
-                      onChange={(e) => {
-                        setLeaderId(e.target.value);
-                        validateField('leaderId', e.target.value);
+                      onChange={(val) => {
+                        setLeaderId(val);
+                        validateField('leaderId', val);
                       }}
                       disabled={enrichmentLocked}
-                      className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium appearance-none bg-no-repeat bg-right
-                        ${fieldErrors.leaderId 
-                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100' 
-                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
-                        }`}
-                      style={{
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E")`,
-                        paddingRight: '2.5rem'
-                      }}
-                    >
-                      <option value="">Sélectionner un responsable...</option>
-                      {users.map((u: any) => (
-                        <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
-                      ))}
-                    </select>
+                      error={!!fieldErrors.leaderId}
+                      placeholder="Sélectionner un responsable..."
+                    />
                     {fieldErrors.leaderId && (
                       <p className="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
                         <AlertCircle className="w-4 h-4" /> {fieldErrors.leaderId}
@@ -743,21 +731,16 @@ export default function MissionForm({ onSuccess, onCancel, mission, emergencyEnr
                     Type d'audit {isEditMode ? <span className="text-red-500">*</span> : null}
                     {enrichmentLocked && <Lock className="w-3.5 h-3.5 inline ml-1.5 text-slate-400" />}
                   </label>
-                  <select
+                  <SearchSelect
+                    options={auditTypes.map((t: any) => ({
+                      label: t.name,
+                      value: String(t.id),
+                    }))}
                     value={auditTypeId}
-                    onChange={(e) => setAuditTypeId(e.target.value)}
+                    onChange={(val) => setAuditTypeId(val)}
                     disabled={enrichmentLocked}
-                    className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all duration-200 appearance-none bg-no-repeat bg-right font-medium"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E")`,
-                      paddingRight: '2.5rem'
-                    }}
-                  >
-                    <option value="">Sélectionner un type...</option>
-                    {auditTypes.map((t: any) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
+                    placeholder="Sélectionner un type..."
+                  />
                 </div>
               )}
             </div>

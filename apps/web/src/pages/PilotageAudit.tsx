@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
+import DashboardExportButtons from '../components/dashboard/DashboardExportButtons';
 import {
   AlertTriangle,
   Building2,
@@ -155,6 +156,7 @@ export default function PilotageAudit() {
               </div>
               <div className="flex flex-col gap-3 w-full lg:w-auto">
                 <PeriodFilter value={period} onChange={setPeriod} />
+                <DashboardExportButtons target="pilotage" period={period} />
               </div>
             </div>
           </header>

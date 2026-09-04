@@ -38,6 +38,7 @@ router.delete('/users/:id/departments/:departmentId', requireAnyPermission(['set
 
 // Audit Types
 router.get('/audit-types', requireAnyPermission(['settings:read', 'department:read']), settingsController.getAuditTypes);
+router.get('/audit-types/consult', requireAuth, settingsController.getAuditTypesConsult);
 router.post('/audit-types', requireAnyPermission(['settings:update', 'department:update']), settingsController.createAuditType);
 router.put('/audit-types/:id', requireAnyPermission(['settings:update', 'department:update']), settingsController.updateAuditType);
 router.delete('/audit-types/:id', requireAnyPermission(['settings:update', 'department:delete']), settingsController.deleteAuditType);

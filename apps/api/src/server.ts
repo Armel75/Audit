@@ -3,6 +3,7 @@ import { createApp } from './app';
 import { runBootstrap } from './bootstrap';
 import { startGlpiUserSyncCron } from './cron/glpiUserSync.cron';
 import { startGlpiTicketSyncCron } from './cron/glpiTicketSync.cron';
+import { startOverdueAlertsCron } from './cron/overdueAlerts.cron';
 import { closePDFBrowser } from './services/report.service';
 
 async function startServer() {
@@ -20,6 +21,7 @@ async function startServer() {
     console.log(`[SISAR] Server running on http://localhost:${PORT}`);
     startGlpiUserSyncCron();
     startGlpiTicketSyncCron();
+    startOverdueAlertsCron();
   });
 
   // Arrêt propre : ferme le navigateur Puppeteer partagé et le serveur HTTP

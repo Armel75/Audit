@@ -58,7 +58,7 @@ export default function OverdueRecommendations() {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 px-6 lg:px-0 py-8">
+    <div className="w-full space-y-6 px-6 lg:px-0 py-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">

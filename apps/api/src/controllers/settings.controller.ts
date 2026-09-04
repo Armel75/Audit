@@ -738,6 +738,23 @@ export const getAuditTypes = async (req: Request, res: Response) => {
   }
 };
 
+// Consultation : liste TOUS les types (actifs et inactifs), lecture seule.
+export const getAuditTypesConsult = async (req: Request, res: Response) => {
+  try {
+    const tenantId = Number((req as any).user?.tenantId);
+    if (!tenantId) {
+      return res.status(401).json({ error: "Non autorisé" });
+    }
+    const auditTypes = await prisma.auditType.findMany({
+      where: { tenantId },
+      orderBy: { name: 'asc' },
+    });
+    res.json(auditTypes);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const createAuditType = async (req: Request, res: Response) => {
   try {
     const tenantId = parseInt((req as any).user.tenantId, 10);

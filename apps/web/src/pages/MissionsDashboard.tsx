@@ -13,6 +13,7 @@ import {
 } from '../components/dashboard';
 import type { PeriodFilterValue } from '../components/dashboard';
 import { apiFetch } from '../lib/api';
+import DashboardExportButtons from '../components/dashboard/DashboardExportButtons';
 import { useAuth } from '../context/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL;
@@ -170,7 +171,10 @@ export default function MissionsDashboard() {
               </div>
               <div className="flex flex-wrap items-center justify-end gap-6">
                 <HealthGauge score={data.healthScore ?? 0} />
-                <PeriodFilter value={period} onChange={setPeriod} />
+                <div className="flex flex-col items-stretch gap-2">
+                  <PeriodFilter value={period} onChange={setPeriod} />
+                  <DashboardExportButtons target="missions" period={period} scope={scope} />
+                </div>
               </div>
             </div>
           </header>

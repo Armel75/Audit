@@ -2,6 +2,19 @@ import { Router } from 'express';
 import { DashboardService } from '../services/dashboard.service';
 import { requireAnyPermission, requireAuth } from '../middleware/auth.middleware';
 import { getMissionAccessFilter } from '../controllers/mission.controller';
+import { generatePDF } from '../services/report.service';
+import { buildIndicatorReportFallbackDoc, renderFallbackPdf } from '../services/pdfFallback.service';
+import {
+  IndicatorReport,
+  normalizeMain,
+  buildIndicatorWorkbookBuffer,
+  buildIndicatorReportHtml,
+} from '../services/dashboardExport.service';
+import {
+  exportDgDashboard,
+  exportMissionsDashboard,
+  exportPilotageDashboard,
+} from '../controllers/dashboardExport.controller';
 
 const prisma = require('@audit/database').default;
 
@@ -72,7 +85,7 @@ router.get('/pilotage', requireAuth, requireAnyPermission(['audit_plan:read', 'r
 });
 
 // ================= MAIN DASHBOARD =================
-router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:access']), async (req, res) => {
+async function getMainDashboardData(req: any, res: any): Promise<void> {
   try {
     const tenantId = (req as any).user.tenantId;
     const userId = (req as any).user.id;
@@ -629,6 +642,86 @@ router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:
     console.error('🔥 MAIN DASHBOARD ERROR:', error);
     res.status(500).json({ message: 'Internal error' });
   }
+}
+
+// Route GET /main (comportement inchangé, fonction nommée ci-dessus).
+router.get('/main', requireAuth, requireAnyPermission(['dashboard:read', 'admin:access']), getMainDashboardData);
+
+// ================= EXPORT INDICATEURS DU TABLEAU DE BORD PRINCIPAL =================
+// Réutilise EXACTEMENT le calcul de getMainDashboardData (aucune duplication de logique).
+function mainExportSubtitle(req: any): string {
+  const yr = req.query?.year ? Number(req.query.year) : undefined;
+  const mo = req.query?.month ? Number(req.query.month) : undefined;
+  let period = 'toute';
+  if (yr && mo) {
+    period = new Date(yr, mo - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  } else if (yr) {
+    period = `année ${yr}`;
+  }
+  return `Période : ${period} — Généré le ${new Date().toLocaleDateString('fr-FR')}`;
+}
+
+async function handleMainExport(req: any, res: any, format: 'pdf' | 'excel'): Promise<void> {
+  try {
+    let captured: any;
+    let errored = false;
+    const capRes: any = {
+      status: (code: number) => {
+        if (code >= 400) errored = true;
+        return capRes;
+      },
+      json: (payload: any) => {
+        captured = payload;
+        return capRes;
+      },
+      setHeader: () => capRes,
+      send: () => capRes,
+    };
+    await getMainDashboardData(req, capRes);
+    if (errored || !captured) {
+      throw new Error(captured?.message || 'Impossible de calculer le tableau de bord');
+    }
+
+    const core = normalizeMain(captured);
+    const report: IndicatorReport = {
+      title: 'Tableau de bord',
+      subtitle: mainExportSubtitle(req),
+      footer: core.footer,
+      kpis: core.kpis,
+      metrics: core.metrics,
+      sections: core.sections,
+    };
+
+    if (format === 'excel') {
+      const buffer = await buildIndicatorWorkbookBuffer(report);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="tableau_de_bord.xlsx"');
+      res.send(buffer);
+    } else {
+      const html = buildIndicatorReportHtml(report);
+      const buffer = await generatePDF(html, () => renderFallbackPdf(buildIndicatorReportFallbackDoc(report)));
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="tableau_de_bord.pdf"');
+      res.send(buffer);
+    }
+  } catch (err) {
+    console.error('🔥 MAIN EXPORT ERROR:', err);
+    res.status(500).json({ error: "Erreur lors de l'export des indicateurs" });
+  }
+}
+
+router.get('/main/export/:format', requireAuth, requireAnyPermission(['dashboard:read', 'admin:access']), (req, res) => {
+  const format = String(req.params.format || '').toLowerCase();
+  if (format !== 'pdf' && format !== 'excel') {
+    return res.status(400).json({ error: 'Format invalide (pdf ou excel)' });
+  }
+  return handleMainExport(req, res, format);
 });
+
+// ================= EXPORT DES INDICATEURS (PDF / Excel) =================
+// Réutilise les mêmes services/filtres que les pages ; format = pdf | excel.
+router.get('/dg/export/:format', requireAuth, requireAnyPermission(['dashboard_dg:read', 'admin:access']), exportDgDashboard);
+router.get('/missions/export/:format', requireAuth, requireAnyPermission(['audit_mission:read', 'audit_mission:read_all']), exportMissionsDashboard);
+router.get('/pilotage/export/:format', requireAuth, requireAnyPermission(['audit_plan:read', 'referential:access', 'admin:access']), exportPilotageDashboard);
 
 export default router;

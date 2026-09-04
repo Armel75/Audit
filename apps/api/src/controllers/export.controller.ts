@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getFindingsRecommendationsExportData } from '../services/export.service';
 import { generatePDF, escapeHtml } from '../services/report.service';
+import { buildFindingsRecommendationsFallbackDoc, renderFallbackPdf } from '../services/pdfFallback.service';
 
 // GET /export/findings-recommendations/pdf
 export async function exportFindingsRecommendationsPDF(req: Request, res: Response) {
@@ -78,7 +79,7 @@ export async function exportFindingsRecommendationsPDF(req: Request, res: Respon
 </body>
 </html>`;
 
-    const pdfBuffer = await generatePDF(html);
+    const pdfBuffer = await generatePDF(html, () => renderFallbackPdf(buildFindingsRecommendationsFallbackDoc(data)));
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="constats_recommandations_export.pdf"');
     res.send(pdfBuffer);

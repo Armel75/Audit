@@ -409,7 +409,7 @@ export default function RecommendationDetails() {
   const missionTitle = recommendation.finding.mission?.title ?? `Mission ${missionId}`;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 px-6 lg:px-0">
+    <div className="w-full space-y-6 pb-12">
       {/* Header */}
       <div>
         <Link

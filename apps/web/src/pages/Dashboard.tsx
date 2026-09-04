@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
+import DashboardExportButtons from '../components/dashboard/DashboardExportButtons';
 import {
   AlertTriangle,
   ArrowRight,
@@ -198,10 +199,10 @@ export default function Dashboard() {
   const alerts: Array<{ id: string; title: string; detail: string; severity: 'critical' | 'high' | 'medium'; action?: React.ReactNode }> = [];
   if (kpis.recosOverdue > 0) alerts.push({ id: 'a1', title: `${kpis.recosOverdue} recommandation(s) en retard`, detail: 'Cibles dépassées nécessitant une action immédiate.', severity: 'critical', action: <Link to="/recommendations/overdue" className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les recommandations</Link> });
   if (kpis.findingsCriticalOpen > 0) alerts.push({ id: 'a2', title: `${kpis.findingsCriticalOpen} constat(s) critique(s) ouvert(s)`, detail: 'Constats à risque élevé non clôturés.', severity: 'critical', action: <Link to="/findings/critical" className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les constats</Link> });
-  if (kpis.approvalsPending > 0) alerts.push({ id: 'a3', title: `${kpis.approvalsPending} approbation(s) en attente`, detail: 'Éléments bloquants dans les workflows de gouvernance.', severity: 'high' });
-  if (riskControl?.risksWithoutControls > 0) alerts.push({ id: 'a4', title: `${riskControl.risksWithoutControls} risque(s) sans contrôle`, detail: 'Lacunes de couverture dans le dispositif de contrôle.', severity: 'critical' });
-  if (planExecution?.missionsWithoutValidatedProgram > 0) alerts.push({ id: 'a5', title: `${planExecution.missionsWithoutValidatedProgram} mission(s) sans programme validé`, detail: 'Démarrage opérationnel sans cadre approuvé.', severity: 'medium' });
-  if (unreadNotifications > 0) alerts.push({ id: 'a6', title: `${unreadNotifications} notification(s) non lue(s)`, detail: 'Dont possiblement des demandes d’approbation et échéances.', severity: 'medium' });
+  if (kpis.approvalsPending > 0) alerts.push({ id: 'a3', title: `${kpis.approvalsPending} approbation(s) en attente`, detail: 'Éléments bloquants dans les workflows de gouvernance.', severity: 'high', action: <Link to="/approvals" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les approbations</Link> });
+  if (riskControl?.risksWithoutControls > 0) alerts.push({ id: 'a4', title: `${riskControl.risksWithoutControls} risque(s) sans contrôle`, detail: 'Lacunes de couverture dans le dispositif de contrôle.', severity: 'critical', action: <Link to="/risques" className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les risques</Link> });
+  if (planExecution?.missionsWithoutValidatedProgram > 0) alerts.push({ id: 'a5', title: `${planExecution.missionsWithoutValidatedProgram} mission(s) sans programme validé`, detail: 'Démarrage opérationnel sans cadre approuvé.', severity: 'medium', action: <Link to="/missions?filter=no-program" className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les missions</Link> });
+  if (unreadNotifications > 0) alerts.push({ id: 'a6', title: `${unreadNotifications} notification(s) non lue(s)`, detail: 'Dont possiblement des demandes d\'approbation et échéances.', severity: 'medium', action: <button onClick={() => {}} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"><Bell className="h-3.5 w-3.5" />Voir les notifications</button> });
 
 
   const health = computeHealthScore(kpis, planExecution, performance);
@@ -275,6 +276,7 @@ export default function Dashboard() {
                   </Link>
                 )}
                 <PeriodFilter value={period} onChange={setPeriod} />
+                <DashboardExportButtons target="main" period={period} />
               </div>
             </div>
           </header>
