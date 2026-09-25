@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
+import DashboardExportButtons from '../components/dashboard/DashboardExportButtons';
 import {
   AlertTriangle,
   Bell,
@@ -90,10 +91,10 @@ export default function DashboardDG() {
   const alerts: Array<{ id: string; title: string; detail: string; severity: 'critical' | 'high' | 'medium'; action?: React.ReactNode }> = [];
   if ((data.criticalFindingsCount ?? 0) > 0) alerts.push({ id: 's1', title: `${data.criticalFindingsCount ?? 0} constat(s) critique(s) confirmé(s)`, detail: 'Nécessitent une attention immédiate de la direction.', severity: 'critical', action: <Link to="/findings/critical" className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les constats</Link> });
   if ((data.recosOverdueCount ?? 0) > 0) alerts.push({ id: 's2', title: `${data.recosOverdueCount ?? 0} recommandation(s) en retard (${data.recosOverdueAvgDays ?? 0}j en moyenne)`, detail: 'Cibles dépassées — risque de non-conformité.', severity: 'critical', action: <Link to="/recommendations/overdue" className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les recommandations</Link> });
-  if ((data.risksWithoutControls ?? 0) > 0) alerts.push({ id: 's3', title: `${data.risksWithoutControls ?? 0} risque(s) sans dispositif de contrôle`, detail: 'Lacunes de couverture dans le système de contrôle interne.', severity: 'critical' });
-  if ((data.approvalsPending ?? 0) > 0) alerts.push({ id: 's4', title: `${data.approvalsPending ?? 0} approbation(s) en attente`, detail: 'Éléments bloquants dans les workflows de gouvernance.', severity: 'high' });
-  if ((data.planExecution?.missionsLate ?? 0) > 0) alerts.push({ id: 's5', title: `${data.planExecution?.missionsLate ?? 0} mission(s) en dépassement d'échéance`, detail: "Retards dans l'exécution du plan d'audit annuel.", severity: 'high' });
-  if ((data.procedureConformityRate ?? 0) < 70 && (data.proceduresTotal ?? 0) > 0) alerts.push({ id: 's6', title: `Taux de conformité procédures à ${data.procedureConformityRate ?? 0}%`, detail: 'Score de maturité du contrôle interne en dessous du seuil.', severity: 'medium' });
+  if ((data.risksWithoutControls ?? 0) > 0) alerts.push({ id: 's3', title: `${data.risksWithoutControls ?? 0} risque(s) sans dispositif de contrôle`, detail: 'Lacunes de couverture dans le système de contrôle interne.', severity: 'critical', action: <Link to="/risques" className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les risques</Link> });
+  if ((data.approvalsPending ?? 0) > 0) alerts.push({ id: 's4', title: `${data.approvalsPending ?? 0} approbation(s) en attente`, detail: 'Éléments bloquants dans les workflows de gouvernance.', severity: 'high', action: <Link to="/approvals" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les approbations</Link> });
+  if ((data.planExecution?.missionsLate ?? 0) > 0) alerts.push({ id: 's5', title: `${data.planExecution?.missionsLate ?? 0} mission(s) en dépassement d'échéance`, detail: "Retards dans l'exécution du plan d'audit annuel.", severity: 'high', action: <Link to="/missions?filter=late" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les missions</Link> });
+  if ((data.procedureConformityRate ?? 0) < 70 && (data.proceduresTotal ?? 0) > 0) alerts.push({ id: 's6', title: `Taux de conformité procédures à ${data.procedureConformityRate ?? 0}%`, detail: 'Score de maturité du contrôle interne en dessous du seuil.', severity: 'medium', action: <Link to="/controls" className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"><Eye className="h-3.5 w-3.5" />Voir les contrôles</Link> });
 
   // Health pie data
   const healthPieData = (data.healthFactors || []).map((f: any) => ({
@@ -170,6 +171,7 @@ export default function DashboardDG() {
                   </Link>
                 )}
                 <PeriodFilter value={period} onChange={setPeriod} />
+                <DashboardExportButtons target="dg" period={period} />
               </div>
             </div>
           </header>

@@ -40,6 +40,7 @@ export const missionStatusLabels: Record<string, string> = {
   PLANNED: 'Planifiées', IN_PROGRESS: 'En cours', REVIEW: 'Revue',
   COMPLETED: 'Terminées', OVERDUE: 'En retard', CANCELLED: 'Annulées',
   READY: 'Prêtes', UNDER_REVIEW: 'En revue',
+  APPROVED: 'Approuvées', CLOSED: 'Clôturées',
 };
 
 export const statusLabelsMap: Record<string, string> = {

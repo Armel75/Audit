@@ -48,6 +48,22 @@ type MissionReport = Prisma.AuditMissionGetPayload<{
     plan: true;
   };
 }>;
+
+/** Commentaire hiérarchique (direction / encadrement) embarqué dans le rapport. */
+type ReportHierarchyComment = {
+  id: number;
+  type?: string | null;
+  title?: string | null;
+  content?: string | null;
+  createdAt?: Date | string | null;
+  deletedAt?: Date | string | null;
+  createdBy?: { id?: number; firstName?: string | null; lastName?: string | null } | null;
+  parentComment?: { id?: number; title?: string | null } | null;
+  documents?: Array<{ id?: number; originalName?: string | null }>;
+};
+
+/** Rapport de mission enrichi des commentaires hiérarchiques de la mission. */
+type MissionReportData = MissionReport & { hierarchyComments: ReportHierarchyComment[] };
 // type RiskLevel = {
 //   name?: string;
 // };
@@ -79,9 +95,9 @@ type MissionReport = Prisma.AuditMissionGetPayload<{
 //   findings?: Finding[];
 // };
 
-export const getMissionReportData = async (missionId: number, tenantId: number) => {
-  return prisma.auditMission.findFirst({
-    where: { 
+export const getMissionReportData = async (missionId: number, tenantId: number): Promise<MissionReportData | null> => {
+  const mission = await prisma.auditMission.findFirst({
+    where: {
       id: missionId,
       tenantId
     },
@@ -113,12 +129,33 @@ export const getMissionReportData = async (missionId: number, tenantId: number) 
       plan: true,
     },
   });
+  if (!mission) return null;
+
+  // Les commentaires hiérarchiques (direction / encadrement) sont rattachés à la
+  // mission de façon contextuelle (contextType='MISSION' + contextId), sans FK Prisma.
+  const hierarchyComments = await prisma.hierarchyComment.findMany({
+    where: { tenantId, contextType: 'MISSION', contextId: missionId, deletedAt: null },
+    select: {
+      id: true,
+      type: true,
+      title: true,
+      content: true,
+      createdAt: true,
+      deletedAt: true,
+      createdBy: { select: { id: true, firstName: true, lastName: true } },
+      parentComment: { select: { id: true, title: true } },
+      documents: { select: { id: true, originalName: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  return { ...mission, hierarchyComments };
 };
 
 
 //export const buildReportHTML = (mission: any) => {
 
-export const buildReportHTML = (mission: MissionReport) => {
+export const buildReportHTML = (mission: MissionReportData) => {
   let logoSrc = '';
   // try {
   //   const logoFullPath = path.resolve(process.cwd(), '../../template/logo.png');
@@ -156,6 +193,44 @@ export const buildReportHTML = (mission: MissionReport) => {
   const nbMajeur = findings.filter(f => f.riskLevel?.name?.toLowerCase() === 'majeur').length;
   const nbMineur = findings.filter(f => f.riskLevel?.name?.toLowerCase() === 'mineur').length;
   const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // ── Commentaires hiérarchiques (direction / encadrement) ────────────────
+  const hcTypeLabels: Record<string, string> = {
+    DIRECTOR_CONCLUSION: 'Conclusions direction',
+    MANAGER_OBSERVATION: 'Observations managers',
+    INTERNAL_DISCUSSION: 'Discussions internes',
+  };
+  const hcBadgeColors: Record<string, string> = {
+    DIRECTOR_CONCLUSION: '#4f46e5',
+    MANAGER_OBSERVATION: '#b45309',
+    INTERNAL_DISCUSSION: '#0e7490',
+  };
+  const hierarchyComments: ReportHierarchyComment[] = mission?.hierarchyComments ?? [];
+  const hcRows = hierarchyComments
+    .map((c) => {
+      const type = String(c?.type ?? '');
+      const typeLabel = hcTypeLabels[type] || type || 'Commentaire';
+      const badgeColor = hcBadgeColors[type] || '#64748b';
+      const author = c?.createdBy
+        ? [c.createdBy.firstName, c.createdBy.lastName].filter(Boolean).join(' ')
+        : '';
+      const date = c?.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '';
+      const attachments = (c?.documents ?? [])
+        .map((d) => escapeHtml(d?.originalName || ''))
+        .filter(Boolean);
+      return `
+      <div class="hc-card">
+        <div class="hc-head">
+          <span class="hc-badge" style="background:${badgeColor}">${escapeHtml(typeLabel)}</span>
+          <span class="hc-meta">${escapeHtml(author || '—')}${date ? ` · ${escapeHtml(date)}` : ''}</span>
+        </div>
+        <div class="hc-title">${escapeHtml(c?.title) || '—'}</div>
+        ${c?.parentComment?.title ? `<div class="hc-parent">En réponse à : ${escapeHtml(c.parentComment.title)}</div>` : ''}
+        <p class="hc-content">${escapeHtml(c?.content) || '—'}</p>
+        <div class="hc-attach">Pièces jointes : ${attachments.length ? attachments.join(', ') : 'aucune'}</div>
+      </div>`;
+    })
+    .join('');
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -207,6 +282,16 @@ export const buildReportHTML = (mission: MissionReport) => {
 
   /* Pied de page */
   .footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 40px; text-align: center; font-size: 8.5px; color: #94a3b8; margin-top: 40px; }
+
+  /* Commentaires hiérarchiques */
+  .hc-card { border: 1px solid #e2e8f0; border-left: 3px solid #6366f1; border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; background: #ffffff; }
+  .hc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .hc-badge { border-radius: 12px; padding: 2px 10px; font-size: 8.5px; font-weight: 700; color: #ffffff; letter-spacing: 0.3px; white-space: nowrap; }
+  .hc-meta { font-size: 9px; color: #94a3b8; text-align: right; }
+  .hc-title { font-size: 11.5px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+  .hc-parent { font-size: 9px; color: #94a3b8; font-style: italic; margin-bottom: 4px; }
+  .hc-content { font-size: 10.5px; color: #475569; line-height: 1.6; white-space: pre-wrap; margin: 0; }
+  .hc-attach { font-size: 9px; color: #64748b; margin-top: 6px; padding-top: 5px; border-top: 1px dashed #e2e8f0; }
 </style>
 </head>
 <body>
@@ -429,6 +514,14 @@ export const buildReportHTML = (mission: MissionReport) => {
     <div class="section">
       <div class="section-title"><span class="dot"></span> Conclusion</div>
       <p class="section-desc">${escapeHtml(mission.conclusion) || '-'}</p>
+    </div>
+
+    <!-- Commentaires hiérarchiques -->
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Commentaires hiérarchiques</div>
+      ${hierarchyComments.length
+        ? `<div class="hc-list">${hcRows}</div>`
+        : '<p class="section-desc" style="font-style:italic">Aucun commentaire hiérarchique pour cette mission.</p>'}
     </div>
 
     <!-- Signatures -->
@@ -782,62 +875,107 @@ function releasePdfSlot(): void {
 }
 
 /**
+ * Chemins de binaires Chromium/Chrome candidats (redondance multi-binaires).
+ * Si le binaire principal (PUPPETEER_EXECUTABLE_PATH) est cassé/absent, on tente
+ * les autres emplacements connus avant de déclarer Chromium indisponible.
+ */
+function browserCandidates(): string[] {
+  const env = process.env.PUPPETEER_EXECUTABLE_PATH;
+  const list: string[] = [];
+  if (env) list.push(env);
+  if (process.platform === 'win32') {
+    const local = process.env.LOCALAPPDATA || '';
+    const prog = process.env.ProgramFiles || 'C:\\Program Files';
+    const prog86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+    if (local) list.push(path.join(local, 'Google', 'Chrome', 'Application', 'chrome.exe'));
+    list.push(
+      path.join(prog, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(prog86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(prog, 'Microsoft', 'Edge', 'Application', 'msedge.exe')
+    );
+  } else {
+    list.push(
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium.chromium'
+    );
+  }
+  try {
+    list.push(puppeteer.executablePath());
+  } catch {
+    /* ignore */
+  }
+  return [...new Set(list.filter(Boolean))];
+}
+
+/**
  * Lance (ou réutilise) l'instance Chrome partagée.
- * `headless: 'shell'` (ancien headless) est le mode le plus stable pour page.pdf() ;
- * repli automatique sur le nouveau headless si le binaire shell n'est pas disponible.
+ * Stratégie : shell (si dispo) → puis chaque binaire candidat (redondance) →
+ * puis résolution par défaut de Puppeteer. Premier lancement réussi gagnant.
+ * Chaque tentative utilise un `userDataDir` NEUF (évite les conflits de verrou
+ * de profil Chrome entre tentatives) ; les tentatives échouées sont nettoyées.
  */
 async function launchPDFBrowser(): Promise<PDFBrowser> {
   const profilesDir = path.join(STORAGE_PATH, 'chrome-profiles');
   fs.mkdirSync(profilesDir, { recursive: true });
-  const userDataDir = fs.mkdtempSync(path.join(profilesDir, 'profile-'));
 
-  // executablePath : uniquement si explicitement défini, sinon Puppeteer résout
-  // lui-même chrome-headless-shell (mode shell) ou Chrome for Testing (repli).
-  const explicitExecutablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  const errors: string[] = [];
 
-  const baseOptions: PDFLaunchOptions = {
-    userDataDir,
+  const launchAttempt = async (label: string, makeOpts: (dir: string) => PDFLaunchOptions): Promise<PDFBrowser | null> => {
+    const userDataDir = fs.mkdtempSync(path.join(profilesDir, 'profile-'));
+    try {
+      const browser = await puppeteer.launch(makeOpts(userDataDir));
+      // Si le navigateur meurt (crash, OOM...), la prochaine requête en relancera un neuf.
+      browser.on('disconnected', () => {
+        const proc = browser.process();
+        console.error(
+          `[generatePDF] Navigateur Chrome arrêté de façon inattendue (exit code: ${proc?.exitCode ?? 'n/a'}, signal: ${proc?.signalCode ?? 'n/a'})`
+        );
+        pdfBrowserPromise = null;
+        try {
+          fs.rmSync(userDataDir, { recursive: true, force: true });
+        } catch {
+          /* ignore */
+        }
+      });
+      return browser;
+    } catch (err) {
+      errors.push(`${label}: ${(err as Error).message}`);
+      // Nettoyage de la tentative échouée (aucun verrou de profil laissé derrière).
+      try {
+        fs.rmSync(userDataDir, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+      return null;
+    }
+  };
+
+  const baseOptions = (dir: string): PDFLaunchOptions => ({
+    userDataDir: dir,
     protocolTimeout: PDF_LAUNCH_TIMEOUT_MS,
     dumpio: process.env.PUPPETEER_DUMPIO === 'true',
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  };
-
-  let browser: PDFBrowser;
-  try {
-    // 1) Ancien headless (shell) : le plus stable pour page.pdf()
-    browser = await puppeteer.launch({
-      headless: 'shell',
-      ...(explicitExecutablePath ? { executablePath: explicitExecutablePath } : {}),
-      ...baseOptions,
-    });
-  } catch (shellError) {
-    // 2) Repli : nouveau headless avec Chrome for Testing (ou chemin explicite)
-    console.warn(
-      '[generatePDF] headless shell indisponible, repli sur le nouveau headless :',
-      (shellError as Error).message
-    );
-    browser = await puppeteer.launch({
-      headless: true,
-      executablePath: explicitExecutablePath || puppeteer.executablePath(),
-      ...baseOptions,
-    });
-  }
-
-  // Si le navigateur meurt (crash, OOM...), la prochaine requête en relancera un neuf.
-  browser.on('disconnected', () => {
-    const proc = browser.process();
-    console.error(
-      `[generatePDF] Navigateur Chrome arrêté de façon inattendue (exit code: ${proc?.exitCode ?? 'n/a'}, signal: ${proc?.signalCode ?? 'n/a'})`
-    );
-    pdfBrowserPromise = null;
-    try {
-      fs.rmSync(userDataDir, { recursive: true, force: true });
-    } catch {
-      /* ignore */
-    }
   });
 
-  return browser;
+  // 1) Mode shell (ancien headless) : le plus stable pour page.pdf() —
+  //    réservé au Chrome géré par Puppeteer (chrome-headless-shell).
+  const shellBrowser = await launchAttempt('shell', (dir) => ({ headless: 'shell', ...baseOptions(dir) }));
+  if (shellBrowser) return shellBrowser;
+
+  // 2) Redondance multi-binaires : chaque candidat en mode headless.
+  for (const exe of browserCandidates()) {
+    const candidate = await launchAttempt(exe, (dir) => ({ headless: true, executablePath: exe, ...baseOptions(dir) }));
+    if (candidate) return candidate;
+  }
+
+  // 3) Dernière chance : résolution par défaut de Puppeteer (Chrome for Testing).
+  const fallback = await launchAttempt('default', (dir) => ({ headless: true, ...baseOptions(dir) }));
+  if (fallback) return fallback;
+
+  throw new Error(`Aucun navigateur Chromium disponible (${errors.join(' | ')})`);
 }
 
 async function getPDFBrowser(): Promise<PDFBrowser> {
@@ -915,11 +1053,20 @@ async function renderPdfOnce(html: string): Promise<Buffer> {
   }
 }
 
+/** Rendu de secours (pdfmake, sans navigateur) fourni par l'appelant. */
+export type PDFFallbackRenderer = () => Promise<Buffer>;
+
 /**
  * Génère un PDF à partir de HTML.
- * Concurrence limitée + retry une fois après relance du navigateur en cas de crash transitoire.
+ *
+ * Pipeline :
+ *  1. rendu Puppeteer/Chromium (qualité maximale) ;
+ *  2. en cas d'échec → relance du navigateur puis nouvelle tentative ;
+ *  3. si Chromium est TOUJOURS indisponible → bascule automatique sur le moteur
+ *     de secours fourni (`fallback`, pdfmake pur JS) pour garantir qu'un PDF est
+ *     bien produit même si le navigateur est mort (binaire cassé, OOM, sandbox...).
  */
-export const generatePDF = async (html: string): Promise<Buffer> => {
+export const generatePDF = async (html: string, fallback?: PDFFallbackRenderer): Promise<Buffer> => {
   await acquirePdfSlot();
   const startedAt = Date.now();
   try {
@@ -935,11 +1082,49 @@ export const generatePDF = async (html: string): Promise<Buffer> => {
       console.log(`[generatePDF] Succès après relance (durée totale ${Date.now() - startedAt}ms)`);
       return buffer;
     }
+  } catch (secondError) {
+    if (!fallback) throw secondError;
+    console.error(
+      `[generatePDF] Chromium indisponible — bascule en MODE DÉGRADÉ (pdfmake) : ${(secondError as Error).message}`
+    );
+    const buffer = await fallback();
+    console.log(`[generatePDF] PDF généré par le moteur de secours en ${Date.now() - startedAt}ms`);
+    return buffer;
   } finally {
     releasePdfSlot();
     console.log(`[generatePDF] Rendu terminé en ${Date.now() - startedAt}ms`);
   }
 };
+
+/** Résultat du contrôle de santé du moteur PDF. */
+export interface PDFHealth {
+  ok: boolean;
+  engine: 'chromium' | 'degraded';
+  latencyMs: number;
+  detail?: string;
+}
+
+/**
+ * Contrôle de santé : tente un mini-rendu Chromium pour savoir si le moteur
+ * principal fonctionne (et si la génération basculera en mode dégradé).
+ * Aucun navigateur n'est lancé si `getPDFBrowser` a déjà échoué.
+ */
+export async function checkPDFHealth(): Promise<PDFHealth> {
+  const startedAt = Date.now();
+  const probeHtml =
+    '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><style>body{font-family:sans-serif}</style></head><body><h1>health</h1></body></html>';
+  try {
+    await renderPdfOnce(probeHtml);
+    return { ok: true, engine: 'chromium', latencyMs: Date.now() - startedAt };
+  } catch (err) {
+    return {
+      ok: false,
+      engine: 'degraded',
+      latencyMs: Date.now() - startedAt,
+      detail: (err as Error).message,
+    };
+  }
+}
 
 // =====================================================
 // FICHE D'INFORMATIONS MISSION — Export complet

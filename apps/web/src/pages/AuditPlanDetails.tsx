@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Calendar, ArrowLeft, FileText, CheckCircle, XCircle, Clock, History, Plus, Save, Edit2, Trash2, RotateCcw } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import ListExportButtons from '../components/ListExportButtons';
 
 interface AuditPlan {
   id: number;
@@ -241,6 +242,7 @@ export default function AuditPlanDetails() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <ListExportButtons path={`/export/plans/${plan.id}`} fileName={`plan_audit_${plan.year}_v${plan.versionNumber}`} />
           <button
             onClick={() => {
               setStatusForm({ status: plan.status, reason: '' });

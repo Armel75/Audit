@@ -8,6 +8,7 @@ import { pinoHttp } from 'pino-http';
 import { STORAGE_PATH, ROOT_PATH } from './config/storage';
 import { logger } from './config/logger';
 import { metricsMiddleware, metricsHandler } from './infrastructure/metrics';
+import { checkPDFHealth } from './services/report.service';
 
 // Routes
 import authRoutes from './routes/auth.routes';
@@ -86,6 +87,16 @@ export function createApp() {
 
   app.get('/api/v1/health', (req, res) => {
     res.json({ status: 'ok', service: 'SISAR API', tenant: 'SOREPCO' });
+  });
+
+  // Santé du moteur PDF : Chromium opérationnel ou bascule en mode dégradé (pdfmake).
+  app.get('/api/v1/health/pdf', async (req, res) => {
+    try {
+      const health = await checkPDFHealth();
+      res.status(health.ok ? 200 : 503).json(health);
+    } catch (err) {
+      res.status(503).json({ ok: false, engine: 'degraded', detail: (err as Error).message });
+    }
   });
 
   // Endpoint de métriques Prometheus (scrapé par le serveur de monitoring)

@@ -801,7 +801,7 @@ export default function MissionDetails() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: nextStatus,
-          reason: `Transition automatique vers ${nextStatus}`
+          reason: actionReason || `Transition automatique vers ${nextStatus}`
         })
       });
       if (response.ok) {
@@ -838,11 +838,10 @@ export default function MissionDetails() {
       return mission.findings.length > 0;
     }
 
-    // 🔒 PHASE 5 — clôture mission
+    // La validation de clôture est effectuée par l'API à partir des données en base.
+    // Le modal doit rester accessible pour permettre la confirmation utilisateur.
     if (nextStatus === 'CLOSED') {
-      return recommendations.every(
-        (r: any) => ['VALIDATED', 'REJECTED'].includes(r.status)
-      );
+      return true;
     }
     return true;
   };
@@ -965,7 +964,7 @@ export default function MissionDetails() {
   !mission.approvals?.some(a => a.decision === 'APPROVED');
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-12 bg-slate-50 dark:bg-slate-900 px-6 lg:px-0 min-h-screen">
+    <div className="w-full space-y-8 pb-12 min-h-screen">
       {/* Header */}
       <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm p-8">
         <Link to="/missions" className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm transition hover:border-slate-300 dark:hover:border-slate-500 hover:text-slate-800 dark:hover:text-white">

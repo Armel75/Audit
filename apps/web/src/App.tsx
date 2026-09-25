@@ -16,6 +16,9 @@ import AdminSettings from './pages/AdminSettings';
 import Referential from './pages/Referential';
 import AuditableEntities from './pages/AuditableEntities';
 import ProcessusMetier from './pages/ProcessusMetier';
+import Risques from './pages/Risques';
+import Controles from './pages/Controles';
+import TypeAudit from './pages/TypeAudit';
 import CriticalFindings from './pages/CriticalFindings';
 import OverdueRecommendations from './pages/OverdueRecommendations';
 import AuditPlans from './pages/AuditPlans';
@@ -114,6 +117,9 @@ export default function App() {
             <Route path="referential" element={<PermissionRoute requiredPermissions={['referential:access']}><Referential /></PermissionRoute>} />
             <Route path="auditable-entities" element={<AuditableEntities />} />
             <Route path="processus-metier" element={<ProcessusMetier />} />
+            <Route path="risques" element={<Risques />} />
+            <Route path="controles" element={<Controles />} />
+            <Route path="type-audit" element={<TypeAudit />} />
             <Route path="settings" element={<PermissionRoute requiredPermissions={['settings:read']}><Settings /></PermissionRoute>} />
             <Route path="admin" element={<PermissionRoute requiredPermissions={['admin:access']}><AdminSettings /></PermissionRoute>} />
             <Route path="users/:id" element={<PermissionRoute requiredPermissions={['user:read']}><UserDetail /></PermissionRoute>} />

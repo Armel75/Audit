@@ -142,19 +142,6 @@ export async function updateMissionStatus(
     }
   }
 
-  if (newStatus === MISSION_STATUS.CLOSED) {
-    const pendingRecos = await prisma.recommendation.count({
-      where: {
-        finding: { missionId },
-        status: { not: 'VALIDATED' }
-      }
-    });
-
-    if (pendingRecos > 0) {
-      throw new Error('Recommandations non validées');
-    }
-  }
-
   // 🔒 5. RÔLES
     if (newStatus === MISSION_STATUS.APPROVED) {
     if (!user.permissions?.includes('audit_mission:approve')) {

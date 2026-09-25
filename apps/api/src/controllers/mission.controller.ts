@@ -16,6 +16,14 @@ import {
   buildMissionProtocolHTML
 } from '../services/report.service';
 
+import {
+  buildReportFallbackDoc,
+  buildMissionOrderFallbackDoc,
+  buildMissionInfoFallbackDoc,
+  buildMissionProtocolFallbackDoc,
+  renderFallbackPdf
+} from '../services/pdfFallback.service';
+
 import { DocumentService } from '../services/document.service';
 import { NotificationService, NOTIFICATION_TYPES } from '../services/notification.service';
 // ==========================================
@@ -1275,8 +1283,8 @@ export const generateMissionReport = async (req: Request, res: Response) => {
     // 2. construire HTML
     const html = buildReportHTML(mission);
 
-    // 3. générer PDF
-    const pdfBuffer = await generatePDF(html);
+    // 3. générer PDF (repli pdfmake automatique si Chromium est indisponible)
+    const pdfBuffer = await generatePDF(html, () => renderFallbackPdf(buildReportFallbackDoc(mission)));
 
     // 4. sauvegarder fichier (TON système existant)
     const metadata = await DocumentService.saveFileLocally(
@@ -1345,7 +1353,7 @@ export const generateMissionOrder = async (req: Request, res: Response) => {
     }
 
     const html = buildMissionOrderHTML(mission);
-    const pdfBuffer = await generatePDF(html);
+    const pdfBuffer = await generatePDF(html, () => renderFallbackPdf(buildMissionOrderFallbackDoc(mission)));
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=ordre-mission-${missionId}.pdf`);
@@ -1418,7 +1426,7 @@ export const exportMissionInfo = async (req: Request, res: Response) => {
     }
 
     const html = buildMissionInfoHTML(mission);
-    const pdfBuffer = await generatePDF(html);
+    const pdfBuffer = await generatePDF(html, () => renderFallbackPdf(buildMissionInfoFallbackDoc(mission)));
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=infos-mission-${missionId}.pdf`);
@@ -1474,7 +1482,7 @@ export const generateMissionProtocol = async (req: Request, res: Response) => {
     }
 
     const html = buildMissionProtocolHTML(mission);
-    const pdfBuffer = await generatePDF(html);
+    const pdfBuffer = await generatePDF(html, () => renderFallbackPdf(buildMissionProtocolFallbackDoc(mission)));
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=protocole-mission-${missionId}.pdf`);

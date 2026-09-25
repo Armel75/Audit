@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 const prisma = require('@audit/database').default;
 import ExcelJS from 'exceljs';
 import { generatePDF } from '../services/report.service';
+import { buildMissionsListFallbackDoc, renderFallbackPdf } from '../services/pdfFallback.service';
 
 // =====================================================
 // Types du payload filtre
@@ -367,7 +368,7 @@ export const exportMissionsPdf = async (req: Request, res: Response) => {
 </body>
 </html>`;
 
-    const pdfBuffer = await generatePDF(html);
+    const pdfBuffer = await generatePDF(html, () => renderFallbackPdf(buildMissionsListFallbackDoc(missions)));
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=missions_export.pdf');

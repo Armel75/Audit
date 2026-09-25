@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Loader2, Search, Workflow } from 'lucide-react';
+import { AlertCircle, FileSpreadsheet, FileText, Loader2, Search, Workflow } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 const API_BASE = import.meta.env.VITE_API_URL;
@@ -19,6 +19,7 @@ export default function ProcessusMetier() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
 
   useEffect(() => {
     apiFetch(`${API_BASE}/referential/business-processes/consult`)
@@ -30,6 +31,29 @@ export default function ProcessusMetier() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  // Export PDF / Excel du référentiel (même jeu de données que la consultation)
+  const handleExport = async (format: 'pdf' | 'excel') => {
+    try {
+      setExporting(format);
+      const res = await apiFetch(`${API_BASE}/export/business-processes/${format}`);
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `processus_metier.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erreur export processus métier:', err);
+      alert("Erreur lors de l'export des processus métier.");
+    } finally {
+      setExporting(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -60,8 +84,29 @@ export default function ProcessusMetier() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500 transition">
-          <Search size={18} className="text-slate-400" />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleExport('pdf')}
+              disabled={exporting !== null || loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-800 dark:text-emerald-400 dark:hover:bg-slate-700"
+            >
+              {exporting === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              Export PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExport('excel')}
+              disabled={exporting !== null || loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {exporting === 'excel' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+              Export Excel
+            </button>
+          </div>
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500 transition">
+            <Search size={18} className="text-slate-400" />
           <input
             type="text"
             value={search}
@@ -69,6 +114,7 @@ export default function ProcessusMetier() {
             placeholder="Rechercher (nom, code, entité)..."
             className="w-64 outline-none text-sm bg-transparent text-slate-800 dark:text-white placeholder:text-slate-400"
           />
+        </div>
         </div>
       </div>
 
